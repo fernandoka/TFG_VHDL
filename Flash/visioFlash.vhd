@@ -30,8 +30,10 @@ entity visioFlash is
     an_n   : out std_logic_vector (7 downto 0);
     segs_n : out std_logic_vector (7 downto 0);
     cs_n   : out std_logic;   -- selección de esclavo
-    sdo    : in  std_logic;   -- master in / slave out
-    sdi    : out std_logic    -- master out / slave in
+    io0    : inout std_logic;    
+    io1    : in  std_logic;   
+    io2    : in  std_logic;
+    io3    : in  std_logic   
 --    wp     : in  std_logic;
 --    hld    : in  std_logic
   );
@@ -59,7 +61,8 @@ architecture syn of visioFlash is
   signal sck, contMode : std_logic;
   
   signal spiDataRdy, spiEarlyBusy : std_logic;
-  signal spiDataIn, spiDataOut : std_logic_vector (7 downto 0);
+  signal spiDataIn : std_logic_vector (7 downto 0);
+  signal spiDataOut : std_logic_vector (31 downto 0);
   
   signal manufacturerID, deviceID : std_logic_vector (7 downto 0);
 
@@ -84,14 +87,25 @@ begin
     port map ( rst_n => rst_n, clk => clk, x => btncDeb, xFall => open, xRise => btncRise );
 
   -- Puede llegar a funcionar hasta 15_000_000 baudios
-  spiInterface : spiMaster
-    generic map( FREQ => FREQ, BAUDRATE => 10_000_000, WIDTH => 8, CPOL => '1', CPHA => '1' ) 
+  spiInterface : spiMaster_Quad
+    generic map( FREQ => FREQ, BAUDRATE => 10_000_000) 
     port map( 
-      rst_n => rst_n, clk => clk, contMode => contMode, 
-		dataRdy => spiDataRdy, dataIn => spiDataIn, dataOut => spiDataOut, busy => open, earlyBusy => spiEarlyBusy,
-      sck => sck, ss_n => cs_n, miso => sdo, mosi => sdi
+          rst_n    => rst_n,
+          clk      => clk,
+          contMode => contMode,
+          dataRdy  => spiDataRdy,
+          dataIn   => spiDataIn,
+          dataOut  => spiDataOut,
+          earlyBusy => spiDataRdy,
+          
+          -- SPI side
+          sck      => sck,
+          ss_n     => cs_n,
+          io0      => io0,   
+          io1_in   => io1,
+          io2_in   => io2,
+          io3_in   => io3
     );
-    
    -- STARTUPE2: STARTUP Block
    --            Artix-7
    -- Xilinx HDL Language Template, version 14.7

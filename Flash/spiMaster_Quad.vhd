@@ -8,7 +8,7 @@
 --    Facultad de Informática. Universidad Complutense de Madrid
 -- 
 --  Retocado por Fernando Candelario para el desarrollo del TFG
---  Versión: 0.2
+--  Versión: 0.3
 --
 --  Notas de diseño:
 --      Fase de reloj establecida a 1, vuelca en flancos impares y muestrea en pares.
@@ -29,7 +29,7 @@ entity spiMaster_Quad is
     rst_n    : in  std_logic;   -- reset asíncrono del sistema (a baja)
     clk      : in  std_logic;   -- reloj del sistema
     contMode : in  std_logic;   -- indica si la transferencia se hace de modo continuo (es decir, sin deseleccionar el dispositivo su finalización)
-    dataRdy  : in  std_logic;   -- se activa durante 1 ciclo para solicitar la transmisión/recepción de un dato
+    dataRdy  : in  std_logic;   -- se activa durante 1 ciclo para solicitar la transmisión
     dataIn   : out std_logic_vector (7 downto 0);   -- dato recibido
     dataOut  : in  std_logic_vector (31 downto 0);   -- Se escribe la instruccion y la direccion de inicio ( Inst + Addr )
     earlyBusy : out std_logic;   -- Notifica la recepción de cada byte leido
@@ -112,8 +112,8 @@ begin
       baudCntCE <= '0';
     end if;
     
-    if state=secondHalfRD and bitPos=1 then 
-           earlyBusy <= '0'; -- Notifica la recepción de cada byte leido
+    if state=secondHalfRD and bitPos=1 and baudCntTC='1' then 
+      earlyBusy <= '0'; -- Notifica la recepción de cada byte leido
     end if;
     
     if rst_n='0' then

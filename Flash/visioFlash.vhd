@@ -10,6 +10,8 @@
 --  Propósito:
 --    Visualiza sobre los displays el contenido de la Flash
 --
+--  Retocado por Fernando Candelario para el desarrollo del TFG
+--  Versión: 0.3
 --  Notas de diseño:
 --    - La conexión de sck se hace implícitamente al usar la primitiva
 --      STARTUPE2, por eso no está declarada en la entity ni aparece
@@ -153,46 +155,23 @@ begin
             end if;
           when sendDummy => -- La primera transferencia tras la carga siempre falla, o bien se hace un reset o se manda un comando inofensivo
               spiDataRdy  <= '1';
-              spiDataOut <= REMS_CMD;
+              spiDataOut <= REMS_CMD & X"000000";
               contMode <= '0';
               state := sendReadCommand;            
           when sendReadCommand =>
             spiDataRdy  <= '1';
-            spiDataOut <= READ_CMD;
+            spiDataOut <= QUADREAD_CMD & addr; -- Inst = QUADREAD_CMD & ini Addr
             contMode <= '1';
-            state := sendAddr0;
-          when sendAddr0 =>
-            spiDataRdy  <= '1';
-            contMode <= '1';            
-            spiDataOut <= addr(23 downto 16); 
-            state := sendAddr1;
-          when sendAddr1 =>
-            spiDataRdy  <= '1';
-            contMode <= '1';            
-            spiDataOut <= addr(15 downto 8); 
-            state := sendAddr2;
-          when sendAddr2 =>
-            spiDataRdy  <= '1';
-            contMode <= '1';           
-            spiDataOut <= addr(7 downto 0); 
-            state := startReading;
-          when startReading =>
-            spiDataRdy  <= '1';
-            contMode <= '1';            
-            spiDataOut <= (others => '0'); 
             state := readByte0;
           when readByte0 =>
-            spiDataRdy  <= '1';
             contMode <= '1';            
             bin(7 downto 0) <= spiDataIn;
             state := readByte1;            
           when readByte1 =>
-            spiDataRdy  <= '1';
             contMode <= '1';            
             bin(15 downto 8) <= spiDataIn;
             state := readByte2;              
           when readByte2 =>
-            spiDataRdy  <= '1';
             contMode <= '0';            
             bin(23 downto 16) <= spiDataIn;
             state := readByte3;                

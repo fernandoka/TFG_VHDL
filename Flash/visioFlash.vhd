@@ -135,7 +135,7 @@ begin
   fsmd :
   process (rst_n, clk)
     type states is ( 
-      waiting, sendDummy, sendReadCommand, sendAddr0, sendAddr1, sendAddr2, startReading, readByte0, readByte1, readByte2, readByte3
+      waiting, sendDummy, sendReadCommand, readByte0, readByte1, readByte2, readByte3
     );
     variable state : states;
   begin 

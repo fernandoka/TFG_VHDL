@@ -4,15 +4,15 @@
 --    sioMaster.vhd  13/12/2017
 --
 --    (c) J.M. Mendias
---    Diseño Automático de Sistemas
---    Facultad de Informática. Universidad Complutense de Madrid
+--    DiseÃ±o AutomÃ¡tico de Sistemas
+--    Facultad de InformÃ¡tica. Universidad Complutense de Madrid
 -- 
 --  Retocado por Fernando Candelario para el desarrollo del TFG
---  Versión: 0.3
+--  VersiÃ³n: 0.3
 --
---  Notas de diseño:
+--  Notas de diseÃ±o:
 --      Fase de reloj establecida a 1, vuelca en flancos impares y muestrea en pares.
---      Nº de dummyCycles = 8
+--      NÂº de dummyCycles = 8
 --  
 -------------------------------------------------------------------
 
@@ -26,16 +26,16 @@ entity spiMaster_Quad is
   );
   port (
     -- host side
-    rst_n    : in  std_logic;   -- reset asíncrono del sistema (a baja)
+    rst_n    : in  std_logic;   -- reset asÃ­ncrono del sistema (a baja)
     clk      : in  std_logic;   -- reloj del sistema
-    contMode : in  std_logic;   -- indica si la transferencia se hace de modo continuo (es decir, sin deseleccionar el dispositivo su finalización)
-    dataRdy  : in  std_logic;   -- se activa durante 1 ciclo para solicitar la transmisión
+    contMode : in  std_logic;   -- indica si la transferencia se hace de modo continuo (es decir, sin deseleccionar el dispositivo su finalizaciÃ³n)
+    dataOutRdy  : in  std_logic;   -- se activa durante 1 ciclo para solicitar la transmisiÃ³n
     dataIn   : out std_logic_vector (7 downto 0);   -- dato recibido
     dataOut  : in  std_logic_vector (31 downto 0);   -- Se escribe la instruccion y la direccion de inicio ( Inst + Addr )
-    earlyBusy : out std_logic;   -- Notifica la recepción de cada byte leido
+    dataInRdy_n : out std_logic;   -- Notifica la recepciÃ³n de cada byte leido
     -- SPI side
     sck      : out std_logic;   -- reloj serie
-    ss_n     : out std_logic;   -- selección de esclavo
+    ss_n     : out std_logic;   -- selecciÃ³n de esclavo
     io0      : inout std_logic;   
     io1_in      : in  std_logic;  -- La uso como solo lectura  
     io2_in      : in std_logic;   -- La uso como solo lectura
@@ -61,7 +61,7 @@ architecture syn of spiMaster_Quad is
 
   signal io0Shf_in,io1Shf_in,io2Shf_in,io3Shf_in : std_logic_vector(1 downto 0);
   
-  -- Señales
+  -- SeÃ±ales
   signal baudCntCE, baudCntTC : std_logic;
   signal cntMaxValue : natural;
   signal io0_in : std_logic;
@@ -100,20 +100,20 @@ begin
              io3Shf_in(0) & io2Shf_in(0) & io1Shf_in(0) & io0Shf_in(0);
 
   fsmd :
-  process (rst_n, clk, dataRdy)
+  process (rst_n, clk, dataOutRdy)
     type states is (waiting, selection, firstHalfWR, secondHalfWR, firstDummyHalf, secondDummyHalf,
                     firstHalfRD, secondHalfRD, unselection); 
     variable state: states;
   begin
     baudCntCE <= '1';
-    earlyBusy <= '1';
+    dataInRdy_n <= '1';
     
     if state=waiting then
       baudCntCE <= '0';
     end if;
     
     if state=secondHalfRD and bitPos=1 and baudCntTC='1' then 
-      earlyBusy <= '0'; -- Notifica la recepción de cada byte leido
+      dataInRdy_n <= '0'; -- Notifica la recepciÃ³n de cada byte leido
     end if;
     
     if rst_n='0' then
@@ -128,13 +128,16 @@ begin
       state   := waiting;
 
     elsif rising_edge(clk) then
+      dataInRdy_n <='1';
+
+      
       case state is
         
         -- Espera solicitud de transmisión
         when waiting =>
           sck  <= CPOL;
           ss_n <= '1';
-          if dataRdy='1' then
+          if dataOutRdy='1' then
             io1Shf_in <= (others => '0');
             io2Shf_in <= (others => '0');
             io3Shf_in <= (others => '0');
@@ -194,6 +197,7 @@ begin
                   sendFlag <= '0'; -- Para el triestado     
                 else
                     bitPos <= bitPos+1;
+                    state := firstDummyHalf;
                 end if;
             end if;    
 
@@ -202,11 +206,12 @@ begin
           sck  <= not CPOL;
           ss_n <= '0';
           if baudCntTC='1' then
-            state := secondHalfWR;
+            state := secondHalfRD;
             io0Shf_in <= io0Shf_in(0) & io0_in;
             io1Shf_in <= io1Shf_in(0) & io1_in;
             io2Shf_in <= io2Shf_in(0) & io2_in;
             io3Shf_in <= io3Shf_in(0) & io3_in;
+
           end if;
         
         -- Genera flanco par, como solo quiero leer no escribo,
@@ -222,13 +227,14 @@ begin
                     state := firstHalfRD;    
                 else
                     state := unselection;
-                end if;
+            end if;
             else
               bitPos <= bitPos + 1;
               state  := firstHalfRD;
             end if;
           end if;
-                
+          
+      
         -- Deselecciona esclavo             
         when unselection =>                         
           sck  <= CPOL;

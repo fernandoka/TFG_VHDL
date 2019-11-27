@@ -106,15 +106,11 @@ begin
     variable state: states;
   begin
     baudCntCE <= '1';
-    dataInRdy_n <= '1';
     
     if state=waiting then
       baudCntCE <= '0';
     end if;
     
-    if state=secondHalfRD and bitPos=1 and baudCntTC='1' then 
-      dataInRdy_n <= '0'; -- Notifica la recepciÃ³n de cada byte leido
-    end if;
     
     if rst_n='0' then
       sck     <= CPOL;  -- se registra para evitar posibles glitches
@@ -123,14 +119,14 @@ begin
       io2Shf_in <= (others => '0');
       io3Shf_in <= (others => '0');
       io0Shf_out <= (others => '0');
-      sendFlag <= '1';     
+      sendFlag <= '1'; -- Este quizas no es necesario
       bitPos  <= 0;
       state   := waiting;
 
     elsif rising_edge(clk) then
-      dataInRdy_n <='1';
 
-      
+      dataInRdy_n <='1'; -- Se asegura que solo dure un ciclo
+
       case state is
         
         -- Espera solicitud de transmisión
@@ -211,7 +207,11 @@ begin
             io1Shf_in <= io1Shf_in(0) & io1_in;
             io2Shf_in <= io2Shf_in(0) & io2_in;
             io3Shf_in <= io3Shf_in(0) & io3_in;
-
+			
+			if bitPos='1' then
+				dataInRdy_n <= '0';
+			end if;
+			
           end if;
         
         -- Genera flanco par, como solo quiero leer no escribo,

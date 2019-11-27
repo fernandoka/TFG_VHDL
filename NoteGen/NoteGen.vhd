@@ -28,32 +28,55 @@ use work.my_common.all;
 
 entity Midi_Soc is
   Generic(
-		WIDTH 	: natural
+		WL 	: natural;
+		QM		: natural
   );
   Port (
-		clk			: in std_logic;
-		rst_n 		: in std_logic;
-		cen 		: in std_logic;
-		note		: in std_logic(7 downto 0);
+		clk					: in std_logic;
+		rst_n 				: in std_logic;
 		
-		samples_in 	: in std_logic_vector(WIDTH*2-1 downto 0); -- Recibe 2 muestras
-		addr_out	: out std_logic_vector(25 downto 0); -- Direcciona 16 bits
-		sample_out 	: out std_logic_vector(WIDTH-1 downto 0);
+		-- Host side
+		cen_in 				: in std_logic;
+		note_in				: in std_logic(7 downto 0);
+		sample_out 			: out std_logic_vector(WL-1 downto 0);
 		
-	);
+		-- Mem side
+		samples_in 			: in std_logic_vector(WL-1 downto 0);
+		addr_out			: out std_logic_vector(25 downto 0); -- The addres refers 16 bits
+		readMem_out			: out std_logic;
+		sampleRqtOut_n		: out std_logic -- Active low for one cycle
+		
+		);
 end Midi_Soc;
 
 architecture Behavioral of Midi_Soc is
-----------------------------------------------------------------------------------
+-- Constants
+	constant QN : natural := WIDTH-QM;
+	-- Constantes o no constantes
+	constant halfStep : signed(WL-1 downto 0) := toFix(1,0594636363636363636363636363636‬, QN, QM );
+	constant wholeStep : signed(WL-1 downto 0) := toFix(1,0594619061102959473490016389082‬‬, QN, QM );
+
 -- Signals Declarations
----------------------------------------------------------------------------------- 
 
 
 
 begin
 
+  fsm :
+  process (rst_n, clk)
+  
+  begin
+      if rst_n='0' then
 
+      elsif rising_edge(clk) then
 
+      end if;
+    end process;
+
+ 
+ 
+ 
+ 
  
     
 end Behavioral;

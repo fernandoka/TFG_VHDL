@@ -75,7 +75,7 @@ begin
 	  sampleRqtOut_n <= '1';
 	  readMem_out <= '1';
 	  
-	  if (state=getSamplesA and cntr=0) or (state=getSamplesA and cntr=2) then
+	  if (state=getSamples and (cntr=0 or cntr=2) then
 		sampleRqtOut_n <= '0';
 		readMem_out <= '0';	  
 	  end if;

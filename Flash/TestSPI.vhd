@@ -53,7 +53,6 @@ architecture sim3 of TestFlash_1 is
   signal io0,io1,io2,io3 : std_logic;
 
   signal spiDataOutRdy, spiDataInRdy, btncRise,sendFlag : std_logic; 
-  signal spiEarlyBusy : std_logic;
   signal spiDataIn : std_logic_vector (7 downto 0);
   signal spiDataOut : std_logic_vector (31 downto 0);
     signal addr : std_logic_vector (23 downto 0);
@@ -66,9 +65,11 @@ architecture sim3 of TestFlash_1 is
     -- Señales 
     signal clk     : std_logic := '1';      
     signal rst_n   : std_logic := '0';
-
+    signal byte0,byte1,byte2,byte3 : std_logic_vector(7 downto 0);
+    signal spiBusy : std_logic;
+    
    type states is ( 
-     waiting, sendReadCommand, readByte0, readByte1, readByte2, readByte3
+     waiting, sendReadCommand, readByte0, readByte1, readByte2, readByte3--, stopTransaction
    );
    
   signal state : states;
@@ -81,17 +82,24 @@ addr <= (others=>'0');
  fsmd :
  process (rst_n, clk,state,spiDataInRdy,btncRise)
 
- begin 
+ begin
+    -- state=stopTransaction
+--    if state=readByte3 or state=waiting then
+--       contMode <= '0';            
+--    else
+--       contMode <= '1';
+--    end if;
+  
    if rst_n='0' then
      spiDataOutRdy <= '0';
      spiDataOut <= (others => '0');
-     contMode   <= '0';
+     contMode <= '1';
      state      <= waiting;
    elsif rising_edge(clk) then
      spiDataOutRdy <= '0';  -- asegura que spiDataRdy esté solo un ciclo activo
        case state is
          when waiting =>
-           if( btncRise='1' ) then
+           if( btncRise='1' and spiBusy='0' ) then
              state  <= sendReadCommand;
            end if;
 --          when sendDummy => -- La primera transferencia tras la carga siempre falla, o bien se hace un reset o se manda un comando inofensivo
@@ -101,29 +109,39 @@ addr <= (others=>'0');
 --              state := sendReadCommand;            
         when sendReadCommand =>
            spiDataOutRdy  <= '1';
-           spiDataOut <= QUADREAD_CMD & addr; -- Inst = QUADREAD_CMD & ini Addr
            contMode <= '1';
+           spiDataOut <= QUADREAD_CMD & addr; -- Inst = QUADREAD_CMD & ini Addr
            state <=  readByte0;
          when readByte0 =>
            if spiDataInRdy='0' then
-               contMode <= '1';            
                state <= readByte1;
-           end if;            
+               byte0 <= spiDataIn;
+           end if;      
+                 
          when readByte1 =>
            if spiDataInRdy='0' then
-               contMode <= '1';            
-               state <=  readByte2;              
+               state <=  readByte2;
+               byte1 <= spiDataIn;              
            end if;
+           
          when readByte2 =>
            if spiDataInRdy='0' then
-               contMode <= '0';            
                state <=  readByte3;
-           end if;                
-         when readByte3 =>
-           if spiDataInRdy='0' then
-               state <= waiting;
+               byte2 <= spiDataIn;
            end if;
-       end case; 
+           
+        when readByte3 =>
+             if spiDataInRdy='0' then
+                 contMode <= '0';
+                 state <= waiting;
+                 byte3 <= spiDataIn;
+             end if;
+             
+--        when stopTransaction =>
+--              contMode <= '0';
+--              state <= waiting;
+              
+        end case; 
      end if;
  end process;  
  
@@ -138,6 +156,7 @@ addr <= (others=>'0');
           dataIn   => spiDataIn,
           dataOut  => spiDataOut,
           dataInRdy_n => spiDataInRdy,
+          busy      => spiBusy,
           
           --debug
           leds     =>leds,
@@ -153,6 +172,11 @@ addr <= (others=>'0');
           io3_in   => io3
     );
 
+    io0 <= '1' when state/=waiting and state/=sendReadCommand else 'Z';
+    io1 <= '0';
+    io2 <= '1';
+    io3 <= '0';
+    
     clkGen:
         clk <= not clk after clkPeriod/2;
     

@@ -4,20 +4,21 @@
 --    sioMaster.vhd  13/12/2017
 --
 --    (c) J.M. Mendias
---    DiseÃ±o AutomÃ¡tico de Sistemas
---    Facultad de InformÃ¡tica. Universidad Complutense de Madrid
+--    Diseño Automático de Sistemas
+--    Facultad de Informática. Universidad Complutense de Madrid
 -- 
 --  Retocado por Fernando Candelario para el desarrollo del TFG
---  VersiÃ³n: 0.3
+--  Versión: 0.4
 --
---  Notas de diseÃ±o:
+--  Notas de diseño:
 --      Fase de reloj establecida a 1, vuelca en flancos impares y muestrea en pares.
---      NÂº de dummyCycles = 8
+--      Nº de dummyCycles = 8
 --  
 -------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
+use IEEE.NUMERIC_STD.ALL;
 
 entity spiMaster_Quad is
   generic (
@@ -26,16 +27,18 @@ entity spiMaster_Quad is
   );
   port (
     -- host side
-    rst_n    : in  std_logic;   -- reset asÃ­ncrono del sistema (a baja)
+    rst_n    : in  std_logic;   -- reset asíncrono del sistema (a baja)
     clk      : in  std_logic;   -- reloj del sistema
-    contMode : in  std_logic;   -- indica si la transferencia se hace de modo continuo (es decir, sin deseleccionar el dispositivo su finalizaciÃ³n)
-    dataOutRdy  : in  std_logic;   -- se activa durante 1 ciclo para solicitar la transmisiÃ³n
+    contMode : in  std_logic;   -- indica si la transferencia se hace de modo continuo (es decir, sin deseleccionar el dispositivo su finalización)
+    dataOutRdy  : in  std_logic;   -- se activa durante 1 ciclo para solicitar la transmisión, activo a alta
     dataIn   : out std_logic_vector (7 downto 0);   -- dato recibido
     dataOut  : in  std_logic_vector (31 downto 0);   -- Se escribe la instruccion y la direccion de inicio ( Inst + Addr )
-    dataInRdy_n : out std_logic;   -- Notifica la recepciÃ³n de cada byte leido
+    dataInRdy_n : out std_logic;   -- Notifica la recepción de cada byte leido, a baja cuando recibe
+    busy        : out std_logic; -- Activo a 1 si el dispositivo esta funcionando
+    
     -- SPI side
     sck      : out std_logic;   -- reloj serie
-    ss_n     : out std_logic;   -- selecciÃ³n de esclavo
+    ss_n     : out std_logic;   -- selección de esclavo
     io0      : inout std_logic;   
     io1_in      : in  std_logic;  -- La uso como solo lectura  
     io2_in      : in std_logic;   -- La uso como solo lectura
@@ -55,13 +58,13 @@ architecture syn of spiMaster_Quad is
   
   -- Registros
   signal io0Shf_out : std_logic_vector (31 downto 0);
-  signal bitPos : natural range 0 to 31;
+  signal bitPos : unsigned (4 downto 0);
      
   signal sendFlag : std_logic;
 
   signal io0Shf_in,io1Shf_in,io2Shf_in,io3Shf_in : std_logic_vector(1 downto 0);
   
-  -- SeÃ±ales
+  -- Señales
   signal baudCntCE, baudCntTC : std_logic;
   signal cntMaxValue : natural;
   signal io0_in : std_logic;
@@ -99,17 +102,23 @@ begin
   dataIn <= io3Shf_in(1) & io2Shf_in(1) & io1Shf_in(1) & io0Shf_in(1) &
              io3Shf_in(0) & io2Shf_in(0) & io1Shf_in(0) & io0Shf_in(0);
 
+
   fsmd :
   process (rst_n, clk, dataOutRdy)
     type states is (waiting, selection, firstHalfWR, secondHalfWR, firstDummyHalf, secondDummyHalf,
                     firstHalfRD, secondHalfRD, unselection); 
-    variable state: states;
-  begin
+    variable state : states;
+    variable stateToEnd : states;
+  begin  
+
     baudCntCE <= '1';
+    busy <='1';
     
     if state=waiting then
       baudCntCE <= '0';
+      busy <= '0';
     end if;
+    
     
     
     if rst_n='0' then
@@ -120,7 +129,7 @@ begin
       io3Shf_in <= (others => '0');
       io0Shf_out <= (others => '0');
       sendFlag <= '1'; -- Este quizas no es necesario
-      bitPos  <= 0;
+      bitPos  <= (others => '0');
       state   := waiting;
 
     elsif rising_edge(clk) then
@@ -147,7 +156,7 @@ begin
           sck  <= CPOL;
           ss_n <= '0';
           if baudCntTC='1' then
-            bitPos <= 0;
+            bitPos <= (others => '0');
             state  := firstHalfWR;
           end if;
           
@@ -166,7 +175,7 @@ begin
           ss_n <= '0';
           if baudCntTC='1' then
             if bitPos=31 then
-                bitPos <= 0;
+                bitPos <= (others => '0');
                 state := firstDummyHalf;
             else
               bitPos <= bitPos + 1;
@@ -189,7 +198,8 @@ begin
             if baudCntTC='1' then            
                 if bitPos = DUMMY_CYCLES-1 then
                   state := firstHalfRD;
-                  bitPos <= 0;
+                  stateToEnd := firstHalfRD; -- Por defecto empieza en continuo
+                  bitPos <= (others => '0');
                   sendFlag <= '0'; -- Para el triestado     
                 else
                     bitPos <= bitPos+1;
@@ -207,27 +217,29 @@ begin
             io1Shf_in <= io1Shf_in(0) & io1_in;
             io2Shf_in <= io2Shf_in(0) & io2_in;
             io3Shf_in <= io3Shf_in(0) & io3_in;
-			
-			if bitPos='1' then
-				dataInRdy_n <= '0';
-			end if;
-			
+      
+            if bitPos=1 then
+                dataInRdy_n <= '0';
+            end if;
+      
           end if;
         
         -- Genera flanco par, como solo quiero leer no escribo,
         -- como leo de 4 en 4, cuento hasta bitPos = 1, si contMode = 1
-        -- continuo leyendo de forma continua, si no paso al estado de deseleccion de esclavo   
+        -- continuo leyendo de forma continua, si no paso al estado de deseleccion de esclavo.
+        -- En cuanto contMode este a un ciclo a baja, sera la lectura actual sera la ultima a realizar   
         when secondHalfRD =>                          
           sck  <= CPOL;
           ss_n <= '0';
+                   
+          if contMode = '0' then
+            stateToEnd := unselection;
+          end if;
+          
           if baudCntTC='1' then
             if bitPos=1 then
-                if contMode = '1' then
-                    bitPos <= 0;
-                    state := firstHalfRD;    
-                else
-                    state := unselection;
-            end if;
+                bitPos <= (others => '0');
+                state := stateToEnd;
             else
               bitPos <= bitPos + 1;
               state  := firstHalfRD;
@@ -245,6 +257,7 @@ begin
         end case;
         
     end if;
+
   end process;
    
 end syn;

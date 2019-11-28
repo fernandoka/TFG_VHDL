@@ -96,14 +96,13 @@ begin
 				state := getWtinI;
 			end if;
 
-        -- Recive samples
+        -- Recive samples, stay in this state until I recive two samples
+		-- I use cntr to modify the moore output w
         when getSamples =>
 			
 			if cntr=0 or cntr=2 then
 				cntr := cntr+1;
-			end if;
-			
-			if memAck='1' then 
+			elsif memAck='1' then 
 				currentAddr := currentAddr+1;
 				if cntr=1 then
 					cntr := 2;

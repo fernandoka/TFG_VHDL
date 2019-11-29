@@ -51,26 +51,52 @@ end Midi_Soc;
 
 architecture Behavioral of Midi_Soc is
 -- Constants
-	constant QN : natural := WIDTH-QM;
+	constant QN : natural := WL-QM;
+	constant QM_ARITH : natural := 32;
+	constant QN_ARITH : natural := 32;
+	
 	-- Constantes o no constantes
 	constant halfStep : signed(WL-1 downto 0) := toFix(1,0594636363636363636363636363636‬, QN, QM );
 	constant wholeStep : signed(WL-1 downto 0) := toFix(1,0594619061102959473490016389082‬‬, QN, QM );
 
 -- Signals Declarations
+	signal ci : signed(QN_ARITH+QM_ARITH-1 downto 0);
 	signal noteAddr : unsigned(25 downto 0);
-
-
+	signal subVal : signed(WL downto 0); -- WL and not WL-1 because overflow
+	
+	-- Cambiar valores longitud de las señales
+	signal mulVal : signed(2*WL downto 0);
+	signal sumVal : signed(2*WL downto 0);
+	signal roundVal : signed(2*WL downto 0);
+	
+	signal finalVal : signed(WL-1 downto 0);
+	
 begin
 
+  -- Wtout[i] = WtinI + decimalPart(ci)*(Wtin[i+1]-Wtin[i])
+  Interpolation:
+	subVal <= wtinIPlus1-wtinI;
+	mulVal <= unsigned(ci(31 downto 0))*subVal;
+	sumVal <= wtinI+mulVal;
+	
+  Round:
+	 roundVal <= sumVal+('1'<<QM_ARITH); -- Cambiar
+
+  -- Repasar Wrapping
+  Wrapping:
+	finalVal <= roundVal( QN_ARITH QN downto QM_ARITH-QM);
+  
   fsm :
   process (rst_n, clk, memAck, cen_in)
-    type states is (idle, getSamples, interpolate); 
+    type states is (idle, getSamples, interpolate, calculateNextStep); 
     variable state: states;
 	variable cntr : natural range 0 to 4;
 	variable currentAddr : unsigned(25 downto 0);
 	variable wtinI,wtinIPlus1 : signed(WL-1 downto 0);
+	variable wtout : signed(WL-1 downto 0);
   begin
 	  addr_out <= std_logic_vector(currentAddr);
+	  sample_out <= std_logic_vector(wtout);
 	  
 	  sampleRqtOut_n <= '1';
 	  readMem_out <= '1';
@@ -114,9 +140,15 @@ begin
 				end if;
 			end if;
 
-        -- Recive samples
+        -- Save interpolation value in wtout
         when interpolate =>			
-
+			wtout := finalVal;
+			state := calculateNextStep;
+			
+        when calculateNextStep =>			
+			ci <= ci+cStep;
+			state := calculateNextStep;
+			
 		end case;
       end if;
     end process;

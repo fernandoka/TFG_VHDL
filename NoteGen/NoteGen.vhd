@@ -64,12 +64,12 @@ architecture Behavioral of Midi_Soc is
 -- Signals Declarations
 	signal ci : signed(QN_ARITH+QM_ARITH-1 downto 0);
 	signal noteAddr : unsigned(25 downto 0);
-	signal subVal : signed(WL downto 0); -- WL and not WL-1 because overflow
+	signal subVal : signed(WL-1 downto 0); -- por que no es WL y el overflow ?¿
 	
 	-- Cambiar valores longitud de las señales
-	signal mulVal : signed(QN_ARITH+QM_ARITH-1 downto 0);
-	signal sumVal : signed(2*WL downto 0);
-	signal roundVal : signed(2*WL downto 0);
+	signal mulVal : signed(2*WL-1 downto 0);
+	signal sumVal : signed(2*WL-1 downto 0);
+	signal roundVal : signed(2*WL-1 downto 0);
 	
 	signal finalVal : signed(WL-1 downto 0);
 	
@@ -81,11 +81,17 @@ begin
 	-- n += (long long int)1<<(QM_ARITH-1); 
 	-- aux = (int)(n >> (QM_ARITH));
   
-  Interpolation:
-	subVal <= wtinIPlus1-wtinI; -- Q1.15-Q1.15 = Q2.15
-	mulVal <= ( (unsigned(ci(31 downto 0))*subVal)+('1'<<QM_ARITH-1)>>QM_ARITH ); -- Q2.15*Q0.32 = Q2.47 -> ((Round(Q2.47))>>32) = Q2.15
-	finalVal <= (mulVal + (wtinI(WL-1) & wtinI))>>2; --Q2.15+Q2.15 = Q3.15
+  --Interpolation:
+	--subVal <= wtinIPlus1-wtinI; -- Q1.15-Q1.15 = Q2.15
+	--mulVal <= ( (unsigned(ci(31 downto 0))*subVal)+('1'<<QM_ARITH-1)>>QM_ARITH ); -- Q2.15*Q0.32 = Q2.47 -> ((Round(Q2.47))>>32) = Q2.15
+	--finalVal <= (mulVal + (wtinI(WL-1) & wtinI))>>2; --Q2.15+Q2.15 = Q3.15
 	--( QN+QM_ARITH-1 downto QM_ARITH-QM);
+	
+	Interpolation:
+		subVal <= wtinIPlus1-wtinI; -- Q0.16-Q0.16 = Q0.16, no cuento del bit de overflow (sería Q1.16)
+		mulVal <= ( (unsigned(ci(31 downto 32-QM))*subVal) ); -- Q0.16*Q0.16 = Q0.32
+		sumVal <= (wtinI sll WL) + mulVal; -- (Q0.16<<16) -> Q0.32 + Q0.32 = Q0.32, no cuento el bit de overflow (sería Q1.32)
+		roundVal <= ('1' sll (32-QM-1) );
   
   fsm :
   process (rst_n, clk, memAck, cen_in)

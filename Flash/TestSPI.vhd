@@ -69,7 +69,7 @@ architecture sim3 of TestFlash_1 is
     signal spiBusy : std_logic;
     
    type states is ( 
-     waiting, sendReadCommand, readByte0, readByte1, readByte2, readByte3--, stopTransaction
+     waiting, sendDummy, waitingCommandRecive, sendReadCommand, readByte0, readByte1, readByte2, readByte3
    );
    
   signal state : states;
@@ -77,19 +77,12 @@ architecture sim3 of TestFlash_1 is
 begin
 
 btncRise <='1';
-addr <= (others=>'0');
+addr <= X"010102";
 
  fsmd :
  process (rst_n, clk,state,spiDataInRdy,btncRise)
-
  begin
-    -- state=stopTransaction
---    if state=readByte3 or state=waiting then
---       contMode <= '0';            
---    else
---       contMode <= '1';
---    end if;
-  
+ 
    if rst_n='0' then
      spiDataOutRdy <= '0';
      spiDataOut <= (others => '0');
@@ -100,18 +93,27 @@ addr <= (others=>'0');
        case state is
          when waiting =>
            if( btncRise='1' and spiBusy='0' ) then
-             state  <= sendReadCommand;
+             state  <= sendDummy;
            end if;
---          when sendDummy => -- La primera transferencia tras la carga siempre falla, o bien se hace un reset o se manda un comando inofensivo
---              spiDataOutRdy  <= '1';
---              spiDataOut <= REMS_CMD & X"000000";
---              contMode <= '0';
---              state := sendReadCommand;            
+          when sendDummy => -- La primera transferencia tras la carga siempre falla, o bien se hace un reset o se manda un comando inofensivo
+              spiDataOutRdy  <= '1';
+              spiDataOut <= REMS_CMD & X"000000";
+              contMode <= '0';
+              state <= waitingCommandRecive;  
+              
+        when waitingCommandRecive =>
+            if spiBusy='1' then
+                state <= sendReadCommand;
+            end if;
+                      
         when sendReadCommand =>
-           spiDataOutRdy  <= '1';
-           contMode <= '1';
-           spiDataOut <= QUADREAD_CMD & addr; -- Inst = QUADREAD_CMD & ini Addr
-           state <=  readByte0;
+           if spiBusy='0' then
+               spiDataOutRdy  <= '1';
+               contMode <= '1';
+               spiDataOut <= QUADREAD_CMD & addr; -- Inst = QUADREAD_CMD & ini Addr
+               state <=  readByte0;
+           end if;
+           
          when readByte0 =>
            if spiDataInRdy='0' then
                state <= readByte1;
@@ -136,10 +138,7 @@ addr <= (others=>'0');
                  state <= waiting;
                  byte3 <= spiDataIn;
              end if;
-             
---        when stopTransaction =>
---              contMode <= '0';
---              state <= waiting;
+
               
         end case; 
      end if;

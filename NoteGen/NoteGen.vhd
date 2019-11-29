@@ -52,6 +52,8 @@ end Midi_Soc;
 architecture Behavioral of Midi_Soc is
 -- Constants
 	constant QN : natural := WL-QM;
+	
+	-- Fix format to do arithmetic Q32.32
 	constant QM_ARITH : natural := 32;
 	constant QN_ARITH : natural := 32;
 	
@@ -65,7 +67,7 @@ architecture Behavioral of Midi_Soc is
 	signal subVal : signed(WL downto 0); -- WL and not WL-1 because overflow
 	
 	-- Cambiar valores longitud de las señales
-	signal mulVal : signed(2*WL downto 0);
+	signal mulVal : signed(QN_ARITH+QM_ARITH-1 downto 0);
 	signal sumVal : signed(2*WL downto 0);
 	signal roundVal : signed(2*WL downto 0);
 	
@@ -74,17 +76,16 @@ architecture Behavioral of Midi_Soc is
 begin
 
   -- Wtout[i] = WtinI + decimalPart(ci)*(Wtin[i+1]-Wtin[i])
+	-- outSamples[i*width+j] = roundCheckOverUnderFlow( ( ((long long int )samples[i*width+integerPart])<<QM_ARITH ) + 
+	--				((long long int)decimalPart*(long long int)(samples[i*width+integerPart+1]-samples[i*width+integerPart]))
+	-- n += (long long int)1<<(QM_ARITH-1); 
+	-- aux = (int)(n >> (QM_ARITH));
+  
   Interpolation:
-	subVal <= wtinIPlus1-wtinI;
-	mulVal <= unsigned(ci(31 downto 0))*subVal;
-	sumVal <= wtinI+mulVal;
-	
-  Round:
-	 roundVal <= sumVal+('1'<<QM_ARITH); -- Cambiar
-
-  -- Repasar Wrapping
-  Wrapping:
-	finalVal <= roundVal( QN_ARITH QN downto QM_ARITH-QM);
+	subVal <= wtinIPlus1-wtinI; -- Q1.15-Q1.15 = Q2.15
+	mulVal <= ( (unsigned(ci(31 downto 0))*subVal)+('1'<<QM_ARITH-1)>>QM_ARITH ); -- Q2.15*Q0.32 = Q2.47 -> ((Round(Q2.47))>>32) = Q2.15
+	finalVal <= (mulVal + (wtinI(WL-1) & wtinI))>>2; --Q2.15+Q2.15 = Q3.15
+	--( QN+QM_ARITH-1 downto QM_ARITH-QM);
   
   fsm :
   process (rst_n, clk, memAck, cen_in)

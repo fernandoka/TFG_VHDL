@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.01 - File Created
+-- Revision 0.2 - File Created
 -- Additional Comments:
 -- 
 ----------------------------------------------------------------------------------
@@ -65,8 +65,8 @@ architecture sim3 of TestFlash_1 is
     -- Señales 
     signal clk     : std_logic := '1';      
     signal rst_n   : std_logic := '0';
-    signal byte0,byte1,byte2,byte3 : std_logic_vector(7 downto 0);
-    signal spiBusy : std_logic;
+    signal byte0,byte1,byte2,byte3,byteNoQuad : std_logic_vector(7 downto 0);
+    signal spiBusy, quadMode : std_logic;
     
    type states is ( 
      waiting, sendDummy, waitingCommandRecive, sendReadCommand, readByte0, readByte1, readByte2, readByte3
@@ -87,16 +87,21 @@ addr <= X"010102";
      spiDataOutRdy <= '0';
      spiDataOut <= (others => '0');
      contMode <= '1';
+     quadMode <= '0';
      state      <= waiting;
    elsif rising_edge(clk) then
      spiDataOutRdy <= '0';  -- asegura que spiDataRdy esté solo un ciclo activo
        case state is
+         
          when waiting =>
            if( btncRise='1' and spiBusy='0' ) then
              state  <= sendDummy;
            end if;
-          when sendDummy => -- La primera transferencia tras la carga siempre falla, o bien se hace un reset o se manda un comando inofensivo
+
+          -- La primera transferencia tras la carga siempre falla, o bien se hace un reset o se manda un comando inofensivo           
+          when sendDummy => 
               spiDataOutRdy  <= '1';
+              quadMode <= '0';
               spiDataOut <= REMS_CMD & X"000000";
               contMode <= '0';
               state <= waitingCommandRecive;  
@@ -107,10 +112,14 @@ addr <= X"010102";
             end if;
                       
         when sendReadCommand =>
+           quadMode <= '1'; -- Para hacer modo quad o no
+           if spiDataInRdy='0' then
+                byteNoQuad <= spiDataIn; -- Register the output
+           end if;
            if spiBusy='0' then
                spiDataOutRdy  <= '1';
                contMode <= '1';
-               spiDataOut <= QUADREAD_CMD & addr; -- Inst = QUADREAD_CMD & ini Addr
+               spiDataOut <= READ_CMD & addr; --QUADREAD_CMD & addr; -- Inst = QUADREAD_CMD & ini Addr
                state <=  readByte0;
            end if;
            
@@ -151,6 +160,7 @@ addr <= X"010102";
           rst_n    => rst_n,
           clk      => clk,
           contMode => contMode,
+          quadMode => quadMode,
           dataOutRdy  => spiDataOutRdy,
           dataIn   => spiDataIn,
           dataOut  => spiDataOut,
@@ -171,8 +181,8 @@ addr <= X"010102";
           io3_in   => io3
     );
 
-    io0 <= '1' when state/=waiting and state/=sendReadCommand else 'Z';
-    io1 <= '0';
+    io0 <= '1' when (leds(6) or leds(7))='1' else 'Z';
+    io1 <= '1';
     io2 <= '1';
     io3 <= '0';
     

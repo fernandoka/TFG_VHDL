@@ -8,9 +8,10 @@
 --    Facultad de InformÃ¡tica. Universidad Complutense de Madrid
 -- 
 --  Retocado por Fernando Candelario para el desarrollo del TFG
---  VersiÃ³n: 0.5
+--  VersiÃ³n: 0.7
 --
 --  Notas de diseÃ±o:
+--      Esta hecho solo para que lea
 --      Fase de reloj establecida a 1, vuelca en flancos impares y muestrea en pares.
 --      NÂº de dummyCycles = 8
 --  
@@ -29,6 +30,7 @@ entity spiMaster_Quad is
     rst_n    : in  std_logic;   -- reset asÃ­ncrono del sistema (a baja)
     clk      : in  std_logic;   -- reloj del sistema
     contMode : in  std_logic;   -- indica si la transferencia se hace de modo continuo (es decir, sin deseleccionar el dispositivo su finalizaciÃ³n)
+    quadMode : in std_logic;    -- indica si la transferencia a realizar es en modo Quad (high) o no (low).
     dataOutRdy  : in  std_logic;   -- se activa durante 1 ciclo para solicitar la transmisiÃ³n
     dataIn   : out std_logic_vector (7 downto 0);   -- dato recibido
     dataOut  : in  std_logic_vector (31 downto 0);   -- Se escribe la instruccion y la direccion de inicio ( Inst + Addr )
@@ -60,9 +62,11 @@ architecture syn of spiMaster_Quad is
   signal bitPos : natural range 0 to 31;
      
   signal sendFlag : std_logic;
+  signal quadModFlag : std_logic;
 
-  signal io0Shf_in,io1Shf_in,io2Shf_in,io3Shf_in : std_logic_vector(1 downto 0);
-  
+  signal io0Shf_in,io2Shf_in,io3Shf_in : std_logic_vector(1 downto 0);
+  signal io1Shf_in : std_logic_vector (7 downto 0);
+
   -- SeÃ±ales
   signal baudCntCE, baudCntTC : std_logic;
   signal cntMaxValue : natural;
@@ -98,8 +102,9 @@ begin
   io0 <= io0Shf_out(31) when sendFlag='1' else 'Z';
   io0_in <= io0 when sendFlag='0' else 'Z';
     
-  dataIn <= io3Shf_in(1) & io2Shf_in(1) & io1Shf_in(1) & io0Shf_in(1) &
-             io3Shf_in(0) & io2Shf_in(0) & io1Shf_in(0) & io0Shf_in(0);
+  dataIn <= io1Shf_in when quadModFlag='0' else 
+            io3Shf_in(1) & io2Shf_in(1) & io1Shf_in(1) & io0Shf_in(1) &
+            io3Shf_in(0) & io2Shf_in(0) & io1Shf_in(0) & io0Shf_in(0);
 
   fsmd :
   process (rst_n, clk, dataOutRdy)
@@ -118,7 +123,7 @@ begin
   
   
   
-  if rst_n='0' then
+    if rst_n='0' then
     sck     <= CPOL;  -- se registra para evitar posibles glitches
     ss_n    <= '1';   -- idem
     io1Shf_in <= (others => '0');
@@ -126,6 +131,7 @@ begin
     io3Shf_in <= (others => '0');
     io0Shf_out <= (others => '0');
     sendFlag <= '1'; -- Este quizas no es necesario
+    quadModFlag <='0'; -- Por  the defecto no esta en quad mode
     bitPos  <= 0;
     state   := waiting;
 
@@ -145,6 +151,7 @@ begin
           io3Shf_in <= (others => '0');
           sendFlag <= '1';       
           io0Shf_out <= dataOut;
+          quadModFlag <= quadMode;
           state   := selection;
         end if;
         
@@ -173,7 +180,13 @@ begin
         if baudCntTC='1' then
           if bitPos=31 then
               bitPos <= 0;
-              state := firstDummyHalf;
+              stateToEnd := firstHalfRD; -- Por defecto empieza en continuo
+              sendFlag <= '0'; -- Para el triestado     
+              if quadModFlag='1' then
+                  state := firstDummyHalf;
+              else
+                  state := firstHalfRD;
+              end if;
           else
             bitPos <= bitPos + 1;
             state  := firstHalfWR;
@@ -195,9 +208,7 @@ begin
           if baudCntTC='1' then            
               if bitPos = DUMMY_CYCLES-1 then
                 state := firstHalfRD;
-                stateToEnd := firstHalfRD; -- Por defecto empieza en continuo
                 bitPos <= 0;
-                sendFlag <= '0'; -- Para el triestado     
               else
                   bitPos <= bitPos+1;
                   state := firstDummyHalf;
@@ -210,14 +221,24 @@ begin
         ss_n <= '0';
         if baudCntTC='1' then
           state := secondHalfRD;
-          io0Shf_in <= io0Shf_in(0) & io0_in;
-          io1Shf_in <= io1Shf_in(0) & io1_in;
-          io2Shf_in <= io2Shf_in(0) & io2_in;
-          io3Shf_in <= io3Shf_in(0) & io3_in;
-    
-          if bitPos=1 then
-              dataInRdy_n <= '0';
-          end if;
+          if quadModFlag='1' then 
+              io0Shf_in <= io0Shf_in(0) & io0_in;
+              io1Shf_in(1 downto 0) <= io1Shf_in(0) & io1_in;
+              io2Shf_in <= io2Shf_in(0) & io2_in;
+              io3Shf_in <= io3Shf_in(0) & io3_in;
+  
+              if bitPos=1 then
+                  dataInRdy_n <= '0';
+              end if;
+              
+          else
+              io1Shf_in <= io1Shf_in(6 downto 0) & io1_in;
+              
+              if bitPos=7 then
+                  dataInRdy_n <= '0';
+              end if;
+                              
+          end if;                    
     
         end if;
       
@@ -234,7 +255,7 @@ begin
         end if;
         
         if baudCntTC='1' then
-          if bitPos=1 then
+          if (quadModFlag='1' and bitPos=1) or (quadModFlag='0' and bitPos=7) then
               bitPos <= 0;
               state := stateToEnd;
           else

@@ -245,7 +245,7 @@ begin
       -- Genera flanco par, como solo quiero leer no escribo,
       -- como leo de 4 en 4, cuento hasta bitPos = 1, si contMode = 1
       -- continuo leyendo de forma continua, si no paso al estado de deseleccion de esclavo.
-      -- En cuanto contMode este a un ciclo a baja, sera la lectura actual sera la ultima a realizar   
+      -- En cuanto contMode este a un ciclo a baja, la lectura actual sera la ultima a realizar   
       when secondHalfRD =>                          
         sck  <= CPOL;
         ss_n <= '0';

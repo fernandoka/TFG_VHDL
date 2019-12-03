@@ -51,8 +51,32 @@ architecture Behavioral of NoteGen is
 	signal noteAddr : unsigned(25 downto 0);
 
 begin
-
-
+--	constant	QM_ARITH	:	natural	:=	32;
+--	constant	QN			:	nautral	:= WL - QM;
+--	constant	MAX_POSITIVE_VAL	:	std_logic_vector(QN+QM-2 downto 0) := (others=>'1');
+--	constant	MAX_NEGATIVE_VAL	:	std_logic_vector(QN+QM-2 downto 0) := (others=>'0');
+--
+--	signal	subVal, truncateVal				:	signed(WL downto 0);
+--	signal	mulVal, addVal, roundVal		:	signed(QM_ARITH+WL-1 downto 0);
+--	signal	decimalPart						:	signed(QM_ARITH downto 0);
+--	signal	finalVal						:	signed(WL-1 downto 0);
+--
+--
+--	Interpolate:
+--		subVal <= (wtinIPlus1(WL-1) & wtinIPlus1) + (wtinI(WL-1) & wtinI);
+--		mulVal <= decimalPart * (subVal sll (QM_ARITH-QM));
+--		addVal <= ((wtinI(WL-1) & wtinI) sll QM_ARITH) + mulVal;
+--		roundVal <= addVal + '1' sll (QM_ARITH-1);
+--		truncateVal <= roundVal(WL downto QM_ARITH-QM);
+--		finalVal <= signed(('0' & MAX_POSITIVE_VAL)) when truncateVal(WL downto WL-1) = "01" else
+--					signed(('1' & MAX_NEGATIVE_VAL)) when truncateVal(WL downto WL-1) = "10" else
+--					signed(truncateVal(WL) & truncateVal(WL-2 dwonto 0));
+--
+--
+--
+--
+--
+--
     
 	noteAddr <= (others=>'0');
 	

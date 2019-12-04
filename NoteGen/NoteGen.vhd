@@ -105,6 +105,7 @@ begin
         state := idle;
         cntr :=(others => '0');
         currentAddr := (others=>'0');
+        wtout := (others=>'0');
 	elsif rising_edge(clk) then
         
         if cen_in='0' then
@@ -145,11 +146,9 @@ begin
                     end if;
                     
                 when calculateNextStep =>
-                    if interpolateSampleRqt='1' then
                         cntr :=(others => '0');
                         currentAddr := currentAddr-1; -- This because is a test
                         state := getSamples;
-                    end if;
             
                 end case;
           end if; --If cen_in='0'

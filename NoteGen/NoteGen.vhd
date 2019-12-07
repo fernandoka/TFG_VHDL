@@ -21,7 +21,11 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity NoteGen is
 generic (
-    WL : natural
+    WL : natural;
+	BASE_NOTE_FREQ	:	real;
+	HALF_STEP_NOTE_FREQ	:	real;
+	WHOLE_STEP_NOTE_FREQ	:	real
+	
   );
   port(
     -- Host side
@@ -56,6 +60,7 @@ begin
 --	constant	MAX_POSITIVE_VAL	:	std_logic_vector(QN+QM-2 downto 0) := (others=>'1');
 --	constant	MAX_NEGATIVE_VAL	:	std_logic_vector(QN+QM-2 downto 0) := (others=>'0');
 --
+--	signal ci								:	signed(2*QM_ARITH-1 downto 0);
 --	signal	subVal, truncateVal				:	signed(WL downto 0);
 --	signal	mulVal, addVal, roundVal		:	signed(QM_ARITH+WL-1 downto 0);
 --	signal	decimalPart						:	signed(QM_ARITH downto 0);
@@ -72,8 +77,12 @@ begin
 --					signed(('1' & MAX_NEGATIVE_VAL)) when truncateVal(WL downto WL-1) = "10" else
 --					signed(truncateVal(WL) & truncateVal(WL-2 dwonto 0));
 --
+--	decimalPart <= ci(31 downto 0);
 --
---
+--	with note_in(7 downto 6) select
+--				ci <=  toFix(HALF_STEP_NOTE_FREQ/BASE_NOTE_FREQ,QM_ARITH,QM_ARITH) when "01",
+--						toFix(WHOLE_STEP_NOTE_FREQ/BASE_NOTE_FREQ,QM_ARITH,QM_ARITH) when X"10",
+--						0 when others;
 --
 --
 --

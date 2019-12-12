@@ -96,7 +96,7 @@ begin
   process (rst_n, clk)
       type states is (idle, getSample1, getSample2, interpolate, calculateNextStep); 
       variable state: states;
-      variable cntr : unsigned(3 downto 0);
+      variable cntr : natural range 0 to 1;
       variable currentAddr : natural range START_ADDR to END_ADDR;
       variable wtout : signed(QM+QN-1 downto 0);
   begin  
@@ -107,7 +107,7 @@ begin
 
     if rst_n='0' then
         state := idle;
-        cntr :=(others => '0');
+        cntr := 0;
         currentAddr := START_ADDR;
         wtout := (others=>'0');
         wtinIPlus1 <= (others=>'0');
@@ -125,7 +125,7 @@ begin
                     
                 when idle =>
                     if cen_in='1' then
-                        cntr :=(others => '0');
+                        cntr := 0;
                         wtout := (others=>'0');
                         ci <=(others=>'0');
 						currentAddr := START_ADDR;
@@ -165,7 +165,7 @@ begin
                     end if;
                     
                 when calculateNextStep =>
-                        cntr :=(others => '0');
+                        cntr := 0;
                         if currentAddr >= END_ADDR then 
                             currentAddr := START_ADDR; -- This because is a test
                             ci <=(others=>'0');	

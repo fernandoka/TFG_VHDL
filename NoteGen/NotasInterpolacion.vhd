@@ -1,3 +1,4 @@
+---------------------------	CONSTANTS --------------------------------------
 	constant QN				:	natural	:=	QM-WL;
 	constant Q_N_M_ARITH 	:	natural := 32;
 	
@@ -34,4 +35,4 @@ begin
 						roundVal(Q_N_M_ARITH+QM+QN-2 downto Q_N_M_ARITH);
 						
 						
-		
+		decimalPart	<= ci(Q_N_M_ARITH-1 downto 0);

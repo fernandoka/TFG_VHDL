@@ -65,8 +65,16 @@ architecture Behavioral of InterpolatedNoteGen is
 	signal wtinI,wtinIPlus1 : signed(WL-1 downto 0);
 
 	
-	signal	subVal							:	signed(QM+QN downto 0); -- 17 bits
-	signal	addVal, roundVal, mulVal        :	signed(Q_N_M_ARITH+QM+QN+1 downto 0); -- 48 bits
+	--signal	subVal							:	signed(QM+QN downto 0); -- 17 bits
+	--signal	addVal, roundVal, mulVal        :	signed(Q_N_M_ARITH+QM+QN+1 downto 0); -- 48 bits
+	--signal	finalVal						:	signed(QM+QN-1 downto 0);-- 16 bits
+	
+	--signal	decimalPart						:	signed(Q_N_M_ARITH downto 0);-- 33 bits, msb de signo
+	--signal	ci								:	signed(2*Q_N_M_ARITH-1 downto 0);-- 64 bits	
+	
+	--Versión sudando de todo
+	signal	subVal							:	signed(QM+QN-1 downto 0); -- 16 bits
+	signal	addVal, roundVal, mulVal        :	signed(Q_N_M_ARITH+QM+QN-1 downto 0); -- 48 bits
 	signal	finalVal						:	signed(QM+QN-1 downto 0);-- 16 bits
 	
 	signal	decimalPart						:	signed(Q_N_M_ARITH downto 0);-- 33 bits, msb de signo
@@ -74,23 +82,38 @@ architecture Behavioral of InterpolatedNoteGen is
 	
 begin	
 		
+--	Interpolation :
+--		subVal <= (wtinIPlus1(WL-1) & wtinIPlus1) - (wtinI(WL-1) & wtinI); -- Q2.15 = Q1.15+Q1.15
+--		
+--		mulVal <= decimalPart*subVal; -- Q2.47 = Q2.15+Q0.32
+--		
+--		addVal <= mulVal + (wtinI(WL-1) & wtinI & ZEROS); -- Q2.47 = Q2.47+Q2.47( (Q2.15<<Q_N_M_ARITH)), Wrap here!!  
+--	
+--		roundVal <= (addVal + VALUE_TO_ROUND); -- Wrap here!!
+--			
+--		satur:
+--			finalVal <= signed("0" & MAX_VAL_SAMPLE) when roundVal(Q_N_M_ARITH+QM+QN+1 downto Q_N_M_ARITH) > signed("000" & MAX_VAL_SAMPLE) else -- MAX_POS_VAL
+--						signed("1" & not MAX_VAL_SAMPLE) when roundVal(Q_N_M_ARITH+QM+QN+1 downto Q_N_M_ARITH) < signed("111" & not MAX_VAL_SAMPLE) else -- MAX_NEG_VAL
+--						roundVal(Q_N_M_ARITH+QM+QN-1 downto Q_N_M_ARITH);
+--						
+--						
+--		decimalPart	<= "0" & ci(Q_N_M_ARITH-1 downto 0); -- Siempre Positivo
+
+-- Otro intento, sudando de todo
 	Interpolation :
-		subVal <= (wtinIPlus1(WL-1) & wtinIPlus1) - (wtinI(WL-1) & wtinI); -- Q2.15 = Q1.15+Q1.15
+		subVal <= wtinIPlus1 - wtinI; -- Wrap here!!
 		
-		mulVal <= decimalPart*subVal; -- Q2.47 = Q2.15+Q0.32
+		mulVal <= decimalPart*subVal;
 		
-		addVal <= mulVal + (wtinI(WL-1) & wtinI & ZEROS); -- Q2.47 = Q2.47+Q2.47( (Q2.15<<Q_N_M_ARITH)), Wrap here!!  
+		addVal <= mulVal + signed(wtinI & ZEROS);  -- Wrap here!!
 	
 		roundVal <= (addVal + VALUE_TO_ROUND); -- Wrap here!!
 			
-		satur:
-			finalVal <= signed("0" & MAX_VAL_SAMPLE) when roundVal(Q_N_M_ARITH+QM+QN+1 downto Q_N_M_ARITH) > signed("000" & MAX_VAL_SAMPLE) else -- MAX_POS_VAL
-						signed("1" & not MAX_VAL_SAMPLE) when roundVal(Q_N_M_ARITH+QM+QN+1 downto Q_N_M_ARITH) < signed("111" & not MAX_VAL_SAMPLE) else -- MAX_NEG_VAL
-						roundVal(Q_N_M_ARITH+QM+QN-1 downto Q_N_M_ARITH);
+		finalVal <= roundVal(Q_N_M_ARITH+QM+QN-1 downto Q_N_M_ARITH); -- Wrap here!!
 						
 						
-		decimalPart	<= "0" & ci(Q_N_M_ARITH-1 downto 0); -- Siempre Positivo
-    
+		decimalPart	<= signed("0" & ci(Q_N_M_ARITH-1 downto 0)); -- Siempre Positivo
+
 	
 	filterRegisters :
   process (rst_n, clk)
@@ -159,7 +182,7 @@ begin
                         cntr :=cntr+1;
                         ci	  <= ci+STEP_VAL; -- Calculate next step
                     elsif cntr=1 and interpolateSampleRqt ='1' then
-                        wtout := wtinI;
+                        wtout := finalVal;
                         currentAddr := START_ADDR+to_integer(ci(2*Q_N_M_ARITH-1 downto Q_N_M_ARITH)); -- Calculate next addr
                         state := calculateNextStep;
                     end if;

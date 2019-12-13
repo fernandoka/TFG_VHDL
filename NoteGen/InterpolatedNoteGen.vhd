@@ -171,7 +171,6 @@ begin
             
                 when getSample2 =>
                    if memAck='1' then 
-                       currentAddr := currentAddr+1;
                        wtinIPlus1 <= signed(samples_in);
                        state := interpolate;
                   end if;

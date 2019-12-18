@@ -53,32 +53,37 @@ use work.my_common.all;
 
 architecture Behavioral of InterpolatedNoteGen is
 ---------------------------	CONSTANTS --------------------------------------
---	constant QN				:	natural	:=	WL-QM;
---	constant Q_N_M_ARITH 	:	natural := 32;
 	
---	constant ZEROS 			:	signed(Q_N_M_ARITH-1 downto 0) := (others=>'0');
-	constant VALUE_TO_ROUND :	signed(50 downto 0) :="000" & X"000100000000"; --to_signed(2**Q_N_M_ARITH,Q_N_M_ARITH);
---	constant MAX_VAL_SAMPLE	:	std_logic_vector(WL-2 downto 0) := (others=>'1');
+	-- 1 en el bit 33, como voy a coger los bits del 50 al 34 para hacer la suma final.
+	constant VALUE_TO_ROUND :	signed(50 downto 0) :="000" & X"000100000000"; 
 	
-	constant STEP_VAL_2		:	unsigned(63 downto 0) := toUnFix(TARGET_NOTE/BASE_NOTE,32,32);--X"000000010F38F350"; -- (TARGET_NOTE/BASE_NOTE)
-    constant STEP_VAL		:	unsigned(63 downto 0) := X"000000010F38F350"; -- (TARGET_NOTE/BASE_NOTE)
+	-- Falta de precision del tipo integer, son 32 bits contando el de signo 
+	-- por lo que el número representable esta en el intervalo (-2.147.483.648, 2.147.483.647).
+	
+	-- Casting real(integer(real)), para truncar el nº real resultado de la división y pasar a 
+	-- real el nº truncado por que la función espera un argumetento del tipo real.
+	constant STEP_VAL		:	unsigned(63 downto 0) := toUnFix( real(integer((TARGET_NOTE/BASE_NOTE))) ,32,32) or 
+														 toUnFix( (TARGET_NOTE/BASE_NOTE) - integer((TARGET_NOTE/BASE_NOTE)),32,32);
+    
+	--constant STEP_VAL		:	unsigned(63 downto 0) := X"000000010F38F350";
 
 	constant   MAX_POS_VAL     :   signed(16 downto 0) := "0" & X"7FFF";
 	constant   MAX_NEG_VAL     :   signed(16 downto 0) := "1" & X"0000";
+	
 ---------------------------	SIGNALS	--------------------------------------
 	-- Registers
 	signal wtinI,wtinIPlus1 : signed(15 downto 0);
 
 	
-	signal finalVal						:	signed(15 downto 0);-- 16 bits
-	signal subVal                       :   signed(16 downto 0);--17 bits
+	signal finalVal						:	signed(15 downto 0); -- 16 bits
+	signal subVal                       :   signed(16 downto 0); -- 17 bits
 	signal mulVal                       :   signed(49 downto 0); -- 50 bits
     
     signal roundVal                     :   signed(50 downto 0); -- 51 bits
     signal addVal                       :   signed(16 downto 0);
 	
-	signal decimalPart				    :	signed(32 downto 0);-- 33 bits, msb de signo
-	signal ci							:	unsigned(63 downto 0);-- 64 bits	
+	signal decimalPart				    :	signed(32 downto 0); -- 33 bits, msb de signo
+	signal ci							:	unsigned(63 downto 0); -- 64 bits	
 	
 begin	
 
@@ -100,7 +105,7 @@ Interpolate:
 	
 ciOut <= std_logic_vector(STEP_VAL_2);
 
-	filterRegisters :
+filterRegisters :
   process (rst_n, clk,memAck,cen_in,interpolateSampleRqt)
       type states is (idle, getSample1, getSample2, interpolate, calculateNextStep); 
       variable state: states;

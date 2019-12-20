@@ -3,7 +3,7 @@
 -- 	Fernando Candelario Herrero
 --
 -- Revision: 
--- Revision 0.3
+-- Revision 0.5
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -53,16 +53,10 @@ use work.my_common.all;
 
 architecture Behavioral of InterpolatedNoteGen is
 ---------------------------	CONSTANTS --------------------------------------
---	constant QN				:	natural	:=	WL-QM;
---	constant Q_N_M_ARITH 	:	natural := 32;
-	
---	constant ZEROS 			:	signed(Q_N_M_ARITH-1 downto 0) := (others=>'0');
 	constant VALUE_TO_ROUND :	signed(50 downto 0) :="000" & X"000100000000"; --to_signed(2**Q_N_M_ARITH,Q_N_M_ARITH);
---	constant MAX_VAL_SAMPLE	:	std_logic_vector(WL-2 downto 0) := (others=>'1');
 	
-	constant STEP_VAL_2		:	unsigned(63 downto 0) := toUnFix(TARGET_NOTE/BASE_NOTE,32,32);--X"000000010F38F350"; -- (TARGET_NOTE/BASE_NOTE)
-    constant STEP_VAL		:	unsigned(63 downto 0) := X"000000010F38F350"; -- (TARGET_NOTE/BASE_NOTE)
-
+    constant STEP_VAL		:	unsigned(63 downto 0) := X"0000000100000000" or toUnFix( (TARGET_NOTE/BASE_NOTE),32,32);
+    
 	constant   MAX_POS_VAL     :   signed(16 downto 0) := "0" & X"7FFF";
 	constant   MAX_NEG_VAL     :   signed(16 downto 0) := "1" & X"0000";
 ---------------------------	SIGNALS	--------------------------------------
@@ -98,7 +92,7 @@ Interpolate:
 
     decimalPart <= signed("0" & ci(31 downto 0));
 	
-ciOut <= std_logic_vector(STEP_VAL_2);
+ciOut <= std_logic_vector(STEP_VAL);
 
 	filterRegisters :
   process (rst_n, clk,memAck,cen_in,interpolateSampleRqt)

@@ -3,7 +3,7 @@
 -- 	Fernando Candelario Herrero
 --
 -- Revision: 
--- Revision 0.1
+-- Revision 0.3
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -19,11 +19,17 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
+use work.my_common.all;
+
 entity SimpleNoteGen is
 generic (
-    WL : natural;
-    START_ADDR: natural;
-    END_ADDR: natural
+    WL              :   in natural;
+    FS              :   in real;
+    BASE_FREQ       :   in real;
+    SUSTAIN_OFFSET  :   in natural;
+    RELEASE_OFFSET  :   in natural;
+    START_ADDR      :   in natural;
+    END_ADDR        :   in natural
   );
   port(
     -- Host side
@@ -35,85 +41,108 @@ generic (
     
     --Mem side
     samples_in              :   in  std_logic_vector(WL-1 downto 0);
-    memAck                  :   in std_logic;
+    memAck                  :   in  std_logic;
     addr_out                :   out std_logic_vector(25 downto 0);
-    readMem_out             :   out std_logic
+	sample_inRqt			:	out	std_logic	--	A 1 cuando espera una nueva muestra de memoria.
   );
+-- Attributes for debug
+  attribute   dont_touch    :   string;
+  attribute   dont_touch  of  SimpleNoteGen  :   entity  is  "true";  
 end SimpleNoteGen;
 
 architecture Behavioral of SimpleNoteGen is
 
+    constant    SUSTAIN_START_ADDR  :   unsigned(25 downto 0) := to_unsigned(START_ADDR + getSustainAddr(END_ADDR-START_ADDR+1,FS,BASE_FREQ,SUSTAIN_OFFSET+RELEASE_OFFSET),26);
+    constant    SUSTAIN_END_ADDR    :   unsigned(25 downto 0) := to_unsigned(START_ADDR + getSustainAddr(END_ADDR-START_ADDR+1,FS,BASE_FREQ,RELEASE_OFFSET),26);
+
 begin
 	
    fsm:
-  process (rst_n, clk)
-      type states is (idle, getSample1, WaitSampleRequest, calculateNextStep); 
-      variable state: states;
-      variable cntr : unsigned(3 downto 0);
-      variable currentAddr : natural range START_ADDR to END_ADDR;
-      variable nextSample   :   std_logic_vector(WL-1 downto 0);
-      variable wtout : std_logic_vector(WL-1 downto 0);
-  begin  
-    
-    addr_out <= (others=>'0');
-    addr_out <= std_logic_vector(to_unsigned(currentAddr,26));
-    sample_out <= wtout;
+process (rst_n, clk,memAck,cen_in,interpolateSampleRqt)
+   type states is (idle, getSample1, WaitSampleRequest); 
+   variable state            :   states;
+   variable releaseFlag      :   std_logic;
+   variable cntr             :   unsigned(0 downto 0);
+   variable currentAddr      :   unsigned(25 downto 0);
+   variable nextSample       :   std_logic_vector(WL-1 downto 0);
+   variable wtout            :   std_logic_vector(WL-1 downto 0);
+begin  
+ 
+ addr_out <= std_logic_vector(currentAddr);
+ sample_out <= wtout;
+ 
+ sample_inRqt <='0';
+ if state=getSample1 then
+	sample_inRqt <='1';	
+ end if;
+ 
+ if rst_n='0' then
+     state := idle;
+     cntr :=(others => '0');
+     currentAddr := to_unsigned(START_ADDR,26);
+     wtout := (others=>'0');
+     releaseFlag :='0';
+            
+ elsif rising_edge(clk) then
+     
+         case state is
+                 
+             when idle =>
+                 if cen_in='1' then
+                     cntr :=(others => '0');
+                     wtout := (others=>'0');
+                     currentAddr := to_unsigned(START_ADDR,26);
+                     state := getSample1;
+                     releaseFlag :='0';
+                 end if;
+         
+             -- Recive samples
+             when getSample1 =>
+                 if memAck='1' then 
+                     nextSample := samples_in;
+                     state := WaitSampleRequest;
+                 end if;
+         
+                 
+             when WaitSampleRequest =>
+                 if cntr=0 and interpolateSampleRqt ='1' then
+                     cntr :=cntr+1;
+                 elsif cntr=1 and interpolateSampleRqt ='1' then
+                     wtout := nextSample;
+                     cntr :=(others => '0');                        
+                     
+                     -- Prepare next sample addr
+                     -- Attack+Decay+Sustain phase
+                     if cen_in='1' then
+                         if currentAddr < SUSTAIN_END_ADDR then
+                             currentAddr := currentAddr+1; 
+                         else
+                             currentAddr := SUSTAIN_START_ADDR;
+                         end if;
 
-    if rst_n='0' then
-        state := idle;
-        cntr :=(others => '0');
-        currentAddr := START_ADDR;
-        wtout := (others=>'0');
-        readMem_out <= '1';
-                
-	elsif rising_edge(clk) then
-        readMem_out <= '1';
-            
-        if cen_in='0' then
-            state := idle;
-        else
-            case state is
-                    
-                when idle =>
-                    if cen_in='1' then
-                        cntr :=(others => '0');
-                        wtout := (others=>'0');
-                        currentAddr := START_ADDR;
-                        state := getSample1;
-                        -- Prepare read
-                        readMem_out <= '0';
-                    end if;
-            
-                -- Recive samples
-                when getSample1 =>
-                    
-                    if memAck='1' then 
-                        nextSample := samples_in;
-                        state := WaitSampleRequest;
-                    end if;
-            
-                    
-                when WaitSampleRequest =>
-                    if cntr=0 and interpolateSampleRqt ='1' then
-                        cntr :=cntr+1;
-                    elsif cntr=1 and interpolateSampleRqt ='1' then
-                        wtout := nextSample;
-                        currentAddr := currentAddr+1; -- Prepare next sample addr
-                        state := calculateNextStep;
-                    end if;
-                    
-                when calculateNextStep =>
-                        cntr :=(others => '0');
-                        if currentAddr >= END_ADDR then 
-                            currentAddr := START_ADDR; -- This because is a test
-                        end if;
-                        state := getSample1;
-                        -- Prepare read
-                        readMem_out <= '0';
-            
-                end case;
-          end if; --If cen_in='0'
-    end if; 
-  end process;
+                         state := getSample1;
+                     
+                     -- Release phase
+                     else
+                         if releaseFlag='1' then
+                             if currentAddr<END_ADDR then
+                                 currentAddr := currentAddr+1;
+                                 state := getSample1;
+							 else
+                                 state := idle;
+                             end if;  
+                         else
+                             currentAddr := SUSTAIN_END_ADDR;
+                             releaseFlag :='1';
+                             state := getSample1;
+                         end if;-- releaseFlag
+
+                     end if; --cen='1'
+                 end if;--cntr=1 and interpolateSampleRqt ='1'
+
+             end case;
+       end if; --rst_n/rising_edge
+
+end process;
         
 end Behavioral;

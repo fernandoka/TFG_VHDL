@@ -499,6 +499,21 @@ end component;
 
 
 -- Versiones de testeo
+
+component ChromaticScale is
+  Generic(
+        NUM_NOTES   :   natural;
+		TEMP_VALUE	:	natural
+  );
+  Port ( 
+        rst_n           :   in  std_logic;
+        clk             :   in  std_logic;
+        cen             :   in  std_logic;
+		numNote			:	out std_logic_vector(15 downto 0);
+        notes_on		:	out	std_logic_vector(NUM_NOTES-1 downto 0)
+  );    
+end component;
+
 component NoteGenTest is
 generic (
     WL : natural

@@ -45,6 +45,9 @@ generic (
     addr_out                :   out std_logic_vector(25 downto 0);
 	sample_inRqt			:	out	std_logic	--	A 1 cuando espera una nueva muestra de memoria.
   );
+-- Attributes for debug
+    attribute   dont_touch    :   string;
+    attribute   dont_touch  of  InterpolatedNoteGen  :   entity  is  "true";    
 end InterpolatedNoteGen;
 
 use work.my_common.all;
@@ -176,7 +179,7 @@ Interpolate:
                 when calculateNextAddr =>
                     -- Prepare next sample addr
                     -- Attack+Decay+Sustain phase
-                    if cen_in='1'then
+                    if cen_in='1' and releaseFlag='0' then
                         state := getSample1;
                         
                         if interpolatedSamplesCntr < to_unsigned(SUSTAIN_END_OFFSET_ADDR,26) then

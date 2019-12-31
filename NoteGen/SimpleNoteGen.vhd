@@ -113,7 +113,7 @@ begin
                      
                      -- Prepare next sample addr
                      -- Attack+Decay+Sustain phase
-                     if cen_in='1' then
+                     if cen_in='1' and releaseFlag='0' then
                          if currentAddr < SUSTAIN_END_ADDR then
                              currentAddr := currentAddr+1; 
                          else

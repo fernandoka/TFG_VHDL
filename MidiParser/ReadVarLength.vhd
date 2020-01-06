@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --					 		
 --
@@ -25,7 +25,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
-use IEEE.NUMERIC_STD.ALL;
+--use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -45,20 +45,17 @@ entity ReadVarLength is
 		valOut			:	out	std_logic_vector(63 downto 0)
   );
 -- Attributes for debug
-attribute   dont_touch    :   string;
-attribute   dont_touch  of  ReadVarLength  :   entity  is  "true";
+--attribute   dont_touch    :   string;
+--attribute   dont_touch  of  ReadVarLength  :   entity  is  "true";
     
 end ReadVarLength;
-
-use work.my_common.all;
-
 architecture Behavioral of ReadVarLength is
 
 begin
 
 fsm:
 process(rst_n,clk,readRqt,byteAck)
-    type states is (s0, s1, s2);	
+    type states is (s0, s1);	
 	variable state	:	states;
 	variable regVal	:	std_logic_vector(63 downto 0);	
 begin
@@ -84,22 +81,9 @@ begin
 				
 				when s1 =>
 					if byteAck='1' then
-						regVal := '0' & nextByte;
+						regVal := regVal(55 downto 0) & '0' & nextByte(6 downto 0);
 						if nextByte(7)='1' then
 							byteRqt <='1';
-							state := s2;
-						else
-							dataRdy <= '1';
-							state := s0;
-						end if;
-					end if;
-					
-				when s2 =>
-					if byteAck='1' then
-						regVal := regVal(56 downto 0) & nextByte(6 downto 0);
-						if nextByte(7)='1' then
-							byteRqt <='1';
-							state := s2;
 						else
 							dataRdy <= '1';
 							state := s0;

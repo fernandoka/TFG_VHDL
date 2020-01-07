@@ -25,7 +25,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -68,7 +68,7 @@ process(rst_n,clk,readRqt,byteAck)
 	variable regData	:	std_logic_vector(127 downto 0);
 begin
     
-	mem_addr <= regAddr(22 downto 0);
+	mem_addr <= std_logic_vector(regAddr(22 downto 0));
     
 	if rst_n='0' then
 		state := serveBytes;
@@ -85,7 +85,8 @@ begin
 			when serveBytes=>
 				if readRqt='1' then
 					if (addrInVal < regAddr+16) or (addrInVal > regAddr+16) then
-						regAddr <= addrInVal;
+						regAddr <= unsigned(addrInVal);
+						-- Prepare read for the next cycle
 						mem_readRqt <= '0';
 						state := mem_waitAck;
 					else

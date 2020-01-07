@@ -4,7 +4,7 @@
 -- 
 -- Create Date: 14.12.2019 20:22:30
 -- Design Name: 
--- Module Name: ChromaticScale - Behavioral
+-- Module Name: ReadVarLength - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 

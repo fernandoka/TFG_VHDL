@@ -81,7 +81,7 @@ begin
 				
 				when s1 =>
 					if byteAck='1' then
-						regVal := regVal(55 downto 0) & '0' & nextByte(6 downto 0);
+						regVal := regVal(56 downto 0) & nextByte(6 downto 0);
 						if nextByte(7)='1' then
 							byteRqt <='1';
 						else

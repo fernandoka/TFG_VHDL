@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.01 - File Created
+-- Revision 0.2
 -- Additional Comments:
 -- 
 ----------------------------------------------------------------------------------
@@ -136,7 +136,244 @@ begin
         assert(valOut = X"0000000000000080")
         report "second example fail" severity error;
     
-  
+
+--00002000 		C0 00
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"C0";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"00";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"0000000000002000")
+        report "third example fail" severity error;
+
+
+--00003FFF 		FF 7F
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"FF";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"7F";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"0000000000003FFF")
+        report "fourth example fail" severity error;
+		
+--00004000 		81 80 00
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"81";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"80";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"00";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"0000000000004000")
+        report "fifth example fail" severity error;
+		
+		
+--0010 0000 		C0 80 00
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"C0";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"80";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"00";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"0000000000100000")
+        report "sixth example fail" severity error;
+
+--001FFFFF 		FF FF 7F
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"FF";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"FF";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"7F";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"00000000001FFFFF")
+        report "seventh example fail" severity error;
+		
+--00200000 		81 80 80 00
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"81";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"80";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"80";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"00";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"0000000000200000")
+        report "eigth example fail" severity error;
+
+
+--08000000 		C0 80 80 00
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"C0";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"80";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"80";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"00";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"0000000008000000")
+        report "nineth example fail" severity error;
+
+--0FFF FFFF 		FF FF FF 7F
+        readRqt <='1';
+    wait for (clkPeriod);
+        readRqt <='0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"FF";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"FF";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+    
+    wait until byteRqt ='0';
+        dataByte <= X"FF";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until byteRqt ='0';
+        dataByte <= X"7F";    
+        byteAck <= '1';
+    wait for (clkPeriod);
+        byteAck <= '0';
+
+    wait until dataRdy ='1';
+    wait until dataRdy ='0';
+        assert(valOut = X"000000000FFFFFFF")
+        report "tenth example fail" severity error;
+		
+		
     wait;
 
 end process;

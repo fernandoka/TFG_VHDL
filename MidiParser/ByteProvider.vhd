@@ -15,7 +15,7 @@
 -- Revision:
 -- Revision 0.1
 -- Additional Comments:
---					 		
+--		Mem addr refers to one sample.					 		
 --
 ----------------------------------------------------------------------------------
 
@@ -33,11 +33,11 @@ use IEEE.NUMERIC_STD.ALL;
 --use UNISIM.VComponents.all;
 
 entity ByteProvider is
-  Generic(START_ADDR : in natural);
+  Generic(START_ADDR : in natural) -- SAMPLES_PER_WAVEtABLE*30*NUM_BYTES_PER_SAMPLE;
   Port ( 
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
-		addrInVal		:	in	std_logic_vector(25 downto 0); -- Byte addres
+		addrInVal		:	in	std_logic_vector(26 downto 0); -- Byte addres
 		byteRqt			:	in	std_logic; -- One cycle high to request a new byte
 		
 		byteAck			:	out	std_logic; -- One cycle high to notify the reception of a new byte
@@ -47,7 +47,7 @@ entity ByteProvider is
 		mem_ack			:	in	std_logic;
 		mem_dataIn		:	in	std_logic_vector(127 downto 0);
 		
-		mem_readRqt_n		:	out std_logic; -- Active low
+		mem_readRqt_n	:	out std_logic; -- Active low
 		mem_addr		:	out std_logic_vector(22 downto 0)
 		
   );
@@ -61,18 +61,18 @@ architecture Behavioral of ByteProvider is
 begin
 
 fsm:
-process(rst_n,clk,readRqt,byteAck)
+process(rst_n,clk,readRqt,mem_ack)
     type states is (serveBytes, mem_waitAck);	
 	variable state		:	states;
-	variable regAddr	:	unsigned(25 downto 0);	
+	variable regAddr	:	unsigned(26 downto 0);	
 	variable regData	:	std_logic_vector(127 downto 0);
 begin
     
-	mem_addr <= std_logic_vector(regAddr(22 downto 0));
+	mem_addr <= std_logic_vector(regAddr(26 downto 4));
     
 	if rst_n='0' then
 		state := serveBytes;
-		regAddr := to_unsigned(START_ADDR,26);
+		regAddr := to_unsigned(START_ADDR,27);
 		regData := (others=>'0');
 		byteAck <='0';
 		mem_readRqt_n <= '1';
@@ -82,6 +82,7 @@ begin
 		mem_readRqt_n <= '1';
 			
 		case state is
+		
 			when serveBytes=>
 				if readRqt='1' then
 					if (addrInVal < regAddr+16) or (addrInVal > regAddr+16) then
@@ -152,6 +153,7 @@ begin
 				end if;
 
 		end case;
+		
     end if;
 end process;
   

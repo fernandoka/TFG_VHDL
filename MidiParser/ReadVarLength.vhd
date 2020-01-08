@@ -37,12 +37,13 @@ entity ReadVarLength is
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
         readRqt			:	in	std_logic; -- One cycle high to request a read
-		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
-		nextByte        :   in  std_logic_vector(7 downto 0);
-
-		byteRqt			:	out std_logic; -- One cycle high to request a new byte
-		dataRdy			:	out std_logic; -- One cycle high when the data is ready
 		valOut			:	out	std_logic_vector(63 downto 0)
+
+		--Byte provider side
+		nextByte        :   in  std_logic_vector(7 downto 0);
+		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
+		byteRqt			:	out std_logic; -- One cycle high to request a new byte
+		dataRdy			:	out std_logic  -- One cycle high when the data is ready
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;

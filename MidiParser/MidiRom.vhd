@@ -38,8 +38,8 @@ entity MidiRom is
         clk             :   in  std_logic;
 		addr			:	in	std_logic_vector(22 downto 0);
         readByteRqt_n	:	in	std_logic; -- One cycle low to request a read
-		data			:	out	std_logic_vector(127 downto 0)
 		byteAck			:	in	std_logic -- One cycle high to notify the reception of a new byte
+		data			:	out	std_logic_vector(127 downto 0);
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;

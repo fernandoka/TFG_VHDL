@@ -33,7 +33,6 @@ use IEEE.NUMERIC_STD.ALL;
 --use UNISIM.VComponents.all;
 
 entity ByteProvider is
-  Generic(START_ADDR : in natural) -- SAMPLES_PER_WAVEtABLE*30*NUM_BYTES_PER_SAMPLE;
   Port ( 
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
@@ -61,38 +60,43 @@ architecture Behavioral of ByteProvider is
 begin
 
 fsm:
-process(rst_n,clk,readRqt,mem_ack)
+process(rst_n,clk,byteRqt,mem_ack)
     type states is (serveBytes, mem_waitAck);	
 	variable state		:	states;
 	variable regAddr	:	unsigned(26 downto 0);	
 	variable regData	:	std_logic_vector(127 downto 0);
+	variable readFlag   :   std_logic;
 begin
     
 	mem_addr <= std_logic_vector(regAddr(26 downto 4));
     
 	if rst_n='0' then
 		state := serveBytes;
-		regAddr := to_unsigned(START_ADDR,27);
+		regAddr :=(others=>'0');
 		regData := (others=>'0');
 		byteAck <='0';
 		mem_readRqt_n <= '1';
+		readFlag  :='0';
 		
     elsif rising_edge(clk) then
 		byteAck <='0';
 		mem_readRqt_n <= '1';
-			
+		
+			 
 		case state is
 		
 			when serveBytes=>
-				if readRqt='1' then
-					if (addrInVal < regAddr+16) or (addrInVal > regAddr+16) then
-						regAddr <= unsigned(addrInVal);
+				if byteRqt='1' or readFlag='1' then
+					if regAddr(26 downto 4)/=unsigned(addrInVal(26 downto 4)) then
+						regAddr := unsigned(addrInVal);
 						-- Prepare read for the next cycle
-						mem_readRqt <= '0';
+						mem_readRqt_n <= '0';
+						readFlag  :='1';
 						state := mem_waitAck;
 					else
+					    readFlag  :='0';
 						byteAck <= '1';
-						case addrInVal(3 downto 0)
+						case addrInVal(3 downto 0) is
 							when X"0"=>
 								nextByte <= regData(7 downto 0);
 
@@ -143,8 +147,10 @@ begin
 							
 							when others=>
 								nextByte <= (others=>'0');
+                        end case;
+                        
 					end if;
-				end if;
+				end if; --byteRqt='1'
 			
 			when mem_waitAck =>
 				if mem_ack='1' then

@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 --
 ----------------------------------------------------------------------------------
@@ -136,96 +136,115 @@ begin
 				end if;
 			
 			when s1 =>
-				if byteAck='1' then
-					if cntr < 4 then 
+                if cntr < 4 then 
+                    if byteAck='1' then
+						
+						if cntr < 3 then
+                          byteRqt <='1';
+                        end if;
+                        
 						regAux := regAux(23 downto 0) & nextByte;
 						regAddr := regAddr+1;
 						cntr := cntr+1;
-						byteRqt <='1';
-					else
-						cntr :=(others=>'0');
-						if regAux=HEADER_CHUNK_MARK then
-							byteRqt <='1';
-							state := s2;
-						else
-							finishRead <='1';
-							state := s0;
-						end if;
 					end if;
-				end if; --byteAck='1'
-
+                else
+                    cntr :=(others=>'0');
+                    if regAux=HEADER_CHUNK_MARK then
+                        byteRqt <='1';
+                        state := s2;
+                    else
+                        finishRead <='1';
+                        state := s0;
+                    end if;
+                end if;
+                
 			when s2 =>
-				if byteAck='1' then
-					if cntr < 4 then 
+                if cntr < 4 then 
+				    if byteAck='1' then
+						
+						if cntr < 3 then
+                          byteRqt <='1';
+                        end if;
+                    
 						regAux := regAux(23 downto 0) & nextByte;
 						regAddr := regAddr+1;
 						cntr := cntr+1;
-						byteRqt <='1';
-					else
-						cntr :=(others=>'0');
-						if regAux=HEADER_LENGTH then
-							byteRqt <='1';
-							state := s3;
-						else
-							finishRead <='1';
-							state := s0;
-						end if;
-					end if;
-				end if;
-
+	                end if;
+                else
+                    cntr :=(others=>'0');
+                    if regAux=HEADER_LENGTH then
+                        byteRqt <='1';
+                        state := s3;
+                    else
+                        finishRead <='1';
+                        state := s0;
+                    end if;
+                end if;
+            
 
 			when s3 =>
-				if byteAck='1' then
-					if cntr < 2 then 
+				if cntr < 2 then
+				    if byteAck='1' then
+				    
+						if cntr < 1 then
+                          byteRqt <='1';
+                        end if;
+                                    
 						regAux := regAux(23 downto 0) & nextByte;
 						regAddr := regAddr+1;
 						cntr := cntr+1;
-						byteRqt <='1';
-					else
-						cntr :=(others=>'0');
-						if regAux(15 downto 0)=HEADER_FORMAT then
-						    byteRqt <='1';					
-							state := s4;
-						else
-							finishRead <='1';
-							state := s0;
-						end if;
-					end if;
-				end if;
-
+	                end if;
+                else
+                    cntr :=(others=>'0');
+                    if regAux(15 downto 0)=HEADER_FORMAT then
+                        byteRqt <='1';					
+                        state := s4;
+                    else
+                        finishRead <='1';
+                        state := s0;
+                    end if;
+                end if;
+            
 			when s4 =>
-				if byteAck='1' then
-					if cntr < 2 then 
+    			if cntr < 2 then                             
+    				if byteAck='1' then
+						if cntr < 1 then
+                          byteRqt <='1';
+                        end if;
+
 						regAux := regAux(23 downto 0) & nextByte;
 						regAddr := regAddr+1;
 						cntr := cntr+1;
-						byteRqt <='1';
-					else
-						cntr :=(others=>'0');
-						if regAux(15 downto 0)=HEADER_NTRKS then
-                            byteRqt <='1';
-							state := s5;
-						else
-							finishRead <='1';
-							state := s0;
-						end if;
 					end if;
-				end if;
-
+	            else
+                    cntr :=(others=>'0');
+                    if regAux(15 downto 0)=HEADER_NTRKS then
+                        byteRqt <='1';
+                        state := s5;
+                    else
+                        finishRead <='1';
+                        state := s0;
+                    end if;
+                end if;
+            
 			when s5 =>
-				if byteAck='1' then
-					if cntr < 2 then 
+    			if cntr < 2 then 
+                    if byteAck='1' then
+				
+					    if cntr < 1 then
+                            byteRqt <='1';
+                        end if;
+
 						regDivision := regDivision(7 downto 0) & nextByte;
                         regAddr := regAddr+1;
                         cntr := cntr+1;
-						byteRqt <='1';
-					else
-						cntr :=(others=>'0');
-						finishRead <='1';
-						headerOk <='1';
-						state := s0;
-					end if;
-				end if;
+                    end if;
+				else
+                    cntr :=(others=>'0');
+                    finishRead <='1';
+                    headerOk <='1';
+                    state := s0;
+                end if;
 		  end case;
 		
     end if;

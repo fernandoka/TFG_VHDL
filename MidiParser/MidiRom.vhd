@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --					 		
 --
@@ -25,7 +25,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -38,14 +38,14 @@ entity MidiRom is
         clk             :   in  std_logic;
 		addr			:	in	std_logic_vector(22 downto 0);
         readByteRqt_n	:	in	std_logic; -- One cycle low to request a read
-		byteAck			:	in	std_logic -- One cycle high to notify the reception of a new byte
-		data			:	out	std_logic_vector(127 downto 0);
+		ack			    :	out	std_logic; -- One cycle high to notify the reception of a new byte
+		data			:	out	std_logic_vector(127 downto 0)
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
 --attribute   dont_touch  of  MidiRom  :   entity  is  "true";
-    
 end MidiRom;
+
 architecture Behavioral of MidiRom is
 
 	type romType	is array (0 to 296) of std_logic_vector (127 downto 0);
@@ -131,7 +131,7 @@ architecture Behavioral of MidiRom is
 
 begin
 
-process(rst_n,clk,readRqt,byteAck)
+process(rst_n,clk,readByteRqt_n)
 	variable regVal	:	std_logic_vector(127 downto 0);	
 begin
     
@@ -139,13 +139,13 @@ begin
 	
     if rst_n='0' then
 		regVal :=(others=>'0');
-		byteAck <='0';
+		ack <='0';
 		
     elsif rising_edge(clk) then
-		byteAck <='0';
+		ack <='0';
 		if readByteRqt_n='0' then
-			byteAck <='1';
-			regVal := rom(to_integer(addr));
+			ack <='1';
+			regVal := rom(to_integer(unsigned(addr)));
 		end if;
 		
 	end if;

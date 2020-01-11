@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --
 ----------------------------------------------------------------------------------
@@ -32,6 +32,7 @@ use IEEE.NUMERIC_STD.ALL;
 --use UNISIM.VComponents.all;
 
 entity ReadHeaderChunk is
+  Generic(START_ADDR    :   in  natural);
   Port ( 
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
@@ -40,42 +41,83 @@ entity ReadHeaderChunk is
 		headerOk		:	out std_logic; -- High, if the header follow our requirements
 		division		:	out std_logic_vector(15 downto 0);
 		
+		--Debug
+		regAuxOut       : out std_logic_vector(31 downto 0);
+		cntrOut            : out std_logic_vector(2 downto 0);
+		statesOut          : out std_logic_vector(5 downto 0);
+		 
 		--Byte provider side
 		nextByte        :   in  std_logic_vector(7 downto 0);
 		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
+		byteAddr        :   out std_logic_vector(26 downto 0);
 		byteRqt			:	out std_logic -- One cycle high to request a new byte
 
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
 --attribute   dont_touch  of  ReadHeaderChunk  :   entity  is  "true";
-    
-end MilisecondDivisor;
+end ReadHeaderChunk;
+
 architecture Behavioral of ReadHeaderChunk is
 
 	constant HEADER_CHUNK_MARK : std_logic_vector(31 downto 0) := X"4d546864";
 	constant HEADER_LENGTH	: std_logic_vector(31 downto 0) := X"00000006";
-	constant HEADER_FORMAT	: std_logic_vector(32 downto 0) := X"0001";
-	constant HEADER_NTRKS	: std_logic_vector(32 downto 0) := X"0002";
+	constant HEADER_FORMAT	: std_logic_vector(15 downto 0) := X"0001";
+	constant HEADER_NTRKS	: std_logic_vector(15 downto 0) := X"0002";
 	
 begin
 
 fsm:
-process(rst_n,clk,cen)
+process(rst_n,clk,readRqt,byteAck)
     type states is (s0, s1, s2, s3, s4, s5);	
 	variable state	:	states;
+	variable regAddr   :   unsigned(26 downto 0);
 	variable regAux	:	std_logic_vector(31 downto 0);
 	variable regDivision : std_logic_vector(15 downto 0);
 	variable cntr	:	unsigned(2 downto 0);
 	
 begin
-	division <=regDivision;
 	
+	division <=regDivision;
+	byteAddr <= std_logic_vector(regAddr);
+
+    --Debug
+    regAuxOut <=regAux;
+    cntrOut <=std_logic_vector(cntr);
+    
+    statesOut <=(others=>'0');
+    if state=s0 then
+        statesOut(0)<='1'; 
+    end if;
+    
+    if state=s1 then
+        statesOut(1)<='1'; 
+    end if;
+
+    if state=s2 then
+        statesOut(2)<='1'; 
+    end if;
+
+    if state=s3 then
+        statesOut(3)<='1'; 
+    end if;
+
+    if state=s4 then
+        statesOut(4)<='1'; 
+    end if;
+
+    if state=s5 then
+        statesOut(5)<='1'; 
+    end if;
+
+    --
+    	
 	if rst_n='0' then
 		state := s0;
 		regDivision := (others=>'0');
 		regAux := (others=>'0');
 		cntr := (others=>'0');
+		regAddr := to_unsigned(START_ADDR,27);
 		headerOk <='0';
 		finishRead <='0';
 		byteRqt <='0';
@@ -88,6 +130,7 @@ begin
 			when s0=>
 				if readRqt='1' then
 					headerOk<='0'; -- By default the header dosen't follow our requirements
+					regAddr := to_unsigned(START_ADDR,27);
 					byteRqt <='1';
 					state := s1;
 				end if;
@@ -95,90 +138,97 @@ begin
 			when s1 =>
 				if byteAck='1' then
 					if cntr < 4 then 
-						regAux <= regAux(23 downto 0) & nextByte;
+						regAux := regAux(23 downto 0) & nextByte;
+						regAddr := regAddr+1;
 						cntr := cntr+1;
 						byteRqt <='1';
 					else
 						cntr :=(others=>'0');
 						if regAux=HEADER_CHUNK_MARK then
+							byteRqt <='1';
 							state := s2;
 						else
 							finishRead <='1';
 							state := s0;
 						end if;
-					end if
+					end if;
 				end if; --byteAck='1'
 
 			when s2 =>
 				if byteAck='1' then
 					if cntr < 4 then 
-						regAux <= regAux(23 downto 0) & nextByte;
+						regAux := regAux(23 downto 0) & nextByte;
+						regAddr := regAddr+1;
 						cntr := cntr+1;
 						byteRqt <='1';
 					else
 						cntr :=(others=>'0');
 						if regAux=HEADER_LENGTH then
+							byteRqt <='1';
 							state := s3;
 						else
 							finishRead <='1';
 							state := s0;
 						end if;
-					end if
+					end if;
 				end if;
 
 
 			when s3 =>
 				if byteAck='1' then
 					if cntr < 2 then 
-						regAux <= regAux(23 downto 0) & nextByte;
+						regAux := regAux(23 downto 0) & nextByte;
+						regAddr := regAddr+1;
 						cntr := cntr+1;
 						byteRqt <='1';
 					else
 						cntr :=(others=>'0');
 						if regAux(15 downto 0)=HEADER_FORMAT then
+						    byteRqt <='1';					
 							state := s4;
 						else
 							finishRead <='1';
 							state := s0;
 						end if;
-					end if
+					end if;
 				end if;
 
 			when s4 =>
 				if byteAck='1' then
 					if cntr < 2 then 
-						regAux <= regAux(23 downto 0) & nextByte;
+						regAux := regAux(23 downto 0) & nextByte;
+						regAddr := regAddr+1;
 						cntr := cntr+1;
 						byteRqt <='1';
 					else
 						cntr :=(others=>'0');
 						if regAux(15 downto 0)=HEADER_NTRKS then
+                            byteRqt <='1';
 							state := s5;
 						else
 							finishRead <='1';
 							state := s0;
 						end if;
-					end if
+					end if;
 				end if;
 
 			when s5 =>
 				if byteAck='1' then
 					if cntr < 2 then 
-						regDivision <= regDivision(15 downto 8) & nextByte;
-						cntr := cntr+1;
+						regDivision := regDivision(7 downto 0) & nextByte;
+                        regAddr := regAddr+1;
+                        cntr := cntr+1;
 						byteRqt <='1';
 					else
 						cntr :=(others=>'0');
 						finishRead <='1';
 						headerOk <='1';
 						state := s0;
-						end if;
-					end if
+					end if;
 				end if;
-
-
-		end case;
-	
+		  end case;
+		
+    end if;
 end process;
   
 end Behavioral;

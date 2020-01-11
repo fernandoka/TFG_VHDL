@@ -52,16 +52,16 @@ entity ByteProvider is
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
---attribute   dont_touch  of  ByteProvider  :   entity  is  "true";
-    
+--attribute   dont_touch  of  ByteProvider  :   entity  is  "true"; 
 end ByteProvider;
+
 architecture Behavioral of ByteProvider is
 
 begin
 
 fsm:
 process(rst_n,clk,byteRqt,mem_ack)
-    type states is (serveBytes, mem_waitAck);	
+    type states is (firstRead, serveBytes, mem_waitAck);	
 	variable state		:	states;
 	variable regAddr	:	unsigned(26 downto 0);	
 	variable regData	:	std_logic_vector(127 downto 0);
@@ -71,7 +71,7 @@ begin
 	mem_addr <= std_logic_vector(regAddr(26 downto 4));
     
 	if rst_n='0' then
-		state := serveBytes;
+		state := firstRead;
 		regAddr :=(others=>'0');
 		regData := (others=>'0');
 		byteAck <='0';
@@ -85,6 +85,15 @@ begin
 			 
 		case state is
 		
+			when firstRead=>
+                if byteRqt='1' then
+                    regAddr := unsigned(addrInVal);
+                    -- Prepare read for the next cycle
+                    mem_readRqt_n <= '0';
+                    readFlag  :='1';
+                    state := mem_waitAck;
+                end if;
+			
 			when serveBytes=>
 				if byteRqt='1' or readFlag='1' then
 					if regAddr(26 downto 4)/=unsigned(addrInVal(26 downto 4)) then

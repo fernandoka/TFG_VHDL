@@ -13,11 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
-<<<<<<< HEAD
 -- Revision 0.4
-=======
--- Revision 0.3
->>>>>>> 41dc35108552755bc98caec4aa983c5be5eda0dd
 -- Additional Comments:
 --
 ----------------------------------------------------------------------------------
@@ -77,10 +73,7 @@ fsm:
 process(rst_n,clk,readRqt,byteAck)
     type states is (s0, s1, s2, s3, s4, s5);	
 	variable state	:	states;
-<<<<<<< HEAD
 	
-=======
->>>>>>> 41dc35108552755bc98caec4aa983c5be5eda0dd
 	variable regAddr   :   unsigned(26 downto 0);
 	variable regAux	:	std_logic_vector(31 downto 0);
 	variable regDivision : std_logic_vector(15 downto 0);
@@ -93,11 +86,8 @@ begin
 	
 	division <=regDivision;
 	byteAddr <= std_logic_vector(regAddr);
-<<<<<<< HEAD
 	track0AddrStart <= regTrack0AddrStart;
 	track1AddrStart <= regTrack1AddrStart(26 downto 0);
-=======
->>>>>>> 41dc35108552755bc98caec4aa983c5be5eda0dd
 
     --Debug
     regAuxOut <=regAux;
@@ -135,11 +125,8 @@ begin
 		regDivision := (others=>'0');
 		regAux := (others=>'0');
 		cntr := (others=>'0');
-<<<<<<< HEAD
 		regTrack1AddrStart := (others=>'0');
 		regTrack0AddrStart := (others=>'0');
-=======
->>>>>>> 41dc35108552755bc98caec4aa983c5be5eda0dd
 		regAddr := to_unsigned(START_ADDR,27);
 		headerOk <='0';
 		finishRead <='0';
@@ -264,7 +251,6 @@ begin
                     end if;
 				else
                     cntr :=(others=>'0');
-<<<<<<< HEAD
 					regTrack0AddrStart <= regAddr;
 					-- Don't read the track chunk mark, 4 bytes
 					regAddr := regAddr+4;
@@ -298,13 +284,6 @@ begin
 			finishRead <='1';
 			state := s0;
 
-=======
-                    finishRead <='1';
-                    headerOk <='1';
-                    state := s0;
-                end if;
-		  end case;
->>>>>>> 41dc35108552755bc98caec4aa983c5be5eda0dd
 		
     end if;
 end process;

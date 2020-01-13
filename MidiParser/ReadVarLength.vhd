@@ -37,7 +37,7 @@ entity ReadVarLength is
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
         readRqt			:	in	std_logic; -- One cycle high to request a read
-		valOut			:	out	std_logic_vector(63 downto 0)
+		valOut			:	out	std_logic_vector(63 downto 0);
 
 		--Byte provider side
 		nextByte        :   in  std_logic_vector(7 downto 0);
@@ -47,9 +47,9 @@ entity ReadVarLength is
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
---attribute   dont_touch  of  ReadVarLength  :   entity  is  "true";
-    
+--attribute   dont_touch  of  ReadVarLength  :   entity  is  "true";    
 end ReadVarLength;
+
 architecture Behavioral of ReadVarLength is
 
 begin

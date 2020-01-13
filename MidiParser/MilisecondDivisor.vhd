@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --
 ----------------------------------------------------------------------------------
@@ -37,14 +37,14 @@ entity MilisecondDivisor is
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
 		cen				:	in	std_logic;
-		Tc				:	out std_logic;
+		Tc				:	out std_logic
 		
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
 --attribute   dont_touch  of  MilisecondDivisor  :   entity  is  "true";
-    
 end MilisecondDivisor;
+
 architecture Behavioral of MilisecondDivisor is
 
 begin

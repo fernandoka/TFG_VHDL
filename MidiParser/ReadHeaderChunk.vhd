@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.4
+-- Revision 0.5
 -- Additional Comments:
 --
 ----------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ entity ReadHeaderChunk is
 		--Debug
 		regAuxOut       : out std_logic_vector(31 downto 0);
 		cntrOut            : out std_logic_vector(2 downto 0);
-		statesOut          : out std_logic_vector(5 downto 0);
+		statesOut          : out std_logic_vector(7 downto 0);
 		 
 		--Byte provider side
 		nextByte        :   in  std_logic_vector(7 downto 0);
@@ -71,7 +71,7 @@ begin
 
 fsm:
 process(rst_n,clk,readRqt,byteAck)
-    type states is (s0, s1, s2, s3, s4, s5);	
+    type states is (s0, s1, s2, s3, s4, s5, s6, s7);	
 	variable state	:	states;
 	
 	variable regAddr   :   unsigned(26 downto 0);
@@ -116,6 +116,14 @@ begin
 
     if state=s5 then
         statesOut(5)<='1'; 
+    end if;
+
+    if state=s6 then
+        statesOut(6)<='1'; 
+    end if;
+
+    if state=s7 then
+        statesOut(7)<='1'; 
     end if;
 
     --
@@ -251,12 +259,12 @@ begin
                     end if;
 				else
                     cntr :=(others=>'0');
-					regTrack0AddrStart <= regAddr;
+					regTrack0AddrStart := std_logic_vector(regAddr);
 					-- Don't read the track chunk mark, 4 bytes
 					regAddr := regAddr+4;
+                    byteRqt <='1';
                     state := s6;
                 end if;
-		  end case;
 		  
 		  when s6 =>
 			if cntr < 4 then 
@@ -272,7 +280,7 @@ begin
 				end if;
 			else
 				cntr :=(others=>'0');
-				regTrack1AddrStart <= regTrack0AddrStart + regAux;
+				regTrack1AddrStart := std_logic_vector(unsigned(regTrack0AddrStart) + unsigned(regAux) + 8);
 				state := s7;
 			end if;
 			
@@ -283,7 +291,8 @@ begin
 			end if;
 			finishRead <='1';
 			state := s0;
-
+		  
+		  end case;
 		
     end if;
 end process;

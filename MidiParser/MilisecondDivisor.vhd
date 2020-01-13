@@ -64,12 +64,16 @@ begin
 		
     elsif rising_edge(clk) then
 		if cen='1' then
-			cntr := cntr+1;
-		elsif  cntr/=0 then
-			cntr := 0;
-		end if;
+		  if cntr < FREQ-1 then
+		      cntr := cntr+1;
+		  else
+		      cntr := 0;
+		  end if;
+		elsif cntr/=0 then
+            cntr := 0;
+        end if;
+        
     end if;
-
 end process;
   
 end Behavioral;

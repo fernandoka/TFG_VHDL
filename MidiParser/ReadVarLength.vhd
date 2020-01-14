@@ -25,7 +25,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -37,12 +37,14 @@ entity ReadVarLength is
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
         readRqt			:	in	std_logic; -- One cycle high to request a read
-		valOut			:	out	std_logic_vector(63 downto 0)
-		dataRdy			:	out std_logic  -- One cycle high when the data is ready
+		iniAddr			:	in	std_logic_vector(26 downto 0);
+		valOut			:	out	std_logic_vector(63 downto 0);
+		dataRdy			:	out std_logic;  -- One cycle high when the data is ready
 
 		--Byte provider side
 		nextByte        :   in  std_logic_vector(7 downto 0);
 		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
+		byteAddr		:	out std_logic_vector(26 downto 0);
 		byteRqt			:	out std_logic; -- One cycle high to request a new byte
   );
 -- Attributes for debug
@@ -58,12 +60,15 @@ fsm:
 process(rst_n,clk,readRqt,byteAck)
     type states is (s0, s1);	
 	variable state	:	states;
-	variable regVal	:	std_logic_vector(63 downto 0);	
+	variable regVal	:	std_logic_vector(63 downto 0);
+	variable regAddr	:	unsigned(26 downto 0);
 begin
     
 	valOut <= regVal;
+	byteAddr <= std_logic_vector(regAddr);
 	
     if rst_n='0' then
+		regAddr := (others=>'0');
 		state := s0;
 		byteRqt <='0';
 		dataRdy <= '0';
@@ -76,6 +81,7 @@ begin
 				when s0=>
 					if readRqt='1' then
 						regVal := (others=>'0');
+						regAddr := unsigned(iniAddr);
 						byteRqt <='1';
 						state := s1;
 					end if;
@@ -84,6 +90,7 @@ begin
 					if byteAck='1' then
 						regVal := regVal(56 downto 0) & nextByte(6 downto 0);
 						if nextByte(7)='1' then
+							regAddr := regAddr+1;
 							byteRqt <='1';
 						else
 							dataRdy <= '1';

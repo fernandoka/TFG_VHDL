@@ -259,11 +259,16 @@ begin
                     end if;
 				else
                     cntr :=(others=>'0');
-					regTrack0AddrStart := std_logic_vector(regAddr);
-					-- Don't read the track chunk mark, 4 bytes
-					regAddr := regAddr+4;
-                    byteRqt <='1';
-                    state := s6;
+					if regDivision(15)='1' then
+						finishRead <='1';
+						state := s0;
+					else
+						regTrack0AddrStart := std_logic_vector(regAddr);
+						-- Don't read the track chunk mark, 4 bytes
+						regAddr := regAddr+4;
+						byteRqt <='1';
+						state := s6;
+					end if;
                 end if;
 		  
 		  when s6 =>

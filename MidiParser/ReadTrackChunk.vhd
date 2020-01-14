@@ -89,19 +89,20 @@ architecture Behavioral of ReadTrackChunk is
 	signal fsmAddr		:	std_logic_vector(26 downto 0);
 	signal muxByteAddr	:	std_logic;
 	
-	-- ReadVarLength
-	signal deltaTime			:	std_logic_vector(63 downto 0);
-	signal deltaTimeByteAddr	:	std_logic_vector(26 downto 0);
-	signal deltaTimeByteRqt		:	std_logic;
+	--ReadVarLength
+	signal resVarLength			:	std_logic_vector(63 downto 0);
+	signal varLengthByteAddr	:	std_logic_vector(26 downto 0);
+	signal varLengthByteRqt		:	std_logic;
 	signal readVarLengthRqt		:	std_logic;
+	signal varLengthRdy			:	std_logic;
 	
 	--msDivisor
 	signal TCmili, cenDivisor	:	std_logic;
 	
 begin
 
-byteAddr <= fsmAddr when muxByteAddr='0' else deltaTimeByteAddr;
-byteRqt <= fsmByteRqt or deltaTimeByteRqt;
+byteAddr <= fsmAddr when muxByteAddr='0' else varLengthByteAddr;
+byteRqt <= fsmByteRqt or varLengthByteRqt;
 
 
 readVarLEnghtData: ReadVarLength
@@ -110,14 +111,14 @@ readVarLEnghtData: ReadVarLength
         clk     	=> clk,
         readRqt		=> readVarLengthRqt,
 		iniAddr		=> fsmAddr,
-		valOut		=> deltaTime,
-		dataRdy		=> deltaTimeRdy,
+		valOut		=> resVarLength,
+		dataRdy		=> varLengthRdy,
 	
 		--Byte provider side
 		nextByte	=> nextByte,
 		byteAck		=> byteAck,
-		byteAddr	=> deltaTimeByteAddr,
-		byteRqt		=> deltaTimeByteRqt,
+		byteAddr	=> varLengthByteAddr,
+		byteRqt		=> varLengthByteRqt,
   );
 
 
@@ -133,8 +134,8 @@ msDivisor: MilisecondDivisor is
 
 
 fsm:
-process(rst_n,clk,readRqt,byteAck,deltaTimeByteRqt)
-    type states is (s0, s1, s2, s3, s4, s5, skipVarLengthBytes, resolveMetaEvent, s7);	
+process(rst_n,clk,readRqt,byteAck,varLengthRdy)
+    type states is (s0, s1, s2, s3, s4, s5, skipVarLengthBytes, resolveMetaEvent, readEventData);	
 	variable state	:	states;
 	
 	variable regAddr : unsigned(26 downto 0);
@@ -143,16 +144,17 @@ process(rst_n,clk,readRqt,byteAck,deltaTimeByteRqt)
 	variable aux1, aux2		:	unsigned(63 downto 0);
 	
 	variable runningStatus	:	std_logic_vector(7 downto 0);
+	variable dataBytes		:	std_logic_vector(15 downto 0);
 begin
 	
 	notesOn <= regNotesOn;
 	fsmAddr <=std_logic_vector(regAddr);
 	
-	-- Moore output
+	-- Moore outputs --
 	
 	-- Enable readVarLegth component
 	muxByteAddr <='0';
-	if state=s2 or resolveSysExEventthen
+	if state=s2 or state=resolveSysExEvent then
 		muxByteAddr <='1';
 	end if;
 	
@@ -165,7 +167,7 @@ begin
 	-- Calculate ms to wait, aprox 
 	-- deltaTime*(500000/480)/1000 precalculado para testear
 	-- trunco no tengo en cuenta el overflow ni el underflow, confio en que con 64 bits nunca se excedera la resolucion
-	aux1 <= unsigned(deltaTime) * unsigned(X"411AAAA‬"); -- Q64.16= Q64.0 * Q12.16, 
+	aux1 <= unsigned(resVarLength) * unsigned(X"411AAAA‬"); -- Q64.16= Q64.0 * Q12.16, 
 	aux2 <= unsigned(aux1(63 downto 16)) * unsigned(X"0000041"); -- Q60.16= Q48.0 * Q12.16
 	‬
     --Debug    
@@ -205,9 +207,10 @@ begin
     --
     	
 	if rst_n='0' then
-		regDeltaTimeVal := (others=>'0');
+		regWait := (others=>'0');
 		runningStatus := (others=>'0');
 		regAddr := (others=>'0');
+		dataBytes := (others=>'0');
 		state := s0;
 		finishRead <='0';
 		fsmByteRqt <='0';
@@ -255,9 +258,9 @@ begin
 			-- Event Parser Starts in this state, first read delta time	
 			-- Get the time to wait before processing the midi command                
 			when s2 =>
-                if deltaTimeRdy='1' then 
+                if varLengthRdy='1' then 
 					regWait <= ‬unsigned(aux2(63 downto 16));
-					regAddr := deltaTimeByteAddr; -- Update the value of the current addr					
+					regAddr := varLengthByteAddr; -- Update the value of the current addr					
 					state := s3;
                 end if;
             
@@ -273,7 +276,8 @@ begin
 			
 			-- Read one byte and decide if is a status byte or not
 			-- If is a status byte, running status will change
-			-- If not, 2 reads of the same byte would be order
+			-- If not, runningStatus would not change, 
+			-- one more read order of the same byte will be done in the nexts states
 			when s4 =>
 				if byteAck='1' then
 					if nextByte(7)='1' then 
@@ -292,11 +296,10 @@ begin
 					readVarLengthRqt <='1';
 					status := skipVarLengthBytes;
 				else
-					-- Actions to perform on the keyboard
-					if runningStatus=MTRK_EVENT_NOTE_ON  then
-						
-					elsif runningStatus=MTRK_EVENT_NOTE_OFF then
-						
+					-- Midi events
+					if runningStatus=MTRK_EVENT_NOTE_OFF or runningStatus=MTRK_EVENT_NOTE_ON  then
+						fsmByteRqt <='1';
+						status := readEventData;	
 					elsif runningStatus=MTRK_EVENT_CKP or runningStatus=MTRK_EVENT_PC then
 						regAddr := regAddr+1;
 						status := s2;
@@ -313,22 +316,40 @@ begin
 						state := skipVarLengthBytes;
 					else
 						finishRead <='1';
-						state := s0;
+						state := s0; -- Finish of read track chunk
 					end if;
 				end if;
 		  
 			when skipVarLengthBytes =>
-				if deltaTimeRdy='1' then
-					regAddr := deltaTimeByteAddr + deltaTime; -- El nº de bytes que ocupa el evento apartir de la ultima direccion leida por readVarLength. 
+				if varLengthRdy='1' then
+					regAddr := varLengthByteAddr + resVarLength; -- El nº de bytes que ocupa el evento apartir de la ultima direccion leida por readVarLength. 
 					readVarLengthRqt <='1';
 					state := s2;
 				end if;
 
 
-			when resolveMidiEvent =>
-				if deltaTimeRdy='1' then
-					regAddr := deltaTimeByteAddr + deltaTime; -- El nº de bytes que ocupa el evento apartir de la ultima direccion leida por readVarLength. 
-					readVarLengthRqt <='1';
+			when readEventData =>
+				if cntr < 2 then 
+					if byteAck='1' then
+						
+						if cntr < 1 then
+							fsmByteRqt <='1';
+						end if;
+
+						dataBytes := dataBytes(7 downto 0) & nextByte;
+						cntr := cntr+1;
+						
+					end if;
+				else
+					if unsigned(dataBytes(15 downto 8)) >=21 and unsigned(dataBytes(15 downto 8)) <= 108 then
+						if runningStatus=MTRK_EVENT_NOTE_OFF or (runningStatus=MTRK_EVENT_NOTE_ON and dataBytes(7 downto 0)=X"00") then
+							regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='0'; -- Note off
+						else
+							regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='1'; -- Note on
+						end if;
+					end if;
+					
+					cntr :=(others=>'0');
 					state := s2;
 				end if;
 		  

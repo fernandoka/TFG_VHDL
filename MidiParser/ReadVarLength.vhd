@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 --					 		
 --
@@ -45,7 +45,7 @@ entity ReadVarLength is
 		nextByte        :   in  std_logic_vector(7 downto 0);
 		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
 		byteAddr		:	out std_logic_vector(26 downto 0);
-		byteRqt			:	out std_logic; -- One cycle high to request a new byte
+		byteRqt			:	out std_logic -- One cycle high to request a new byte
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
@@ -69,6 +69,7 @@ begin
 	
     if rst_n='0' then
 		regAddr := (others=>'0');
+		regVal := (others=>'0');
 		state := s0;
 		byteRqt <='0';
 		dataRdy <= '0';

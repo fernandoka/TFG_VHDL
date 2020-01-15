@@ -13,9 +13,9 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.5
+-- Revision 0.6
 -- Additional Comments:
---
+--      It seems is working properly
 ----------------------------------------------------------------------------------
 
 
@@ -394,6 +394,7 @@ begin
 						end if;
 
 						dataBytes := dataBytes(7 downto 0) & nextByte;
+                        regAddr := regAddr+1;
 						cntr := cntr+1;
 						
 					end if;
@@ -407,6 +408,7 @@ begin
 					end if;
 					
 					cntr :=(others=>'0');
+                    readVarLengthRqt <='1';
 					state := s2;
 				end if;
 		  

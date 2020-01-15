@@ -43,8 +43,11 @@ entity ReadTrackChunk is
 				
 		--Debug		
 		regAuxOut       		: out std_logic_vector(31 downto 0);
-		cntrOut         		: out std_logic_vector(2 downto 0);
-		statesOut       		: out std_logic_vector(7 downto 0);
+		regAddrOut          	: out std_logic_vector(26 downto 0);
+		statesOut       		: out std_logic_vector(8 downto 0);
+		runningStatusOut        : out std_logic_vector(7 downto 0);  
+		dataBytesOut            : out std_logic_vector(15 downto 0);
+		regWaitOut              : out std_logic_vector(47 downto 0);
 		 
 		--Byte provider side
 		nextByte        		:   in  std_logic_vector(7 downto 0);
@@ -59,6 +62,36 @@ entity ReadTrackChunk is
 end ReadTrackChunk;
 
 architecture Behavioral of ReadTrackChunk is
+
+component ReadVarLength is
+  Port ( 
+        rst_n           :   in  std_logic;
+        clk             :   in  std_logic;
+        readRqt			:	in	std_logic; -- One cycle high to request a read
+        iniAddr			:	in	std_logic_vector(26 downto 0);
+        valOut			:	out	std_logic_vector(63 downto 0);
+        dataRdy			:	out std_logic;  -- One cycle high when the data is ready
+
+		--Byte provider side
+		nextByte        :   in  std_logic_vector(7 downto 0);
+		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
+        byteAddr		:	out std_logic_vector(26 downto 0);
+		byteRqt			:	out std_logic -- One cycle high to request a new byte
+  ); 
+end component;
+
+
+component MilisecondDivisor is
+  Generic(FREQ : in natural);-- Frequency in Khz
+  Port ( 
+        rst_n           :   in  std_logic;
+        clk             :   in  std_logic;
+		cen				:	in	std_logic;
+		Tc				:	out std_logic
+		
+  );
+end component;
+
 ----------------------------- Constants --------------------------------------------
 
 	constant TRACK_CHUNK_MARK : std_logic_vector(31 downto 0) := X"4d54726b";
@@ -83,6 +116,10 @@ architecture Behavioral of ReadTrackChunk is
 	constant SYSEX_EVENT_0	: std_logic_vector(7 downto 0) := X"f0";		
 	constant SYSEX_EVENT_1	: std_logic_vector(7 downto 0) := X"f7";
 	
+	--Op constants
+	constant OP1   :   unsigned(27 downto 0) := X"411AAAA";
+	constant OP2   :   unsigned(27 downto 0) := X"0000041";
+
 ----------------------------- Signals --------------------------------------------
 	--fsm
 	signal fsmByteRqt	:	std_logic;
@@ -118,12 +155,12 @@ readVarLEnghtData: ReadVarLength
 		nextByte	=> nextByte,
 		byteAck		=> byteAck,
 		byteAddr	=> varLengthByteAddr,
-		byteRqt		=> varLengthByteRqt,
+		byteRqt		=> varLengthByteRqt
   );
 
 
-msDivisor: MilisecondDivisor is
-  generic map(FREQ =>75000);-- Frequency in Khz
+msDivisor: MilisecondDivisor
+  generic map(FREQ =>75000)-- Frequency in Khz
   port map( 
         rst_n   => rst_n,
         clk     => clk,
@@ -138,23 +175,28 @@ process(rst_n,clk,readRqt,byteAck,varLengthRdy)
     type states is (s0, s1, s2, s3, s4, s5, skipVarLengthBytes, resolveMetaEvent, readEventData);	
 	variable state	:	states;
 	
-	variable regAddr : unsigned(26 downto 0);
-	variable regNotesOn	:	std_logic_vector(87 downto 0);
-	variable regWait	:	unsigned(63 downto 0);
-	variable aux1, aux2		:	unsigned(63 downto 0);
+	variable regAddr        :  unsigned(26 downto 0);
+	variable regNotesOn     :  std_logic_vector(87 downto 0);
+	variable regWait	    : unsigned(47 downto 0);
 	
+	variable aux1           : unsigned(91 downto 0); -- These sizes because simulation tool
+	variable aux2		    : unsigned(75 downto 0); -- These sizes because simulation tool
+	
+	variable regAux         :   std_logic_vector(31 downto 0);
 	variable runningStatus	:	std_logic_vector(7 downto 0);
 	variable dataBytes		:	std_logic_vector(15 downto 0);
+	variable cntr           :   unsigned(2 downto 0);
 begin
 	
 	notesOn <= regNotesOn;
 	fsmAddr <=std_logic_vector(regAddr);
 	
+	-------------------
 	-- Moore outputs --
-	
+	-------------------
 	-- Enable readVarLegth component
 	muxByteAddr <='0';
-	if state=s2 or state=resolveSysExEvent then
+	if state=s2 or state=skipVarLengthBytes then
 		muxByteAddr <='1';
 	end if;
 	
@@ -167,10 +209,16 @@ begin
 	-- Calculate ms to wait, aprox 
 	-- deltaTime*(500000/480)/1000 precalculado para testear
 	-- trunco no tengo en cuenta el overflow ni el underflow, confio en que con 64 bits nunca se excedera la resolucion
-	aux1 <= unsigned(resVarLength) * unsigned(X"411AAAA‬"); -- Q64.16= Q64.0 * Q12.16, 
-	aux2 <= unsigned(aux1(63 downto 16)) * unsigned(X"0000041"); -- Q60.16= Q48.0 * Q12.16
-	‬
-    --Debug    
+	aux1 := unsigned(resVarLength) * OP1; -- Q64.16= Q64.0 * Q12.16, 
+	aux2 := aux1(63 downto 16) * OP2; -- Q60.16= Q48.0 * Q12.16
+	
+    --Debug
+    regAddrOut <= std_logic_vector(regAddr);
+    regAuxOut <= regAux;
+    runningStatusOut<=runningStatus;
+    dataBytesOut<= dataBytes;
+    regWaitOut<= std_logic_vector(regWait);
+    
     statesOut <=(others=>'0');
     if state=s0 then
         statesOut(0)<='1'; 
@@ -196,21 +244,27 @@ begin
         statesOut(5)<='1'; 
     end if;
 
-    if state=resolveSysExEvent then
+    if state=skipVarLengthBytes then
         statesOut(6)<='1'; 
     end if;
 
-    if state=resolveMetaEvent_0 then
+    if state=resolveMetaEvent then
         statesOut(7)<='1'; 
     end if;
 
+    if state=readEventData then
+        statesOut(8)<='1'; 
+    end if;
     --
     	
 	if rst_n='0' then
 		regWait := (others=>'0');
 		runningStatus := (others=>'0');
+		regAux := (others=>'0');
+		regNotesOn := (others=>'0');
 		regAddr := (others=>'0');
 		dataBytes := (others=>'0');
+		cntr := (others=>'0');
 		state := s0;
 		finishRead <='0';
 		fsmByteRqt <='0';
@@ -224,7 +278,7 @@ begin
 		case state is
 			when s0=>
 				if readRqt='1' then
-					regAddr := trackAddrStart;
+					regAddr := unsigned(trackAddrStart);
 					fsmByteRqt <='1';
 					state := s1;
 				end if;
@@ -259,8 +313,8 @@ begin
 			-- Get the time to wait before processing the midi command                
 			when s2 =>
                 if varLengthRdy='1' then 
-					regWait <= ‬unsigned(aux2(63 downto 16));
-					regAddr := varLengthByteAddr; -- Update the value of the current addr					
+					regWait := unsigned(aux2(63 downto 16));
+					regAddr := unsigned(varLengthByteAddr); -- Update the value of the current addr					
 					state := s3;
                 end if;
             
@@ -291,21 +345,23 @@ begin
 			when s5 =>
 				if runningStatus=META_EVENT_MARK then
 					fsmByteRqt <='1';
-					status := resolveMetaEvent;
+					state := resolveMetaEvent;
 				elsif runningStatus=SYSEX_EVENT_0 or runningStatus=SYSEX_EVENT_1 then
 					readVarLengthRqt <='1';
-					status := skipVarLengthBytes;
+					state := skipVarLengthBytes;
 				else
 					-- Midi events
 					if runningStatus=MTRK_EVENT_NOTE_OFF or runningStatus=MTRK_EVENT_NOTE_ON  then
 						fsmByteRqt <='1';
-						status := readEventData;	
+						state := readEventData;	
 					elsif runningStatus=MTRK_EVENT_CKP or runningStatus=MTRK_EVENT_PC then
 						regAddr := regAddr+1;
-						status := s2;
+                        readVarLengthRqt <='1';
+						state := s2;
 					else
 						regAddr := regAddr+2;
-						status := s2;
+                        readVarLengthRqt <='1';
+						state := s2;
 					end if;
 				end if;
 
@@ -313,6 +369,7 @@ begin
 				if byteAck='1' then
 					if nextByte/=META_EVENT_END_OF_TRACK then
 						readVarLengthRqt <='1';
+						regAddr := regAddr+1;
 						state := skipVarLengthBytes;
 					else
 						finishRead <='1';
@@ -322,7 +379,7 @@ begin
 		  
 			when skipVarLengthBytes =>
 				if varLengthRdy='1' then
-					regAddr := varLengthByteAddr + resVarLength; -- El nº de bytes que ocupa el evento apartir de la ultima direccion leida por readVarLength. 
+					regAddr := unsigned(varLengthByteAddr) + unsigned(resVarLength(26 downto 0)) + 1; -- El nÂº de bytes que ocupa el evento apartir de la ultima direccion leida por readVarLength. 
 					readVarLengthRqt <='1';
 					state := s2;
 				end if;

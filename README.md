@@ -1,1 +1,2 @@
 # TFG_VHDL
+This project consist in the development of a system on chip which can understand some midi files formats to play the corresponding song stored in the file. The aim with this project is to create a base open-design to develop a digital keyboard that anyone can use and improve in the future. The main goal is learn about Midi standard, waves sounds and music.

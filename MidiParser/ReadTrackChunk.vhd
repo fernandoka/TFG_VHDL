@@ -427,7 +427,7 @@ begin
 					else
 						finishRead <='1';
 						-- Check if the length of the track is OK, only in check mode
-						if fsm_state.mode=check and (( regAddr - (unsigned(trackAddrStart) + 8) ) = regAux) then
+						if fsm_state.mode=check and ( (regAddr - (unsigned(trackAddrStart) + 8)) = regAux) then
 							headerOK <='1';
 						end if;
 						fsm_state.state := s0; -- Finish of read track chunk

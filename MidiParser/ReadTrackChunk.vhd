@@ -457,8 +457,8 @@ begin
 						
 					end if;
 				else
-					-- Only send command when is in play mode
-					if fsm_state.mode= play and unsigned(dataBytes(15 downto 8)) >=21 and unsigned(dataBytes(15 downto 8)) <= 108 then
+					-- Only send command when in play mode
+					if fsm_state.mode=play and unsigned(dataBytes(15 downto 8)) >=21 and unsigned(dataBytes(15 downto 8)) <= 108 then
 						if runningStatus=MTRK_EVENT_NOTE_OFF or (runningStatus=MTRK_EVENT_NOTE_ON and dataBytes(7 downto 0)=X"00") then
 							regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='0'; -- Note off
 						else

@@ -259,7 +259,8 @@ begin
                     end if;
 				else
                     cntr :=(others=>'0');
-					if regDivision(15)='1' then
+					-- Division value have to be in [50,500] interval
+					if regDivision(15)='1' or (regDivision > 500 or regDivision < 50) then
 						finishRead <='1';
 						state := s0;
 					else

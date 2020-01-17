@@ -48,6 +48,11 @@ entity CmdKeyboardSequencer is
 		sendCmdRqt		:	in	std_logic_vector(1 downto 0); -- High to a add a new command to the buffer
 		seq_ack			:	out std_logic_vector(1 downto 0);
 		
+		
+		-- Debug
+		statesOut		:	out	std_logic_vector(2 downto 0);
+		lastCmdOut		:	out	std_logic_vector(9 downto 0);
+		
 		--Keyboard side
 		keyboard_ack	:	in	std_logic; -- Request of a new command
 		emtyCmdBuffer	:	out std_logic;	
@@ -121,6 +126,21 @@ begin
 	elsif state=s1 then
 		dataInFifo <= cmdTrack_1;
 	end if;
+	
+	-- Debug
+	lastCmdOut <= lastCmd;
+	
+	statesOut <=(others=>'0');
+	if state=s0 then
+		statesOut(0) <='1';
+	end if;
+
+	if state=s1 then
+		statesOut(1) <='1';
+	end if;
+	--
+	
+	
 	
     if rst_n='0' then
 		lastCmd := (others=>'0');

@@ -29,7 +29,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
-use IEEE.NUMERIC_STD.ALL;
+--use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -45,10 +45,12 @@ entity CmdKeyboardSequencer is
 		-- Read Tracks Side
 		cmdTrack_0		:	in	std_logic_vector(9 downto 0);
 		cmdTrack_1		:	in	std_logic_vector(9 downto 0);
+		sendCmdRqt		:	in	std_logic_vector(1 downto 0); -- High to a add a new command to the buffer
 		seq_ack			:	out std_logic_vector(1 downto 0);
 		
 		--Keyboard side
-		keyboard_ack	:	in	std_logic;
+		keyboard_ack	:	in	std_logic; -- Request of a new command
+		emtyCmdBuffer	:	out std_logic;	
 		cmdKeyboard		:	out std_logic_vector(9 downto 0)
 		
   );
@@ -57,54 +59,97 @@ entity CmdKeyboardSequencer is
 --attribute   dont_touch  of  CmdKeyboardSequencer  :   entity  is  "true";
     
 end CmdKeyboardSequencer;
+
+--use work.my_common.all;
+
 architecture Behavioral of CmdKeyboardSequencer is
 
+----------------------------------------------------------------------------------
+-- SIGNALS FOR FIFO
+---------------------------------------------------------------------------------- 
+signal wrFifo, rdFifo		:	std_logic;  
+signal fullFifo, emptyFifo	:	std_logic;
+signal dataInFifo 			:	std_logic_vector(9 downto 0);
+
+
 begin
+
+
+----------------------------------------------------------------------------------
+-- FIFO COMPONENT
+---------------------------------------------------------------------------------- 
+
+FifoInterface: my_fifo
+  generic map(WIDTH =>10, DEPTH =>4)
+  port map(
+    rst_n   => rst_n,
+    clk     => clk,
+    wrE     => wrFifo,
+    dataIn  => dataInFifo,
+    rdE     => keyboard_ack,
+    dataOut => cmdKeyboard,
+    full    => fullFifo,
+    empty   => emtyCmdBuffer
+  );
+
 
   
 process(rst_n,clk,readRqt,byteAck)
-	type states is (s0, s1, s2, s3);	
+	type states is (s0, s1);	
 	variable state	:	states;
 	
-	variable regAux	:	std_logic_vector(9 downto 0);
-	
+	variable lastCmd	:	std_logic_vector(9 downto 0);
 begin
-    
-	cmdKeyboard <= regAux;
+
+    ------------------
+	-- MEALY OUTPUT --
+	------------------
+	wrFifo <='0';
+	if cen='1' and fullFifo='0' then
+		if (state=s0 and sendCmdRqt(0)='1' and lastCmd/=cmdTrack_0) or 
+			(state=s1 and sendCmdRqt(1)='1' and lastCmd/=cmdTrack_1) then
+			wrFifo <='1';
+		end if;
+	end if;
+
+    ------------------
+	-- MOORE OUTPUT --
+	------------------	
+	dataInFifo <=(others=>'0');
+	if state=s0 then
+		dataInFifo <= cmdTrack_0;
+	elsif state=s1 then
+		dataInFifo <= cmdTrack_1;
+	end if;
 	
-	regAux
     if rst_n='0' then
-		turnFlag := '0';
-		regAux := (others=>'0');
+		lastCmd := (others=>'0');
 		seq_ack <=(others=>'0');
+		
     
 	elsif rising_edge(clk) then
 		seq_ack <=(others=>'0');
-				
+		
 		case state is
 			when s0=>
-				if cen='1' then
-					regAux := cmdTrack_0;
-					seq_ack_0 := '1';
+				if cen='1' and fullFifo='0' then
 					state:=s1;
+					if sendCmdRqt(0)='1' and lastCmd/=cmdTrack_0 then			
+						lastCmd	:= cmdTrack_0;
+						seq_ack_0 := '1';
+					end if;
 				end if;
 			
-			when s1=>
-				if keyboard_ack='1' then
-					state:=s2;
-				end if;
 				
-			when s2=>
-				if cen='1' then
-					regAux := cmdTrack_1;
-					seq_ack_1 := '1';
-					state:=s3;
+			when s1=>
+				if cen='1' and fullFifo='0' then
+					state:=s0;
+					if sendCmdRqt(1)='1' and lastCmd/=cmdTrack_1 then
+						lastCmd	:= cmdTrack_1;
+						seq_ack_1 := '1';
+					end if;
 				end if;
 
-			when s3=>
-				if keyboard_ack='1' then
-					state:=s0;
-				end if;
 				
 		end case;			
 	

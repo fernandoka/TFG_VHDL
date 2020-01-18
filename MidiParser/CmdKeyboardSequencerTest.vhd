@@ -52,7 +52,7 @@ component CmdKeyboardSequencer is
 		
 		
 		-- Debug
-		statesOut		:	out	std_logic_vector(2 downto 0);
+		statesOut		:	out	std_logic_vector(1 downto 0);
 		lastCmdOut		:	out	std_logic_vector(9 downto 0);
 		
 		--Keyboard side
@@ -67,12 +67,12 @@ end component;
     constant clkPeriod : time := 13.333333333333333333333333333333333333333333333333333333333 ns;   -- Periodo del reloj (75 MHz)
 
 
-    -- Señales 
+    -- SeÃ±ales 
     signal	clk     : std_logic := '1';      
     signal	rst_n   : std_logic := '0';
 	
 	signal	cmdKeyboard_out, cmdTrack_0_in, cmdTrack_1_in, lastCmdOut	:	std_logic_vector(9 downto 0);
-	signal	emtyCmdBuffer_out, keyboard_ack_in	:	std_logic;
+	signal	emtyCmdBuffer_out, keyboard_ack_in, cenSeq	:	std_logic;
 	signal	sendCmdRqt_in, seq_ack_out, statesOut	:	std_logic_vector(1 downto 0);
 	
 begin
@@ -93,31 +93,34 @@ begin
     -- wait for rst_n
 	cmdTrack_0_in <=(others=>'0');
 	cmdTrack_1_in <=(others=>'0');
-	sendCmdRqt <=(others=>'0');
-	cen <='0';
-	wait until (rst='1');
+	sendCmdRqt_in <=(others=>'0');
+	cenSeq <='0';
+    keyboard_ack_in <='0';
+
+	wait until (rst_n='1');
 	
-	cen <='1';
+	cenSeq <='1';
 	wait for (clkPeriod*5);
 	
 	cmdTrack_0_in <="10" & X"47";
-	sendCmdRqt <="01"; 	
-	wait until seq_ack(0)='1';
+	sendCmdRqt_in <="01"; 	
+	wait until seq_ack_out(0)='1';
 	
 	cmdTrack_0_in <=(others=>'0');
 	cmdTrack_1_in <="01" & X"47";
-	sendCmdRqt <="10";
+	sendCmdRqt_in <="10";
 	
-	wait until seq_ack(1)='1';
+	wait until seq_ack_out(1)='1';
 	
 	-- Pruebo que el lastCmd si funciona
 	cmdTrack_0_in <="01" & X"47";
 	cmdTrack_1_in <="10" & X"48";
-	sendCmdRqt <="11";
+	sendCmdRqt_in <="11";
 	
-	keyboard_ack <='1';
+	keyboard_ack_in <='1';
 	wait for (clkPeriod);
-	
+    sendCmdRqt_in <=(others=>'0');
+
     wait;
 
 end process;
@@ -142,7 +145,7 @@ lala : CmdKeyboardSequencer
 		--Keyboard side         
 		keyboard_ack	=> keyboard_ack_in,
 		emtyCmdBuffer	=> emtyCmdBuffer_out,
-		cmdKeyboard		=> cmdKeyboard_out,
+		cmdKeyboard		=> cmdKeyboard_out
 		
   );
 

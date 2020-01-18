@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --		Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -50,7 +50,7 @@ entity CmdKeyboardSequencer is
 		
 		
 		-- Debug
-		statesOut		:	out	std_logic_vector(2 downto 0);
+		statesOut		:	out	std_logic_vector(1 downto 0);
 		lastCmdOut		:	out	std_logic_vector(9 downto 0);
 		
 		--Keyboard side
@@ -68,7 +68,22 @@ end CmdKeyboardSequencer;
 --use work.my_common.all;
 
 architecture Behavioral of CmdKeyboardSequencer is
-
+  component my_fifo is
+  generic (
+    WIDTH : natural;   -- anchura de la palabra de fifo
+    DEPTH : natural    -- numero de palabras en fifo
+  );
+  port (
+    rst_n   : in  std_logic;   -- reset as?ncrono del sistema (a baja)
+    clk     : in  std_logic;   -- reloj del sistema
+    wrE     : in  std_logic;   -- se activa durante 1 ciclo para escribir un dato en la fifo
+    dataIn  : in  std_logic_vector(WIDTH-1 downto 0);   -- dato a escribir
+    rdE     : in  std_logic;   -- se activa durante 1 ciclo para leer un dato de la fifo
+    dataOut : out std_logic_vector(WIDTH-1 downto 0);   -- dato a leer
+    full    : out std_logic;   -- indicador de fifo llena
+    empty   : out std_logic    -- indicador de fifo vacia
+  );
+end component;
 ----------------------------------------------------------------------------------
 -- SIGNALS FOR FIFO
 ---------------------------------------------------------------------------------- 
@@ -99,7 +114,7 @@ FifoInterface: my_fifo
 
 
   
-process(rst_n,clk,readRqt,byteAck)
+process(rst_n,clk,cen,sendCmdRqt,fullFifo)
 	type states is (s0, s1);	
 	variable state	:	states;
 	
@@ -156,7 +171,7 @@ begin
 					state:=s1;
 					if sendCmdRqt(0)='1' and lastCmd/=cmdTrack_0 then			
 						lastCmd	:= cmdTrack_0;
-						seq_ack_0 := '1';
+						seq_ack(0) <= '1';
 					end if;
 				end if;
 			
@@ -166,7 +181,7 @@ begin
 					state:=s0;
 					if sendCmdRqt(1)='1' and lastCmd/=cmdTrack_1 then
 						lastCmd	:= cmdTrack_1;
-						seq_ack_1 := '1';
+						seq_ack(1) <= '1';
 					end if;
 				end if;
 

@@ -13,10 +13,12 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.5
+-- Revision 0.1
 -- Additional Comments:
---		Not completly generic component, the pipelined sum and the my_Keyboards 
---		have to be done by hand
+--		Command format: cmd(7 downto 0) = note code
+--					 	cmd(9) = when high, note on	
+--						cmd(8) = when high, note off
+--						Null command when -> cmd(9 downto 0) = (others=>'0')
 -- 
 ----------------------------------------------------------------------------------
 
@@ -66,20 +68,8 @@ architecture Behavioral of my_Keyboard is
 ----------------------------------------------------------------------------------
 -- TYPES DECLARATIONS
 ----------------------------------------------------------------------------------     
-    type    samplesOut  is array(0 to NUM_NOTES-1) of std_logic_vector(15 downto 0);
-    type    addrOut  is array(0 to NUM_NOTES-1) of std_logic_vector(25 downto 0);
-    type    sumStage0   is array( 0 to (NUM_NOTES/2)-1 ) of std_logic_vector(15 downto 0);
-    type    sumStage1   is array( 0 to (NUM_NOTES/4)-1 ) of std_logic_vector(15 downto 0);
-    type    sumStage2   is array( 0 to (NUM_NOTES/8)-1 ) of std_logic_vector(15 downto 0);
-    type    sumStage3   is array( 0 to (NUM_NOTES/16)-1 ) of std_logic_vector(15 downto 0);
-    type    sumStage4   is array( 0 to 2) of std_logic_vector(15 downto 0);
-
-	
-    type    iniData  is array(0 to 59) of natural;
-    type    freq is array(0 to 87) of real;
 	type	maxInterpolatedSamplesPerNote_t is array(0 to 57) of natural;
 	type	offset_t is array(0 to 87) of natural;
-	
 	
 ----------------------------------------------------------------------------------
 -- CONSTANTS DECLARATIONS
@@ -489,31 +479,31 @@ architecture Behavioral of my_Keyboard is
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
-    -- Registers
-    signal  notesGen_samplesOut         :   samplesOut;
-             
-    signal  notesEnable                 :   std_logic_vector(NUM_NOTES-1 downto 0);
-    signal  muxSampleInRqt, muxMemAck   :   std_logic_vector(NUM_NOTES-1 downto 0);
-    
-    signal  notesGen_addrOut            :   addrOut;
-        
-    signal  sampleOutAux_S0             :   sumStage0;
-    signal  sampleOutAux_S1             :   sumStage1;
-    signal  sampleOutAux_S2             :   sumStage2;
-    signal  sampleOutAux_S3             :   sumStage3;
-    signal  sampleOutAux_S4             :   sumStage4;
-    
-    signal  sampleOutAux_S5, sampleOutAux_S6    :   std_logic_vector(15 downto 0);
+    -- NoteParams
+	signal	startAddr                :	std_logic_vector(25 downto 0);
+	signal	sustainStartOffsetAddr   :	std_logic_vector(25 downto 0);
+	signal	sustainEndOffsetAddr     :	std_logic_vector(25 downto 0);
+	signal	maxSamples               :	std_logic_vector(25 downto 0);
+	signal	stepVal                  :	std_logic_vector(63 downto 0);
+	signal	sustainStepStart         :	std_logic_vector(63 downto 0);
+	signal	sustainStepEnd           :	std_logic_vector(63 downto 0);
+	
+	signal aviableNoteGen			:	std_logic; -- Inverse logic, 0 some gen is free, 1 all generetors are working
+	
+	-- Registers
+	signal	regStartAddr                :	std_logic_vector(25 downto 0);
+	signal	regSustainStartOffsetAddr   :	std_logic_vector(25 downto 0);
+	signal	regSustainEndOffsetAddr     :	std_logic_vector(25 downto 0);
+	signal	regMaxSamples               :	std_logic_vector(25 downto 0);
+	signal	regStepVal                  :	std_logic_vector(63 downto 0);
+	signal	regSustainStepStart         :	std_logic_vector(63 downto 0);
+	signal	regSustainStepEnd           :	std_logic_vector(63 downto 0);
+	
+	-- State of the NoteGenerators
+	signal regKeyboardState	:	std_logic_vector(31 downto 0);
 
 begin
-             
-NotesEnableGen:
-for i in 0 to (NUM_NOTES-1) generate
-    notesEnable(i) <= notes_on(i) and cen;
-end generate;
 
-	sustainStepStart_In			:	in	std_logic_vector(63 downto 0);	-- If is a simple note, sustainStepStart_In=1.0
-	sustainStepEnd_In			:	in	std_logic_vector(63 downto 0);	-- If is a simple note, sustainStepEnd_In=1.0
 	
 -------------------------------------
 			-- ROMs--
@@ -524,7 +514,7 @@ end generate;
 -- One entry per three notes	
 	startAddr_ROM :
   with cmdKeyboard(7 downto 0) select
-			startAddr_In <=
+			startAddr <=
 				
 				to_unsigned(SAMPLES_PER_WAVETABLE,26)		when X"18" | X"19" | X"1A", 	-- C1, C#1, D1
 				to_unsigned(SAMPLES_PER_WAVETABLE*2,26)		when X"1B" | X"1C" | X"1D", -- D#1, E1, F1
@@ -571,7 +561,7 @@ end generate;
 -- One entry per note
 	sustainStartOffsetAddr_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainStartOffsetAddr_In <=
+			sustainStartOffsetAddr <=
 			
 				to_unsigned(SUSTAIN_START_OFFSET_ADDR(0),26)	when X"15", -- A0 
 				to_unsigned(SUSTAIN_START_OFFSET_ADDR(1),26) 	when X"16", -- A#0
@@ -710,7 +700,7 @@ end generate;
 -- One entry per note
 	sustainEndOffsetAddr_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainEndOffsetAddr_In <=
+			sustainEndOffsetAddr <=
 				
 				to_unsigned(SUSTAIN_END_OFFSET_ADDR(0),26)		when X"15", -- A0 
 				to_unsigned(SUSTAIN_END_OFFSET_ADDR(1),26) 		when X"16", -- A#0
@@ -851,7 +841,7 @@ end generate;
 -- One entry per interpolated note
 	maxSamples_ROM :
   with cmdKeyboard(7 downto 0) select
-			maxSamples_In <=
+			maxSamples <=
 				
 				-- Interpolated notes
 				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),26)	when X"16",	-- A#0
@@ -919,7 +909,7 @@ end generate;
 -- One entry per interpolated note
 	stepVal_ROM :
   with cmdKeyboard(7 downto 0) select
-			stepVal_In <=
+			stepVal <=
 				
 				-- Interpolated notes
 				(to_unsigned( integer(29.1353/27.5),32)& X"00000000") or toUnFix( 29.1353/27.5 ,32,32) )			when X"17",	-- A#0
@@ -987,7 +977,7 @@ end generate;
 -- One entry per note
 	sustainStepStart_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainStepStart_In <=
+			sustainStepStart <=
 
 				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(0), 32)& X"00000000")																																	when X"15", --A0		
 				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_START_OFFSET_ADDR(1) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_START_OFFSET_ADDR(1) ),32,32) )		when X"16",	-- A#0
@@ -1097,7 +1087,7 @@ end generate;
 -- One entry per note
 	sustainStepEnd_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainStepEnd_In <=
+			sustainStepEnd <=
 				
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(0), 32)& X"00000000")																																		when X"15", --A0		
 				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_END_OFFSET_ADDR(1) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_END_OFFSET_ADDR(1) ),32,32) )				when X"16",	-- A#0
@@ -1204,215 +1194,48 @@ end generate;
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(87), 32)& X"00000000")																																	when X"6C", --C8		
 				to_unsigned( 0, 64)																																												when others;														
 
-	
-----------------------------------------------------------------------------------
--- PIPELINED SUM
---      Manage the sums of all notes, is organized like a tree
----------------------------------------------------------------------------------- 
-
-
---Level 0
-genSumLevel0:
-for i in 0 to (NUM_NOTES/2)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>notesGen_samplesOut(i*2),b_in=>notesGen_samplesOut(i*2+1),c_out=>sampleOutAux_S0(i));
-end generate;
-
---Level 1
-genSumLevel1:
-for i in 0 to (NUM_NOTES/4)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S0(i*2),b_in=>sampleOutAux_S0(i*2+1),c_out=>sampleOutAux_S1(i));
-end generate;
-
---Level 2
-genSumLevel2:
-for i in 0 to (NUM_NOTES/8)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S1(i*2),b_in=>sampleOutAux_S1(i*2+1),c_out=>sampleOutAux_S2(i));
-end generate;
-
---Level 3
-genSumLevel3:
-for i in 0 to (NUM_NOTES/16)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S2(i*2),b_in=>sampleOutAux_S2(i*2+1),c_out=>sampleOutAux_S3(i));
-end generate;
-
--- Level 4
-genSumLevel4:
-for i in 0 to 1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S3(i*2),b_in=>sampleOutAux_S3(i*2+1),c_out=>sampleOutAux_S4(i));
-end generate;
-
-sum_L4: MyFiexedSum
-generic map(WL=>16)
-port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S3(4),b_in=>sampleOutAux_S2(10),c_out=>sampleOutAux_S4(2));
-
--- Level 5
-sum_L5: MyFiexedSum
-generic map(WL=>16)
-port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S4(0),b_in=>sampleOutAux_S4(1),c_out=>sampleOutAux_S5);
-
--- Level 6, final sum
-sum_L6: MyFiexedSum
-generic map(WL=>16)
-port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S5,b_in=>sampleOutAux_S4(2),c_out=>sampleOutAux_S6);
-
-
-sampleOut <= sampleOutAux_S6;
 
 ----------------------------------------------------------------------------------
--- NOTES GENERATOR
---      Creation of the notes generators components,
---		the las one are not in the for generate
+								-- ROMs End --
+----------------------------------------------------------------------------------  
+myReduceAnd: reducedAnd 
+  generic map( WL =>32)
+  port map( a_in =>regKeyboardState, reducedA_out => aviableNoteGen);
 ----------------------------------------------------------------------------------
-
-genNotes:
-for i in 0 to (NUM_NOTES/3)-1 generate
-    SimpleNoteGen0: SimpleNoteGen
-    generic map( 
-             WL=>WL,FS=>FS,BASE_FREQ=>iniFreq(i*3), SUSTAIN_OFFSET=>sustainOffset(i*3), RELEASE_OFFSET=>releaseOffset(i*3),
-             START_ADDR=>iniVals(i*2) ,END_ADDR=>iniVals(i*2+1)
-            )
-    port map(
-        -- Host side
-        rst_n   =>  rst_n,
-        clk     => clk,
-        cen_in  =>notesEnable(i*3),
-        interpolateSampleRqt  =>sampleRqt,
-        sample_out  =>notesGen_samplesOut(i*3),
-    
-        --Mem side
-        samples_in  =>mem_sampleIn,
-        memAck  =>muxMemAck(i*3),
-        addr_out  =>notesGen_addrOut(i*3),
-		sample_inRqt =>muxSampleInRqt(i*3)
-      );
-      
-      InterpolatedNoteGen1:InterpolatedNoteGen
-      generic map( FS=>FS,TARGET_NOTE=>iniFreq(i*3+1), BASE_NOTE=>iniFreq(i*3),
-                   SUSTAIN_OFFSET=>sustainOffset(i*3+1), RELEASE_OFFSET=>releaseOffset(i*3+1),
-                   START_ADDR=>iniVals(i*2), END_ADDR=>iniVals(i*2+1)
-              )        
-      port map(
-            -- Host side
-            rst_n   =>  rst_n,
-            clk     => clk,
-            cen_in  =>notesEnable(i*3+1),
-            interpolateSampleRqt  =>sampleRqt,
-            sample_out  =>notesGen_samplesOut(i*3+1),
-        
-            --Mem side
-            samples_in  =>mem_sampleIn,
-            memAck  =>muxMemAck(i*3+1),
-            addr_out  =>notesGen_addrOut(i*3+1),
-			sample_inRqt =>muxSampleInRqt(i*3+1)
-        );
-
-      InterpolatedNoteGen2:InterpolatedNoteGen
-      generic map( FS=>FS,TARGET_NOTE=>iniFreq(i*3+2), BASE_NOTE=>iniFreq(i*3),
-                   SUSTAIN_OFFSET=>sustainOffset(i*3+2), RELEASE_OFFSET=>releaseOffset(i*3+2),
-                   START_ADDR=>iniVals(i*2), END_ADDR=>iniVals(i*2+1)
-              )        
-      port map(
-            -- Host side
-            rst_n   =>  rst_n,
-            clk     => clk,
-            cen_in  =>notesEnable(i*3+2),
-            interpolateSampleRqt  =>sampleRqt,
-            sample_out  =>notesGen_samplesOut(i*3+2),
-        
-            --Mem side
-            samples_in  =>mem_sampleIn,
-            memAck  =>muxMemAck(i*3+2),
-            addr_out  =>notesGen_addrOut(i*3+2),
-			sample_inRqt =>muxSampleInRqt(i*3+2)
-        );
-
-end generate;
-
--- C8
-SimpleNoteGen0: SimpleNoteGen
-    generic map( 
-         WL=>WL,FS=>FS,BASE_FREQ=>iniFreq(87), SUSTAIN_OFFSET=>sustainOffset(87), RELEASE_OFFSET=>releaseOffset(87),
-         START_ADDR=>iniVals(58) ,END_ADDR=>iniVals(59)
-        )
-  port map(
-    -- Host side
-    rst_n   =>  rst_n,
-    clk     => clk,
-    cen_in  =>notesEnable(87),
-    interpolateSampleRqt  =>sampleRqt,
-    sample_out  =>notesGen_samplesOut(87),
-
-    --Mem side
-    samples_in  =>mem_sampleIn,
-    memAck  =>muxMemAck(87),
-    addr_out  =>notesGen_addrOut(87),
-	sample_inRqt =>muxSampleInRqt(87)
-  );
-
- 
-----------------------------------------------------------------------------------
--- MEM READ ARBITRATOR
---      Manage the read access of the DDR for the notes generators components 
+-- CMD RECIEVER
+--		Manage the behaviour with the commands
 ----------------------------------------------------------------------------------  
 
 fsm:
-process(rst_n,clk,mem_ack)
-    type states is ( checkGeneratorRqt, waitMemAck0);
-    
-    variable state      :   states;
-    variable turnCntr   :   unsigned(6 downto 0);
-    variable cntr       :   unsigned(1 downto 0);
-    variable addrToRead :   std_logic_vector(25 downto 0);
+process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard)
 begin
     
-    mem_addrOut <= addrToRead;
-    muxMemAck <=(others=>'0');
-    muxMemAck(to_integer(turnCntr)) <= mem_ack;
 
     if rst_n='0' then
-       turnCntr := (others=>'0');
-       state := checkGeneratorRqt;
-       addrToRead := (others=>'0');
-       cntr :=  (others=>'0');
-       mem_readOut <= '1';
-       
+		keyboard_ack <='0';
+		regKeyboardState <=(others=>'0');
+		
     elsif rising_edge(clk) then
-        mem_readOut <= '1'; -- Just one cycle
-       
-        case state is
-            when checkGeneratorRqt =>
-                 if muxSampleInRqt(to_integer(turnCntr))='1' then
-                        addrToRead := notesGen_addrOut(to_integer(turnCntr));
-                        -- Order read in the next cycle
-                        mem_readOut <= '0';
-                        state := waitMemAck0;
-                 else
-                    if turnCntr=NUM_NOTES-1 then
-                        turnCntr := (others=>'0');
-                    else
-                        turnCntr := turnCntr+1;
-                    end if;     
-                 end if;   
-            
-            when waitMemAck0 =>
-                if mem_ack='1' then
-                   state := checkGeneratorRqt;                
-                end if;
-
-        end case;
-        
-        
-        
+		keyboard_ack <='0';
+		
+		if emtyCmdBuffer='0' and aviableNoteGen='0' and cmdKeyboard(9 downto 8)/="00" and cmdKeyboard(9 downto 8)/="11" then
+			-- Note params setup
+			regStartAddr             <= startAddr             ;
+			regSustainStartOffsetAddr<= sustainStartOffsetAddr;
+			regSustainEndOffsetAddr  <= sustainEndOffsetAddr  ;
+			regMaxSamples            <= maxSamples            ;
+			regStepVal               <= stepVal               ;
+			regSustainStepStart      <= sustainStepStart      ;
+			regSustainStepEnd        <= sustainStepEnd        ;
+			
+			keyboard_ack <='1';
+			if cmdKeyboard(9)='1' then 
+				regKeyboardState(cmdKeyboard(7 downto 0)-21) := '1';
+			elsif cmdKeyboard(8)='1' then
+				regKeyboardState(cmdKeyboard(7 downto 0)-21) := '1';
+			end if;
+		end if;
+		
     end if;
 end process;
   

@@ -325,7 +325,6 @@ for i in 0 to (NUM_NOTES-1) generate
     notesEnable(i) <= notes_on(i) and cen;
 end generate;
 
-	maxSamples_In				:	in	std_logic_vector(25 downto 0);	-- (TARGET_NOTE/BASE_NOTE)*SAMPLES_PER_WAVETABLE
 	stepVal_In					:	in	std_logic_vector(63 downto 0);  -- If is a simple note, stepVal_In=1.0 
 	sustainStepStart_In			:	in	std_logic_vector(63 downto 0);	-- If is a simple note, sustainStepStart_In=1.0
 	sustainStepEnd_In			:	in	std_logic_vector(63 downto 0);	-- If is a simple note, sustainStepEnd_In=1.0
@@ -664,67 +663,136 @@ end generate;
 			maxSamples_In <=
 				
 				-- Interpolated notes
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),26)		when X"19",	-- A#0
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),26)		when X"1A",	-- B0
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(2),26)		when X"19",	-- C#1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(3),26)		when X"1A",	-- D1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(4),26)		when X"1C", -- E1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(5),26)		when X"1D",	-- F1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(6),26)		when X"1F", -- G1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(7),26)		when X"20", -- G#1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(8),26)		when X"22", -- A#1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(9),26)		when X"23", -- B1
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(10),26)		when X"25",	-- C#2
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(11),26)		when X"26", -- D2
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(12),26)		when X"28",	-- E2 
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(13),26)		when X"29", -- F2
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(14),26)		when X"2B",	-- G2
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(15),26)		when X"2C",	-- G#2
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(16),26)		when X"2E", -- A#2
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(17),26)		when X"2F",	-- B2
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(18),26)		when X"31", -- C#3
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(19),26)		when X"32", -- D3
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(20),26)		when X"34", -- E3
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(21),26)		when X"35", -- F3
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(22),26)		when X"37", -- G3 
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(23),26)		when X"38", -- G#3
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(24),26)		when X"3A", -- A#3
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(25),26)		when X"3B", -- B3
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(26),26)		when X"3D", -- C#4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(27),26)		when X"3E", -- D4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(28),26)		when X"40", -- E4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(29),26)		when X"41", -- F4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(30),26)		when X"43", -- G4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(31),26)		when X"44", -- G#4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(32),26)		when X"46", -- A#4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(33),26)		when X"47",	-- B4
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(34),26)		when X"49",	-- C#5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(35),26)		when X"4A", -- D5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(36),26)		when X"4C", -- E5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(37),26)		when X"4D", -- F5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(38),26)		when X"4F", -- G5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(39),26)		when X"50", -- G#5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(40),26)		when X"52", -- A#5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(41),26)		when X"53",	-- B5
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(42),26)		when X"55", -- C#6
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(43),26)		when X"56", -- D6
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(44),26)		when X"58", -- E6
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(45),26)		when X"59", -- F6
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(46),26)		when X"5B", -- G6
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(47),26)		when X"5C", -- G#6
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(48),26)		when X"5E", -- A#6
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(49),26)		when X"5F", -- B6				
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(50),26)		when X"61", -- C#7
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(51),26)		when X"62", -- D7
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(52),26)		when X"64", -- E7
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(53),26)		when X"65", -- F7
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(54),26)		when X"67", -- G7
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(55),26)		when X"68", -- G#7
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(56),26)		when X"6A", -- A#7
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(57),26)		when X"6B", -- B7					
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),26)	when X"19",	-- A#0
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),26)	when X"1A",	-- B0
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(2),26)	when X"19",	-- C#1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(3),26)	when X"1A",	-- D1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(4),26)	when X"1C", -- E1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(5),26)	when X"1D",	-- F1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(6),26)	when X"1F", -- G1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(7),26)	when X"20", -- G#1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(8),26)	when X"22", -- A#1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(9),26)	when X"23", -- B1
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(10),26)	when X"25",	-- C#2
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(11),26)	when X"26", -- D2
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(12),26)	when X"28",	-- E2 
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(13),26)	when X"29", -- F2
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(14),26)	when X"2B",	-- G2
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(15),26)	when X"2C",	-- G#2
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(16),26)	when X"2E", -- A#2
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(17),26)	when X"2F",	-- B2
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(18),26)	when X"31", -- C#3
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(19),26)	when X"32", -- D3
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(20),26)	when X"34", -- E3
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(21),26)	when X"35", -- F3
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(22),26)	when X"37", -- G3 
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(23),26)	when X"38", -- G#3
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(24),26)	when X"3A", -- A#3
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(25),26)	when X"3B", -- B3
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(26),26)	when X"3D", -- C#4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(27),26)	when X"3E", -- D4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(28),26)	when X"40", -- E4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(29),26)	when X"41", -- F4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(30),26)	when X"43", -- G4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(31),26)	when X"44", -- G#4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(32),26)	when X"46", -- A#4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(33),26)	when X"47",	-- B4
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(34),26)	when X"49",	-- C#5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(35),26)	when X"4A", -- D5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(36),26)	when X"4C", -- E5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(37),26)	when X"4D", -- F5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(38),26)	when X"4F", -- G5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(39),26)	when X"50", -- G#5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(40),26)	when X"52", -- A#5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(41),26)	when X"53",	-- B5
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(42),26)	when X"55", -- C#6
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(43),26)	when X"56", -- D6
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(44),26)	when X"58", -- E6
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(45),26)	when X"59", -- F6
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(46),26)	when X"5B", -- G6
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(47),26)	when X"5C", -- G#6
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(48),26)	when X"5E", -- A#6
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(49),26)	when X"5F", -- B6				
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(50),26)	when X"61", -- C#7
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(51),26)	when X"62", -- D7
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(52),26)	when X"64", -- E7
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(53),26)	when X"65", -- F7
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(54),26)	when X"67", -- G7
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(55),26)	when X"68", -- G#7
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(56),26)	when X"6A", -- A#7
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(57),26)	when X"6B", -- B7					
 				
 				to_unsigned(SAMPLES_PER_WAVETABLE,26) when others;  -- All the notes stored in memory, A0, C1,D#1,F#1,A#1, C2,D#2,F#2,A#2, .... C8
 			
+
+	(to_unsigned( integer(277.183/261.626),32)& X"00000000") or toUnFix( 277.183/261.626 ,32,32) )	
+	
+stepVal_In	
+	stepVal_ROM :
+  with cmdKeyboard(7 downto 0) select
+			stepVal_In <=
+				
+				-- Interpolated notes
+				(to_unsigned( integer(29.1353/27.5),32)& X"00000000") or toUnFix( 29.1353/27.5 ,32,32) )			when X"19",	-- A#0
+				(to_unsigned( integer(30.8677/27.5),32)& X"00000000") or toUnFix( 30.8677/27.5 ,32,32) )			when X"1A",	-- B0
+				(to_unsigned( integer(34.6479/32.7032),32)& X"00000000") or toUnFix( 34.6479/32.7032 ,32,32) )		when X"19",	-- C#1
+				(to_unsigned( integer(36.7081/32.7032),32)& X"00000000") or toUnFix( 36.7081/32.7032 ,32,32) )		when X"1A",	-- D1
+				(to_unsigned( integer(41.2035/38.8909),32)& X"00000000") or toUnFix( 41.2035/38.8909 ,32,32) )		when X"1C", -- E1
+				(to_unsigned( integer(43.6536/38.8909),32)& X"00000000") or toUnFix( 43.6536/38.8909 ,32,32) )		when X"1D",	-- F1
+				(to_unsigned( integer(48.9995/46.2493),32)& X"00000000") or toUnFix( 48.9995/46.2493 ,32,32) )		when X"1F", -- G1
+				(to_unsigned( integer(51.9130/46.2493),32)& X"00000000") or toUnFix( 51.9130/46.2493 ,32,32) )		when X"20", -- G#1
+				(to_unsigned( integer(58.2705/55.0000),32)& X"00000000") or toUnFix( 58.2705/55.0000 ,32,32) )		when X"22", -- A#1
+				(to_unsigned( integer(61.7354/55.0000),32)& X"00000000") or toUnFix( 61.7354/55.0000 ,32,32) )		when X"23", -- B1
+				(to_unsigned( integer(69.2957/65.4064),32)& X"00000000") or toUnFix( 69.2957/65.4064 ,32,32) )		when X"25",	-- C#2
+				(to_unsigned( integer(73.4162/65.4064),32)& X"00000000") or toUnFix( 73.4162/65.4064 ,32,32) )		when X"26", -- D2
+				(to_unsigned( integer(82.4069/77.7817),32)& X"00000000") or toUnFix( 82.4069/77.7817 ,32,32) )		when X"28",	-- E2 
+				(to_unsigned( integer(87.3071/77.7817),32)& X"00000000") or toUnFix( 87.3071/77.7817 ,32,32) )		when X"29", -- F2
+				(to_unsigned( integer(97.9989/92.4986),32)& X"00000000") or toUnFix( 97.9989/92.4986 ,32,32) )		when X"2B",	-- G2
+				(to_unsigned( integer(103.826/92.4986),32)& X"00000000") or toUnFix( 103.826/92.4986 ,32,32) )		when X"2C",	-- G#2
+				(to_unsigned( integer(116.541/110.000),32)& X"00000000") or toUnFix( 116.541/110.000 ,32,32) )		when X"2E", -- A#2
+				(to_unsigned( integer(123.471/110.000),32)& X"00000000") or toUnFix( 123.471/110.000 ,32,32) )		when X"2F",	-- B2
+				(to_unsigned( integer(138.591/130.813),32)& X"00000000") or toUnFix( 138.591/130.813 ,32,32) )		when X"31", -- C#3
+				(to_unsigned( integer(146.832/130.813),32)& X"00000000") or toUnFix( 146.832/130.813 ,32,32) )		when X"32", -- D3
+				(to_unsigned( integer(164.814/155.563),32)& X"00000000") or toUnFix( 164.814/155.563 ,32,32) )		when X"34", -- E3
+				(to_unsigned( integer(174.614/155.563),32)& X"00000000") or toUnFix( 174.614/155.563 ,32,32) )		when X"35", -- F3
+				(to_unsigned( integer(195.998/184.997),32)& X"00000000") or toUnFix( 195.998/184.997 ,32,32) )		when X"37", -- G3 
+				(to_unsigned( integer(207.652/184.997),32)& X"00000000") or toUnFix( 207.652/184.997 ,32,32) )		when X"38", -- G#3
+				(to_unsigned( integer(233.082/220.000),32)& X"00000000") or toUnFix( 233.082/220.000 ,32,32) )		when X"3A", -- A#3
+				(to_unsigned( integer(246.942/220.000),32)& X"00000000") or toUnFix( 246.942/220.000 ,32,32) )		when X"3B", -- B3
+				(to_unsigned( integer(277.183/261.626),32)& X"00000000") or toUnFix( 277.183/261.626 ,32,32) )		when X"3D", -- C#4
+				(to_unsigned( integer(293.665/261.626),32)& X"00000000") or toUnFix( 293.665/261.626 ,32,32) )		when X"3E", -- D4
+				(to_unsigned( integer(329.628/311.127),32)& X"00000000") or toUnFix( 329.628/311.127 ,32,32) )		when X"40", -- E4
+				(to_unsigned( integer(349.228/311.127),32)& X"00000000") or toUnFix( 349.228/311.127 ,32,32) )		when X"41", -- F4
+				(to_unsigned( integer(391.995/369.994),32)& X"00000000") or toUnFix( 391.995/369.994 ,32,32) )		when X"43", -- G4
+				(to_unsigned( integer(415.305/369.994),32)& X"00000000") or toUnFix( 415.305/369.994 ,32,32) )		when X"44", -- G#4
+				(to_unsigned( integer(466.164/440.000),32)& X"00000000") or toUnFix( 466.164/440.000 ,32,32) )		when X"46", -- A#4
+				(to_unsigned( integer(493.883/440.000),32)& X"00000000") or toUnFix( 493.883/440.000 ,32,32) )		when X"47",	-- B4
+				(to_unsigned( integer(554.365/523.251),32)& X"00000000") or toUnFix( 554.365/523.251 ,32,32) )		when X"49",	-- C#5
+				(to_unsigned( integer(587.330/523.251),32)& X"00000000") or toUnFix( 587.330/523.251 ,32,32) )		when X"4A", -- D5
+				(to_unsigned( integer(659.255/622.254),32)& X"00000000") or toUnFix( 659.255/622.254 ,32,32) )		when X"4C", -- E5
+				(to_unsigned( integer(698.456/622.254),32)& X"00000000") or toUnFix( 698.456/622.254 ,32,32) )		when X"4D", -- F5
+				(to_unsigned( integer(783.991/739.989),32)& X"00000000") or toUnFix( 783.991/739.989 ,32,32) )		when X"4F", -- G5
+				(to_unsigned( integer(830.609/739.989),32)& X"00000000") or toUnFix( 830.609/739.989 ,32,32) )		when X"50", -- G#5
+				(to_unsigned( integer(932.328/880.000),32)& X"00000000") or toUnFix( 932.328/880.000 ,32,32) )		when X"52", -- A#5
+				(to_unsigned( integer(987.767/880.000),32)& X"00000000") or toUnFix( 987.767/880.000 ,32,32) )		when X"53",	-- B5
+				(to_unsigned( integer(1108.73/1046.50),32)& X"00000000") or toUnFix( 1108.73/1046.50 ,32,32) )		when X"55", -- C#6
+				(to_unsigned( integer(1174.66/1046.50),32)& X"00000000") or toUnFix( 1174.66/1046.50 ,32,32) )		when X"56", -- D6
+				(to_unsigned( integer(1318.51/1244.51),32)& X"00000000") or toUnFix( 1318.51/1244.51 ,32,32) )		when X"58", -- E6
+				(to_unsigned( integer(1396.91/1244.51),32)& X"00000000") or toUnFix( 1396.91/1244.51 ,32,32) )		when X"59", -- F6
+				(to_unsigned( integer(1567.98/1479.98),32)& X"00000000") or toUnFix( 1567.98/1479.98 ,32,32) )		when X"5B", -- G6
+				(to_unsigned( integer(1661.22/1479.98),32)& X"00000000") or toUnFix( 1661.22/1479.98 ,32,32) )		when X"5C", -- G#6
+				(to_unsigned( integer(1864.66/1760.00),32)& X"00000000") or toUnFix( 1864.66/1760.00 ,32,32) )		when X"5E", -- A#6
+				(to_unsigned( integer(1975.53/1760.00),32)& X"00000000") or toUnFix( 1975.53/1760.00 ,32,32) )		when X"5F", -- B6				
+				(to_unsigned( integer(2217.46/2093.00),32)& X"00000000") or toUnFix( 2217.46/2093.00 ,32,32) )		when X"61", -- C#7
+				(to_unsigned( integer(2349.32/2093.00),32)& X"00000000") or toUnFix( 2349.32/2093.00 ,32,32) )		when X"62", -- D7
+				(to_unsigned( integer(2637.02/2489.02),32)& X"00000000") or toUnFix( 2637.02/2489.02 ,32,32) )		when X"64", -- E7
+				(to_unsigned( integer(2793.83/2489.02),32)& X"00000000") or toUnFix( 2793.83/2489.02 ,32,32) )		when X"65", -- F7
+				(to_unsigned( integer(3135.96/2959.96),32)& X"00000000") or toUnFix( 3135.96/2959.96 ,32,32) )		when X"67", -- G7
+				(to_unsigned( integer(3322.44/2959.96),32)& X"00000000") or toUnFix( 3322.44/2959.96 ,32,32) )		when X"68", -- G#7
+				(to_unsigned( integer(3729.31/3520.00),32)& X"00000000") or toUnFix( 3729.31/3520.00 ,32,32) )		when X"6A", -- A#7
+				(to_unsigned( integer(3951.07/3520.00),32)& X"00000000") or toUnFix( 3951.07/3520.00 ,32,32) )		when X"6B", -- B7			
+			
+	
 ----------------------------------------------------------------------------------
 -- PIPELINED SUM
 --      Manage the sums of all notes, is organized like a tree

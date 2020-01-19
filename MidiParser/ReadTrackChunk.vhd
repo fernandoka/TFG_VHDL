@@ -13,9 +13,14 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.7
+-- Revision 0.8
 -- Additional Comments:
---      It seems is working properly
+--    Notes: In play mode, infinite loop are not checked !!           
+--
+--    How to use: 
+--          -> First, order a read in check mode to be sure if the file follow our requirements
+--          -> Second, order a read in play mode to start sending the commands
+--                  
 --		if readRqt(0) read will be done in check mode, and no waiting time no commands to the keyboard will be send.
 --		if readRqt(1) read will be done in play mode,  commands to the keyboard will be send and waiting time will be enable.
 ----------------------------------------------------------------------------------
@@ -37,9 +42,10 @@ entity ReadTrackChunk is
   Port ( 
         rst_n           		:   in  std_logic;
         clk             		:   in  std_logic;
+        cen                     :   in std_logic;
 		readRqt					:	in	std_logic_vector(1 downto 0); -- One cycle high to request a read 
 		trackAddrStart			:	in std_logic_vector(26 downto 0); -- Must be stable for the whole read
-		--OneDividedByDivision	:	in std_logic_vector(26 downto 0);
+		OneDividedByDivision	:	in std_logic_vector(23 downto 0); -- Q4.20
 		finishRead				:	out std_logic; -- One cycle high to notify the end of track reached
 		trackOK					:	out	std_logic; -- High track data is ok, low track data is not ok			
 		notesOn					:	out std_logic_vector(87 downto 0);
@@ -50,7 +56,7 @@ entity ReadTrackChunk is
 		statesOut       		: out std_logic_vector(8 downto 0);
 		runningStatusOut        : out std_logic_vector(7 downto 0);  
 		dataBytesOut            : out std_logic_vector(15 downto 0);
-		regWaitOut              : out std_logic_vector(47 downto 0);
+		regWaitOut              : out std_logic_vector(36 downto 0);
 		 
 		--Byte provider side
 		nextByte        		:   in  std_logic_vector(7 downto 0);
@@ -103,8 +109,8 @@ end component;
 	constant META_EVENT_MARK			: std_logic_vector(7 downto 0) := X"ff";
 	constant META_EVENT_END_OF_TRACK	: std_logic_vector(7 downto 0) := X"2f";
 	constant META_EVENT_SET_TEMPO		: std_logic_vector(7 downto 0) := X"51";
-	constant META_EVENT_TIME_SIGNATURE	: std_logic_vector(7 downto 0) := X"58";
-	constant META_EVENT_KEY_SIGNATURE	: std_logic_vector(7 downto 0) := X"59";
+	constant SET_TEMPO_CMD_LENGTH       : std_logic_vector(7 downto 0) := X"03";
+--	constant META_EVENT_KEY_SIGNATURE	: std_logic_vector(7 downto 0) := X"59";
 	
 	--Mtrk events
 	constant MTRK_EVENT_NOTE_ON	: std_logic_vector(7 downto 0) := X"90";		
@@ -120,8 +126,9 @@ end component;
 	constant SYSEX_EVENT_1	: std_logic_vector(7 downto 0) := X"f7";
 	
 	--Op constants
-	constant OP1   :   unsigned(27 downto 0) := X"411AAAA";
-	constant OP2   :   unsigned(27 downto 0) := X"0000041";
+	constant ONE_DIVIDED_BY_ONE_THOUSAND   :   unsigned(23 downto 0) := X"000419"; -- Q4.20
+	constant ROUND_VAL_0                   :   unsigned(47 downto 0) :=X"000000080000"; -- Q28.20
+    constant ROUND_VAL_1                   :   unsigned(55 downto 0) :=X"00000000080000"; -- Q36.20
 
 ----------------------------- Signals --------------------------------------------
 	--fsm
@@ -176,20 +183,29 @@ msDivisor: MilisecondDivisor
 fsm:
 process(rst_n,clk,readRqt,byteAck,varLengthRdy)
     type modes is (check, play);
-	type states is (s0, s1, s2, s3, s4, s5, s6, skipVarLengthBytes, resolveMetaEvent, readEventData);	
+	type states is (s0, s1, s2, s3, s4, s5, s6, skipVarLengthBytes, resolveMetaEvent, readEventData, manageSetTempoCmd);	
 	type fsm_states is record
 		state   :   states;
         mode   	:   modes;
 	end record;
-	variable fsm_state	:	fsm_states;
+	variable fsm_state	    :	fsm_states;
 	
 	variable regAddr        :	unsigned(26 downto 0);
 	variable regNotesOn     :	std_logic_vector(87 downto 0);
-	variable regWait	    :	unsigned(47 downto 0);
+	variable regWait	    :	unsigned(36 downto 0);
 	
-	variable aux1           : unsigned(91 downto 0); -- These sizes because simulation tool
-	variable aux2		    : unsigned(75 downto 0); -- These sizes because simulation tool
-	variable  readedBytes   : unsigned(26 downto 0);
+	variable mulAux0        : unsigned(47 downto 0);
+	variable mulAux1        : unsigned(91 downto 0);
+    variable mulAux2        : unsigned(55 downto 0);        
+
+	variable addAux0        : unsigned(48 downto 0);
+	variable addAux2        : unsigned(56 downto 0);
+	
+	variable regAux0        : unsigned(27 downto 0);
+	variable regAux1        : unsigned(31 downto 0);
+	
+	variable regTempo       : std_logic_vector(23 downto 0);
+	variable readedBytes    : unsigned(26 downto 0);
 	
 	variable regAux         :   std_logic_vector(31 downto 0);
 	variable runningStatus	:	std_logic_vector(7 downto 0);
@@ -215,13 +231,23 @@ begin
 		cenDivisor <='1';
 	end if;
 	
-	-- Calculate ms to wait, aprox 
-	-- deltaTime*(500000/480)/1000 precalculado para testear
-	-- trunco no tengo en cuenta el overflow ni el underflow, confio en que con 64 bits nunca se excedera la resolucion
-	aux1 := unsigned(resVarLength) * OP1; -- Q64.16= Q64.0 * Q12.16, 
-	aux2 := aux1(63 downto 16) * OP2; -- Q60.16= Q48.0 * Q12.16
+	---------------------------
+    -- Combinational signals --
+    ---------------------------
+    
+    -- Calculate ms to wait, aprox 
+    -- deltaTime*(tempoVal/division)/1000
+    -- PipeLined operations, 2 stages, to calculate wait time
+    mulAux0 := unsigned(regTempo)*unsigned(OneDividedByDivision); -- Q28.20 = Q24.0*Q4.20
+    addAux0 := ('0' & mulAux0)+('0' & ROUND_VAL_0); --Q29.20 = Q28.20+Q28.20
+    
+    mulAux1 := unsigned(resVarLength)*regAux0; -- Q92.0 = Q64.0*Q28.0
+
+    mulAux2 := regAux1*ONE_DIVIDED_BY_ONE_THOUSAND; -- Q36.20=Q32.0*Q4.20
+    addAux2 := ('0' & mulAux2)+('0' & ROUND_VAL_1); --Q37.20 = Q36.20+Q36.20
+        
 	
-    readedBytes := (regAddr - (unsigned(trackAddrStart) + 6)); -- 6 instead of 8 because don't count the ini and end byte address
+    readedBytes := (regAddr - (unsigned(trackAddrStart) + 6)); -- 6 instead of 8, do not count the ini and end byte address
 
     --Debug
     regAddrOut <= std_logic_vector(regAddr);
@@ -276,6 +302,7 @@ begin
 		regAddr := (others=>'0');
 		dataBytes := (others=>'0');
 		cntr := (others=>'0');
+		regTempo  := (others=>'0');
 		fsm_state := (s0,check);
 		finishRead <='0';
 		trackOK<='0';
@@ -288,193 +315,273 @@ begin
 		fsmByteRqt <='0';
 		readVarLengthRqt <='0';
 
-		case fsm_state.state is
-			when s0=>
-                if readRqt(0)='1' then	
-                    regAddr := unsigned(trackAddrStart);
-                    fsm_state.mode := check;
-                    fsmByteRqt <='1';
-                    fsm_state.state := s1;                    
-                    trackOK<='0';
-                elsif readRqt(1)='1' then
-                    regAddr := unsigned(trackAddrStart) + 8; -- Skip track mark and length data 
-                    readVarLengthRqt <='1';
-                    fsm_state.state := s3;                    
-                    fsm_state.mode := play;
-                end if;
+
+
+        -- PipeLined operations, 2 stages, to calculate wait time
+        -- Satur result, stage 1
+        if addAux0(48)='0' then
+            regAux0 := addAux0(47 downto 20);
+        else
+            regAux0 := (others=>'1');
+        end if;
         
-			-- Check TRACK_CHUNK_MARK
-			when s1 =>
-                if cntr < 4 then 
-                    if byteAck='1' then
-						
-						if cntr < 3 then
-                          fsmByteRqt <='1';
-                        end if;
-                        
-						regAux := regAux(23 downto 0) & nextByte;
-						regAddr := regAddr+1;
-						cntr := cntr+1;
-					end if;
-                else
-                    cntr :=(others=>'0');
-                    if regAux=TRACK_CHUNK_MARK then
-                        if fsm_state.mode=play then
-							regAddr := regAddr + 4; -- Avoid track length information 
-							readVarLengthRqt <='1';
-							fsm_state.state := s3;
-						else
-							fsmByteRqt <='1';
-							fsm_state.state := s2;
-						end if;
-                    
-					else
-                        finishRead <='1';
-                        fsm_state.state := s0;
+        -- Satur result, stage 2
+        if mulAux1(32)='0' then
+            regAux1 := mulAux1(31 downto 0);
+        else
+            regAux1 := (others=>'1');    
+        end if;
+
+
+
+        if cen='0' and fsm_state.state/=s0 then
+            cntr := (others=>'0');
+            fsm_state.state:=s0;
+        else
+            case fsm_state.state is
+                when s0=>
+                    if readRqt(0)='1' then	
+                        regAddr := unsigned(trackAddrStart);
+                        fsm_state.mode := check;
+                        fsmByteRqt <='1';
+                        fsm_state.state := s1;                    
+                        trackOK<='0';
+                    elsif readRqt(1)='1' then
+                        regAddr := unsigned(trackAddrStart) + 8; -- Skip track mark and length data 
+                        regTempo  := std_logic_vector(to_unsigned(500000,24)); -- Following the midi standard
+                        readVarLengthRqt <='1';
+                        fsm_state.state := s3;                    
+                        fsm_state.mode := play;
                     end if;
-                end if;
-
-			-- Save nº bytes of track
-			when s2 =>
-                if cntr < 4 then 
+            
+                -- Check TRACK_CHUNK_MARK
+                when s1 =>
+                    if cntr < 4 then 
+                        if byteAck='1' then
+                            
+                            if cntr < 3 then
+                              fsmByteRqt <='1';
+                            end if;
+                            
+                            regAux := regAux(23 downto 0) & nextByte;
+                            regAddr := regAddr+1;
+                            cntr := cntr+1;
+                        end if;
+                    else
+                        cntr :=(others=>'0');
+                        if regAux=TRACK_CHUNK_MARK then
+                            if fsm_state.mode=play then
+                                regAddr := regAddr + 4; -- Avoid track length information 
+                                readVarLengthRqt <='1';
+                                fsm_state.state := s3;
+                            else
+                                fsmByteRqt <='1';
+                                fsm_state.state := s2;
+                            end if;
+                        
+                        else
+                            finishRead <='1';
+                            fsm_state.state := s0;
+                        end if;
+                    end if;
+    
+                -- Save nº bytes of track
+                when s2 =>
+                    if cntr < 4 then 
+                        if byteAck='1' then
+                            
+                            if cntr < 3 then
+                              fsmByteRqt <='1';
+                            end if;
+                            
+                            regAux := regAux(23 downto 0) & nextByte;
+                            regAddr := regAddr+1;
+                            cntr := cntr+1;
+                        end if;
+                    else
+                        cntr :=(others=>'0');
+                        readVarLengthRqt <='1';
+                        fsm_state.state := s3;
+                    end if;
+                    
+                -----------------------------------------
+                -- MAIN LOOP STARTS IN THIS STATE (s3) --
+                -----------------------------------------
+                -- Event Parser Starts in this state, first read delta time	
+                -- Get the time to wait before processing the midi command                
+                when s3 =>
+                    if cntr=0 then
+                        if varLengthRdy='1' then 
+                            cntr :=cntr+1;
+                        end if;
+                    -- Wait two cycles to calculate wait time in ms
+                    elsif cntr<2 then
+                        cntr :=cntr+1;
+                    else
+                        -- This condition to avoid infinite loops
+                        if fsm_state.mode=play or (fsm_state.mode=check and (readedBytes<=unsigned(regAux))) then                                    
+                            regWait := unsigned(addAux2(56 downto 20));
+                            regAddr := unsigned(varLengthByteAddr) + 1; -- Update the value of the current addr                    
+                            cntr :=(others=>'0');
+                            if fsm_state.mode = check then
+                                fsmByteRqt <='1';
+                                fsm_state.state := s5;
+                            else
+                                fsm_state.state := s4;
+                            end if;
+                        else
+                            finishRead <='1';
+                            fsm_state.state := s0;
+                        end if;
+            
+                    end if;--if cntr=0
+                    
+                -- Wait delta time value in ms before execute command
+                when s4 =>
+                    if regWait=0 then
+                        fsmByteRqt <='1';
+                        fsm_state.state := s5;
+                    elsif TCmili='1' then
+                        regWait := regWait-1;
+                    end if;
+                
+                -- Read one byte and decide if is a status byte or not
+                -- If is a status byte, running status will change
+                -- If not, runningStatus would not change, 
+                -- one more read order of the same byte will be done in the nexts states
+                when s5 =>
                     if byteAck='1' then
-						
-						if cntr < 3 then
-                          fsmByteRqt <='1';
+                        if nextByte(7)='1' then 
+                            regAddr := regAddr+1;
+                            runningStatus := nextByte;						
+                        end if;
+                        fsm_state.state := s6;
+                    end if;
+                
+                -- Decision state
+                when s6 =>
+                    if runningStatus=META_EVENT_MARK then
+                        fsmByteRqt <='1';
+                        fsm_state.state := resolveMetaEvent;
+                    elsif runningStatus=SYSEX_EVENT_0 or runningStatus=SYSEX_EVENT_1 then
+                        readVarLengthRqt <='1';
+                        fsm_state.state := skipVarLengthBytes;
+                    else
+                        -----------------
+                        -- Midi events --
+                        -----------------
+                        if runningStatus=MTRK_EVENT_NOTE_OFF or runningStatus=MTRK_EVENT_NOTE_ON  then
+                            fsmByteRqt <='1';
+                            fsm_state.state := readEventData;
+                        -- The rest of midi events follow this pattern, skip those data bytes
+                        elsif runningStatus=MTRK_EVENT_CKP or runningStatus=MTRK_EVENT_PC then
+                            regAddr := regAddr+1;
+                            readVarLengthRqt <='1';
+                            fsm_state.state := s3;
+                        else
+                            regAddr := regAddr+2;
+                            readVarLengthRqt <='1';
+                            fsm_state.state := s3;
+                        end if;
+                    end if;
+    
+                when resolveMetaEvent =>
+                    if byteAck='1' then
+                        if nextByte=META_EVENT_END_OF_TRACK then
+                            finishRead <='1';
+                            -- Check if the length of the track is OK, only in check mode
+                            if fsm_state.mode=check and (readedBytes=unsigned(regAux)) then
+                                trackOK <='1';
+                            end if;
+                            fsm_state.state := s0; -- Finish of read track chunk
+                        elsif nextByte=META_EVENT_SET_TEMPO then
+                            fsmByteRqt <='1';
+                            if fsm_state.mode=check then
+                                regAddr := regAddr+1;
+                            else
+                                regAddr := regAddr+2;
+                            end if;
+                            fsm_state.state := manageSetTempoCmd;
+                        else
+                            readVarLengthRqt <='1';
+                            regAddr := regAddr+1;
+                            fsm_state.state := skipVarLengthBytes;
+                        end if;
+                    end if;
+              
+                when skipVarLengthBytes =>
+                    if varLengthRdy='1' then
+                        -- Nº of bytes starting by the las address readed by VarLength component.
+                        regAddr := unsigned(varLengthByteAddr) + unsigned(resVarLength(26 downto 0)) + 1;  
+                        readVarLengthRqt <='1';
+                        fsm_state.state := s3;
+                    end if;
+    
+    
+                when readEventData =>
+                    if cntr < 2 then 
+                        if byteAck='1' then
+                            
+                            if cntr < 1 then
+                                fsmByteRqt <='1';
+                            end if;
+    
+                            dataBytes := dataBytes(7 downto 0) & nextByte;
+                            regAddr := regAddr+1;
+                            cntr := cntr+1;
+                            
+                        end if;
+                    else
+                        -- Only send command when in play mode
+                        if fsm_state.mode=play and unsigned(dataBytes(15 downto 8)) >=21 and unsigned(dataBytes(15 downto 8)) <= 108 then
+                            if runningStatus=MTRK_EVENT_NOTE_OFF or (runningStatus=MTRK_EVENT_NOTE_ON and dataBytes(7 downto 0)=X"00") then
+                                regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='0'; -- Note off
+                            else
+                                regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='1'; -- Note on
+                            end if;
                         end if;
                         
-						regAux := regAux(23 downto 0) & nextByte;
-						regAddr := regAddr+1;
-						cntr := cntr+1;
-					end if;
-                else
-                    cntr :=(others=>'0');
-					readVarLengthRqt <='1';
-					fsm_state.state := s3;
-                end if;
-				
-			-----------------------------------------
-			-- MAIN LOOP STARTS IN THIS STATE (s3) --
-			-----------------------------------------
-			-- Event Parser Starts in this state, first read delta time	
-			-- Get the time to wait before processing the midi command                
-			when s3 =>
-                if varLengthRdy='1' then 
-					regWait := unsigned(aux2(63 downto 16));
-					regAddr := unsigned(varLengthByteAddr) + 1; -- Update the value of the current addr					
-					if fsm_state.mode = check then
-						fsmByteRqt <='1';
-						fsm_state.state := s5;
-					else
-						fsm_state.state := s4;
-					end if;
-                end if;
+                        cntr :=(others=>'0');
+                        readVarLengthRqt <='1';
+                        fsm_state.state := s3;
+                    end if;
+              
+                when manageSetTempoCmd =>
+                        if fsm_state.mode=check then
+                            if byteAck='1' then
+                                -- Check the correct format of Set tempo command
+                                if nextByte/=SET_TEMPO_CMD_LENGTH then
+                                   finishRead <='1';
+                                   fsm_state.state := s0; 
+                                else
+                                    readVarLengthRqt <='1';
+                                    regAddr := regAddr+4; -- 3 bytes for tempo value and 1 byte for length
+                                    fsm_state.state := s3;
+                                end if;  
+                            end if;
+                        else
+                            if cntr < 3 then 
+                                if byteAck='1' then
+                                    if cntr < 2 then
+                                        fsmByteRqt <='1';
+                                    end if;
             
-			-- Wait delta time value in ms before execute command
-			when s4 =>
-				if regWait=0 then
-					fsmByteRqt <='1';
-					fsm_state.state := s5;
-				elsif TCmili='1' then
-					regWait := regWait-1;
-				end if;
-			
-			-- Read one byte and decide if is a status byte or not
-			-- If is a status byte, running status will change
-			-- If not, runningStatus would not change, 
-			-- one more read order of the same byte will be done in the nexts states
-			when s5 =>
-				if byteAck='1' then
-					if nextByte(7)='1' then 
-						regAddr := regAddr+1;
-						runningStatus := nextByte;						
-					end if;
-					fsm_state.state := s6;
-				end if;
-			
-			-- Decision state
-			when s6 =>
-				if runningStatus=META_EVENT_MARK then
-					fsmByteRqt <='1';
-					fsm_state.state := resolveMetaEvent;
-				elsif runningStatus=SYSEX_EVENT_0 or runningStatus=SYSEX_EVENT_1 then
-					readVarLengthRqt <='1';
-					fsm_state.state := skipVarLengthBytes;
-				else
-					-----------------
-					-- Midi events --
-					-----------------
-					if runningStatus=MTRK_EVENT_NOTE_OFF or runningStatus=MTRK_EVENT_NOTE_ON  then
-						fsmByteRqt <='1';
-						fsm_state.state := readEventData;
-					-- The rest of midi events follow this pattern, skip those data bytes
-					elsif runningStatus=MTRK_EVENT_CKP or runningStatus=MTRK_EVENT_PC then
-						regAddr := regAddr+1;
-                        readVarLengthRqt <='1';
-						fsm_state.state := s3;
-					else
-						regAddr := regAddr+2;
-                        readVarLengthRqt <='1';
-						fsm_state.state := s3;
-					end if;
-				end if;
-
-			when resolveMetaEvent =>
-				if byteAck='1' then
-					if nextByte/=META_EVENT_END_OF_TRACK then
-						readVarLengthRqt <='1';
-						regAddr := regAddr+1;
-						fsm_state.state := skipVarLengthBytes;
-					else
-						finishRead <='1';
-						-- Check if the length of the track is OK, only in check mode
-						if fsm_state.mode=check and (readedBytes=unsigned(regAux)) then
-							trackOK <='1';
-						end if;
-						fsm_state.state := s0; -- Finish of read track chunk
-					end if;
-				end if;
-		  
-			when skipVarLengthBytes =>
-				if varLengthRdy='1' then
-					-- Nº of bytes starting by the las address readed by VarLength component.
-					regAddr := unsigned(varLengthByteAddr) + unsigned(resVarLength(26 downto 0)) + 1;  
-					readVarLengthRqt <='1';
-					fsm_state.state := s3;
-				end if;
-
-
-			when readEventData =>
-				if cntr < 2 then 
-					if byteAck='1' then
-						
-						if cntr < 1 then
-							fsmByteRqt <='1';
-						end if;
-
-						dataBytes := dataBytes(7 downto 0) & nextByte;
-                        regAddr := regAddr+1;
-						cntr := cntr+1;
-						
-					end if;
-				else
-					-- Only send command when in play mode
-					if fsm_state.mode=play and unsigned(dataBytes(15 downto 8)) >=21 and unsigned(dataBytes(15 downto 8)) <= 108 then
-						if runningStatus=MTRK_EVENT_NOTE_OFF or (runningStatus=MTRK_EVENT_NOTE_ON and dataBytes(7 downto 0)=X"00") then
-							regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='0'; -- Note off
-						else
-							regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='1'; -- Note on
-						end if;
-					end if;
-					
-					cntr :=(others=>'0');
-                    readVarLengthRqt <='1';
-					fsm_state.state := s3;
-				end if;
-		  
-		  end case;
-		
-    end if;
+                                    regTempo := regTempo(15 downto 0) & nextByte;
+                                    regAddr := regAddr+1;
+                                    cntr := cntr+1;
+                                    
+                                end if;
+                            else                                
+                                cntr :=(others=>'0');
+                                readVarLengthRqt <='1';
+                                fsm_state.state := s3;
+                            end if;
+                    end if;-- fsm_state.mode=check
+              
+              end case;
+              
+        end if; --cen='0' 
+    end if;-- rising_edge(clk)
 end process;
   
 end Behavioral;

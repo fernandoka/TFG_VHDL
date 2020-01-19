@@ -725,7 +725,6 @@ end generate;
 				to_unsigned(SAMPLES_PER_WAVETABLE,26) when others;  -- All the notes stored in memory, A0, C1,D#1,F#1,A#1, C2,D#2,F#2,A#2, .... C8
 			
 
-	(to_unsigned( integer(277.183/261.626),32)& X"00000000") or toUnFix( 277.183/261.626 ,32,32) )	
 	
 stepVal_In	
 	stepVal_ROM :
@@ -791,7 +790,9 @@ stepVal_In
 				(to_unsigned( integer(3322.44/2959.96),32)& X"00000000") or toUnFix( 3322.44/2959.96 ,32,32) )		when X"68", -- G#7
 				(to_unsigned( integer(3729.31/3520.00),32)& X"00000000") or toUnFix( 3729.31/3520.00 ,32,32) )		when X"6A", -- A#7
 				(to_unsigned( integer(3951.07/3520.00),32)& X"00000000") or toUnFix( 3951.07/3520.00 ,32,32) )		when X"6B", -- B7			
-			
+				
+				unsigned(X"0000000100000000") when others;  -- All the notes stored in memory, A0, C1,D#1,F#1,A#1, C2,D#2,F#2,A#2, .... C8
+
 	
 ----------------------------------------------------------------------------------
 -- PIPELINED SUM

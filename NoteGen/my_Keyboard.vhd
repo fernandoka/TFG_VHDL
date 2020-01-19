@@ -297,8 +297,280 @@ architecture Behavioral of NotesGenerator is
         84=>10, 85=>10, 86=>10,     ---- A7, A#7, B7
 
         87=>10  	 			  ---- C8
-    );	
+    );
+
+	------------------------------------------
+	-- Addrs intervals of the sustain loop  --
+	------------------------------------------
+	
+	constant    SUSTAIN_START_OFFSET_ADDR :   offset_t :=(
+		0=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,27.5,SUSTAIN_OFFSET(0)+RELEASE_OFFSET(0)), 							-- A0 
+		1=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),FS,29.1353,SUSTAIN_OFFSET(1)+RELEASE_OFFSET(1)),        -- A#0
+		2=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),FS,30.8677,SUSTAIN_OFFSET(2)+RELEASE_OFFSET(2)),        -- B0
+		
+		-- Octave 1	                                                                                                                    
+		3=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,32.7032,SUSTAIN_OFFSET(3)+RELEASE_OFFSET(3)),					    -- C1 
+		4=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(2),FS,34.6479,SUSTAIN_OFFSET(4)+RELEASE_OFFSET(4)), 	    -- C#1
+		5=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(3),FS,36.7081,SUSTAIN_OFFSET(5)+RELEASE_OFFSET(5)), 	    -- D1
+		
+		6=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,38.8909,SUSTAIN_OFFSET(6)+RELEASE_OFFSET(6)),					    -- D#1
+		7=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(4),FS,41.2035,SUSTAIN_OFFSET(7)+RELEASE_OFFSET(7)), 	    -- E1
+		8=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(5),FS,43.6536,SUSTAIN_OFFSET(8)+RELEASE_OFFSET(8)), 	    -- F1
+		
+		9=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,46.2493,SUSTAIN_OFFSET(9)+RELEASE_OFFSET(9)),					    -- F#1
+		10=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(6),FS,48.9995,SUSTAIN_OFFSET(10)+RELEASE_OFFSET(10)), 	-- G1
+		11=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(7),FS,51.9130,SUSTAIN_OFFSET(11)+RELEASE_OFFSET(11)), 	-- G#
+		
+		12=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,55.0000,SUSTAIN_OFFSET(12)+RELEASE_OFFSET(12)),					-- A1 
+		13=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(8),FS,58.2705,SUSTAIN_OFFSET(13)+RELEASE_OFFSET(13)),	    -- A#1
+		14=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(9),FS,61.7354,SUSTAIN_OFFSET(14)+RELEASE_OFFSET(14)),	    -- B1
+		
+		
+		-- Octave 2                                                                                                                       
+		15 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,65.4064,SUSTAIN_OFFSET(15)+RELEASE_OFFSET(15)),					-- C2
+		16 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(10),FS,69.2957,SUSTAIN_OFFSET(16)+RELEASE_OFFSET(16)),	-- C#2
+		17 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(11),FS,73.4162,SUSTAIN_OFFSET(17)+RELEASE_OFFSET(17)), 	-- D2
+		
+		18 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,77.7817,SUSTAIN_OFFSET(18)+RELEASE_OFFSET(18)),					-- D#2
+		19 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(12),FS,82.4069,SUSTAIN_OFFSET(19)+RELEASE_OFFSET(19)), 	-- E2
+		20 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(13),FS,87.3071,SUSTAIN_OFFSET(20)+RELEASE_OFFSET(20)), 	-- F2
+		
+		21 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,92.4986,SUSTAIN_OFFSET(21)+RELEASE_OFFSET(21),					-- F#2	
+		22 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(14),FS,97.9989,SUSTAIN_OFFSET(22)+RELEASE_OFFSET(22)), 	-- G2
+		23 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(15),FS,103.826,SUSTAIN_OFFSET(23)+RELEASE_OFFSET(23)), 	-- G#2
+		
+		24 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,110.000,SUSTAIN_OFFSET(24)+RELEASE_OFFSET(24)),					-- A2
+		25 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(16),FS,116.541,SUSTAIN_OFFSET(25)+RELEASE_OFFSET(25)), 	-- A#2
+		26 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(17),FS,123.471,SUSTAIN_OFFSET(26)+RELEASE_OFFSET(26)), 	-- B2
+		
+	-- Octave 3                                                                                                                       
+		27 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,130.813,SUSTAIN_OFFSET(27)+RELEASE_OFFSET(27)),					 -- C3 
+		28 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(18),FS,138.591,SUSTAIN_OFFSET(28)+RELEASE_OFFSET(28)), 	 -- C#3
+		29 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(19),FS,146.832,SUSTAIN_OFFSET(29)+RELEASE_OFFSET(29)), 	 -- D3
+		
+		30 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,155.563,SUSTAIN_OFFSET(30)+RELEASE_OFFSET(30)),					 -- D#3
+		31 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(20),FS,164.814,SUSTAIN_OFFSET(31)+RELEASE_OFFSET(31)), 	 -- E3
+		32 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(21),FS,174.614,SUSTAIN_OFFSET(32)+RELEASE_OFFSET(32)), 	 -- F3
+
+		33 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,184.997,SUSTAIN_OFFSET(33)+RELEASE_OFFSET(33)),					 -- F#3
+		34 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(22),FS,195.998,SUSTAIN_OFFSET(34)+RELEASE_OFFSET(34)), 	 -- G3
+		35 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(23),FS,207.652,SUSTAIN_OFFSET(35)+RELEASE_OFFSET(35)), 	 -- G#3
+
+		36 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,220.000,SUSTAIN_OFFSET(36)+RELEASE_OFFSET(36)),					 -- A3
+		37 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(24),FS,233.082,SUSTAIN_OFFSET(37)+RELEASE_OFFSET(37)), 	 -- A#3
+		38 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(25),FS,246.942,SUSTAIN_OFFSET(38)+RELEASE_OFFSET(38)), 	 -- B3
+		
+
+		-- Octave 4                                                                                                                       
+		39 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,261.626,SUSTAIN_OFFSET(39)+RELEASE_OFFSET(39)),					 -- C4
+		40 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(26),FS,277.183,SUSTAIN_OFFSET(40)+RELEASE_OFFSET(40)), 	 -- C#4
+		41 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(27),FS,293.665,SUSTAIN_OFFSET(41)+RELEASE_OFFSET(41)), 	 -- D4
+		
+		42 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,311.127,SUSTAIN_OFFSET(42)+RELEASE_OFFSET(42)),					 -- D#4
+		43 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(28),FS,329.628,SUSTAIN_OFFSET(43)+RELEASE_OFFSET(43)), 	 -- E4
+		44 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(29),FS,349.228,SUSTAIN_OFFSET(44)+RELEASE_OFFSET(44)), 	 -- F4
+		
+		45 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,369.994,SUSTAIN_OFFSET(45)+RELEASE_OFFSET(45),						 -- F#4
+		46 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(30),FS,391.995,SUSTAIN_OFFSET(46)+RELEASE_OFFSET(46)), 	 -- G4
+		47 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(31),FS,415.305,SUSTAIN_OFFSET(47)+RELEASE_OFFSET(47)), 	 -- G#4
+		
+		48 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,440.000,SUSTAIN_OFFSET(48)+RELEASE_OFFSET(48)),					 -- A4
+		49 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(32),FS,466.164,SUSTAIN_OFFSET(49)+RELEASE_OFFSET(49)), 	 -- A#4
+		50 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(33),FS,493.883,SUSTAIN_OFFSET(50)+RELEASE_OFFSET(50)), 	 -- B4
+		
+
+		-- Octave 5                                                                                                            
+		51 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,523.251,SUSTAIN_OFFSET(51)+RELEASE_OFFSET(51)),					 -- C5
+		52 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(34),FS,554.365,SUSTAIN_OFFSET(52)+RELEASE_OFFSET(52)), 	 -- C#5
+		53 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(35),FS,587.330,SUSTAIN_OFFSET(53)+RELEASE_OFFSET(53)), 	 -- D5
+		
+		54 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,622.254,SUSTAIN_OFFSET(54)+RELEASE_OFFSET(54)),					 -- D#5
+		55 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(36),FS,659.255,SUSTAIN_OFFSET(55)+RELEASE_OFFSET(55)), 	 -- E5
+		56 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(37),FS,698.456,SUSTAIN_OFFSET(56)+RELEASE_OFFSET(56)), 	 -- F5
+
+		57 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,739.989,SUSTAIN_OFFSET(57)+RELEASE_OFFSET(57),						 -- F#5
+		58 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(38),FS,783.991,SUSTAIN_OFFSET(58)+RELEASE_OFFSET(58)), 	 -- G5
+		59 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(39),FS,830.609,SUSTAIN_OFFSET(59)+RELEASE_OFFSET(59)), 	 -- G#5
+		
+		60 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,880.000,SUSTAIN_OFFSET(60)+RELEASE_OFFSET(60)),					 -- A5
+		61 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(40),FS,932.328,SUSTAIN_OFFSET(61)+RELEASE_OFFSET(61)), 	 -- A#5
+		62 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(41),FS,987.767,SUSTAIN_OFFSET(62)+RELEASE_OFFSET(62)), 	 -- B5
+
+
+		-- Octave 6                                                                                                            
+		63 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1046.50,SUSTAIN_OFFSET(63)+RELEASE_OFFSET(63)),					 -- C6
+		64 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(42),FS,1108.73,SUSTAIN_OFFSET(64)+RELEASE_OFFSET(64)), 	 -- C#6
+		65 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(43),FS,1174.66,SUSTAIN_OFFSET(65)+RELEASE_OFFSET(65)), 	 -- D6
+		
+		66 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1244.51,SUSTAIN_OFFSET(66)+RELEASE_OFFSET(66)),					 -- D#6
+		67 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(44),FS,1318.51,SUSTAIN_OFFSET(67)+RELEASE_OFFSET(67)), 	 -- E6
+		68 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(45),FS,1396.91,SUSTAIN_OFFSET(68)+RELEASE_OFFSET(68)), 	 -- F6
+		
+		69 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1479.98,SUSTAIN_OFFSET(69)+RELEASE_OFFSET(69)),					 -- F#6
+		70 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(46),FS,1567.98,SUSTAIN_OFFSET(70)+RELEASE_OFFSET(70)), 	 -- G6
+		71 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(47),FS,1661.22,SUSTAIN_OFFSET(71)+RELEASE_OFFSET(71)), 	 -- G#6
+		
+		72 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1760.00,SUSTAIN_OFFSET(72)+RELEASE_OFFSET(72)),					 -- A6
+		73 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(48),FS,1864.66,SUSTAIN_OFFSET(73)+RELEASE_OFFSET(73)), 	 -- A#6
+		74 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(49),FS,1975.53,SUSTAIN_OFFSET(74)+RELEASE_OFFSET(74)), 	 -- B6
+		
+		
+		-- Octave 7
+		75 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2093.00,SUSTAIN_OFFSET(75)+RELEASE_OFFSET(75)),					 -- C7
+		76 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(50),FS,2217.46,SUSTAIN_OFFSET(76)+RELEASE_OFFSET(76)), 	 -- C#7
+		77 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(51),FS,2349.32,SUSTAIN_OFFSET(77)+RELEASE_OFFSET(77)), 	 -- D7
+		
+		78 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2489.02,SUSTAIN_OFFSET(78)+RELEASE_OFFSET(78)),					 -- D#7
+		79 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(52),FS,2637.02,SUSTAIN_OFFSET(79)+RELEASE_OFFSET(79)), 	 -- E7
+		80 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(53),FS,2793.83,SUSTAIN_OFFSET(80)+RELEASE_OFFSET(80)), 	 -- F7
+		
+		81 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2959.96,SUSTAIN_OFFSET(81)+RELEASE_OFFSET(81),						 -- F#7
+		82 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(54),FS,3135.96,SUSTAIN_OFFSET(82)+RELEASE_OFFSET(82)), 	 -- G7
+		83 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(55),FS,3322.44,SUSTAIN_OFFSET(83)+RELEASE_OFFSET(83)), 	 -- G#7
+		
+		84 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,3520.00,SUSTAIN_OFFSET(84)+RELEASE_OFFSET(84)),					 -- A7
+		85 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(56),FS,3729.31,SUSTAIN_OFFSET(85)+RELEASE_OFFSET(85)), 	 -- A#7
+		86 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(57),FS,3951.07,SUSTAIN_OFFSET(86)+RELEASE_OFFSET(86)), 	 -- B7
+		
+		87 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,4186.01,SUSTAIN_OFFSET(87)+RELEASE_OFFSET(87)), 					-- C8
+	
+	);
     
+	
+	constant    SUSTAIN_END_OFFSET_ADDR :   offset_t :=(
+		0=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,27.5,RELEASE_OFFSET(0)), 							-- A0 
+		1=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),FS,29.1353,RELEASE_OFFSET(1)),        -- A#0
+		2=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),FS,30.8677,RELEASE_OFFSET(2)),        -- B0
+		
+		-- Octave 1	                                                                                                                    
+		3=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,32.7032,RELEASE_OFFSET(3)),					    -- C1 
+		4=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(2),FS,34.6479,RELEASE_OFFSET(4)), 	    -- C#1
+		5=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(3),FS,36.7081,RELEASE_OFFSET(5)), 	    -- D1
+		
+		6=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,38.8909,RELEASE_OFFSET(6)),					    -- D#1
+		7=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(4),FS,41.2035,RELEASE_OFFSET(7)), 	    -- E1
+		8=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(5),FS,43.6536,RELEASE_OFFSET(8)), 	    -- F1
+		
+		9=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,46.2493,RELEASE_OFFSET(9)),					    -- F#1
+		10=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(6),FS,48.9995,RELEASE_OFFSET(10)), 	-- G1
+		11=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(7),FS,51.9130,RELEASE_OFFSET(11)), 	-- G#
+		
+		12=> getSustainAddr(SAMPLES_PER_WAVETABLE,FS,55.0000,RELEASE_OFFSET(12)),					-- A1 
+		13=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(8),FS,58.2705,RELEASE_OFFSET(13)),	    -- A#1
+		14=> getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(9),FS,61.7354,RELEASE_OFFSET(14)),	    -- B1
+		
+		
+		-- Octave 2                                                                                                                       
+		15 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,65.4064,RELEASE_OFFSET(15)),					-- C2
+		16 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(10),FS,69.2957,RELEASE_OFFSET(16)),	-- C#2
+		17 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(11),FS,73.4162,RELEASE_OFFSET(17)), 	-- D2
+		
+		18 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,77.7817,RELEASE_OFFSET(18)),					-- D#2
+		19 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(12),FS,82.4069,RELEASE_OFFSET(19)), 	-- E2
+		20 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(13),FS,87.3071,RELEASE_OFFSET(20)), 	-- F2
+		
+		21 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,92.4986,RELEASE_OFFSET(21),					-- F#2	
+		22 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(14),FS,97.9989,RELEASE_OFFSET(22)), 	-- G2
+		23 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(15),FS,103.826,RELEASE_OFFSET(23)), 	-- G#2
+		
+		24 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,110.000,RELEASE_OFFSET(24)),					-- A2
+		25 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(16),FS,116.541,RELEASE_OFFSET(25)), 	-- A#2
+		26 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(17),FS,123.471,RELEASE_OFFSET(26)), 	-- B2
+		
+	-- Octave 3                                                                                                                       
+		27 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,130.813,RELEASE_OFFSET(27)),					 -- C3 
+		28 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(18),FS,138.591,RELEASE_OFFSET(28)), 	 -- C#3
+		29 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(19),FS,146.832,RELEASE_OFFSET(29)), 	 -- D3
+		
+		30 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,155.563,RELEASE_OFFSET(30)),					 -- D#3
+		31 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(20),FS,164.814,RELEASE_OFFSET(31)), 	 -- E3
+		32 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(21),FS,174.614,RELEASE_OFFSET(32)), 	 -- F3
+
+		33 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,184.997,RELEASE_OFFSET(33)),					 -- F#3
+		34 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(22),FS,195.998,RELEASE_OFFSET(34)), 	 -- G3
+		35 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(23),FS,207.652,RELEASE_OFFSET(35)), 	 -- G#3
+
+		36 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,220.000,RELEASE_OFFSET(36)),					 -- A3
+		37 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(24),FS,233.082,RELEASE_OFFSET(37)), 	 -- A#3
+		38 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(25),FS,246.942,RELEASE_OFFSET(38)), 	 -- B3
+		
+
+		-- Octave 4                                                                                                                       
+		39 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,261.626,RELEASE_OFFSET(39)),					 -- C4
+		40 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(26),FS,277.183,RELEASE_OFFSET(40)), 	 -- C#4
+		41 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(27),FS,293.665,RELEASE_OFFSET(41)), 	 -- D4
+		
+		42 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,311.127,RELEASE_OFFSET(42)),					 -- D#4
+		43 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(28),FS,329.628,RELEASE_OFFSET(43)), 	 -- E4
+		44 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(29),FS,349.228,RELEASE_OFFSET(44)), 	 -- F4
+		
+		45 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,369.994,RELEASE_OFFSET(45),						 -- F#4
+		46 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(30),FS,391.995,RELEASE_OFFSET(46)), 	 -- G4
+		47 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(31),FS,415.305,RELEASE_OFFSET(47)), 	 -- G#4
+		
+		48 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,440.000,RELEASE_OFFSET(48)),					 -- A4
+		49 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(32),FS,466.164,RELEASE_OFFSET(49)), 	 -- A#4
+		50 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(33),FS,493.883,RELEASE_OFFSET(50)), 	 -- B4
+		
+
+		-- Octave 5                                                                                                            
+		51 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,523.251,RELEASE_OFFSET(51)),					 -- C5
+		52 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(34),FS,554.365,RELEASE_OFFSET(52)), 	 -- C#5
+		53 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(35),FS,587.330,RELEASE_OFFSET(53)), 	 -- D5
+		
+		54 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,622.254,RELEASE_OFFSET(54)),					 -- D#5
+		55 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(36),FS,659.255,RELEASE_OFFSET(55)), 	 -- E5
+		56 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(37),FS,698.456,RELEASE_OFFSET(56)), 	 -- F5
+
+		57 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,739.989,RELEASE_OFFSET(57),						 -- F#5
+		58 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(38),FS,783.991,RELEASE_OFFSET(58)), 	 -- G5
+		59 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(39),FS,830.609,RELEASE_OFFSET(59)), 	 -- G#5
+		
+		60 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,880.000,RELEASE_OFFSET(60)),					 -- A5
+		61 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(40),FS,932.328,RELEASE_OFFSET(61)), 	 -- A#5
+		62 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(41),FS,987.767,RELEASE_OFFSET(62)), 	 -- B5
+
+
+		-- Octave 6                                                                                                            
+		63 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1046.50,RELEASE_OFFSET(63)),					 -- C6
+		64 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(42),FS,1108.73,RELEASE_OFFSET(64)), 	 -- C#6
+		65 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(43),FS,1174.66,RELEASE_OFFSET(65)), 	 -- D6
+		
+		66 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1244.51,RELEASE_OFFSET(66)),					 -- D#6
+		67 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(44),FS,1318.51,RELEASE_OFFSET(67)), 	 -- E6
+		68 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(45),FS,1396.91,RELEASE_OFFSET(68)), 	 -- F6
+		
+		69 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1479.98,RELEASE_OFFSET(69)),					 -- F#6
+		70 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(46),FS,1567.98,RELEASE_OFFSET(70)), 	 -- G6
+		71 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(47),FS,1661.22,RELEASE_OFFSET(71)), 	 -- G#6
+		
+		72 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1760.00,RELEASE_OFFSET(72)),					 -- A6
+		73 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(48),FS,1864.66,RELEASE_OFFSET(73)), 	 -- A#6
+		74 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(49),FS,1975.53,RELEASE_OFFSET(74)), 	 -- B6
+		
+		
+		-- Octave 7
+		75 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2093.00,RELEASE_OFFSET(75)),					 -- C7
+		76 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(50),FS,2217.46,RELEASE_OFFSET(76)), 	 -- C#7
+		77 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(51),FS,2349.32,RELEASE_OFFSET(77)), 	 -- D7
+		
+		78 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2489.02,RELEASE_OFFSET(78)),					 -- D#7
+		79 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(52),FS,2637.02,RELEASE_OFFSET(79)), 	 -- E7
+		80 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(53),FS,2793.83,RELEASE_OFFSET(80)), 	 -- F7
+		
+		81 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2959.96,RELEASE_OFFSET(81),						 -- F#7
+		82 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(54),FS,3135.96,RELEASE_OFFSET(82)), 	 -- G7
+		83 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(55),FS,3322.44,RELEASE_OFFSET(83)), 	 -- G#7
+		
+		84 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,3520.00,RELEASE_OFFSET(84)),					 -- A7
+		85 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(56),FS,3729.31,RELEASE_OFFSET(85)), 	 -- A#7
+		86 => getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(57),FS,3951.07,RELEASE_OFFSET(86)), 	 -- B7
+		
+		87 => getSustainAddr(SAMPLES_PER_WAVETABLE,FS,4186.01,RELEASE_OFFSET(87)), 					-- C8
+	
+	);	
+	
+	
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
@@ -325,13 +597,16 @@ for i in 0 to (NUM_NOTES-1) generate
     notesEnable(i) <= notes_on(i) and cen;
 end generate;
 
-	stepVal_In					:	in	std_logic_vector(63 downto 0);  -- If is a simple note, stepVal_In=1.0 
 	sustainStepStart_In			:	in	std_logic_vector(63 downto 0);	-- If is a simple note, sustainStepStart_In=1.0
 	sustainStepEnd_In			:	in	std_logic_vector(63 downto 0);	-- If is a simple note, sustainStepEnd_In=1.0
 	
+-------------------------------------
+			-- ROMs--
+-- Hexadecimal values of the notes --
+-- Decode note value --
+-------------------------------------
 
--- Hexadecimal values of the notes
--- Decode note value	
+-- One entry per three notes	
 	startAddr_ROM :
   with cmdKeyboard(7 downto 0) select
 			startAddr_In <=
@@ -378,293 +653,294 @@ end generate;
 
 
 
-
+-- One entry per note
 	sustainStartOffsetAddr_ROM :
   with cmdKeyboard(7 downto 0) select
 			sustainStartOffsetAddr_In <=
 			
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,27.5,SUSTAIN_OFFSET(0)+RELEASE_OFFSET(0)),26)						when X"15", -- A0 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),FS,29.1353,SUSTAIN_OFFSET(1)+RELEASE_OFFSET(1)),26) 	when X"16", -- A#0
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),FS,30.8677,SUSTAIN_OFFSET(2)+RELEASE_OFFSET(2)),26) 	when X"17", -- B0
-																																				  
-				-- Octave 1	                                                                                                                    
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,32.7032,SUSTAIN_OFFSET(3)+RELEASE_OFFSET(3)),26)					when X"18", -- C1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(2),FS,34.6479,SUSTAIN_OFFSET(4)+RELEASE_OFFSET(4)),26) 	when X"19", -- C#1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(3),FS,36.7081,SUSTAIN_OFFSET(5)+RELEASE_OFFSET(5)),26) 	when X"1A", -- D1
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,38.8909,SUSTAIN_OFFSET(6)+RELEASE_OFFSET(6)),26)					when X"1B", -- D#1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(4),FS,41.2035,SUSTAIN_OFFSET(7)+RELEASE_OFFSET(7)),26) 	when X"1C", -- E1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(5),FS,43.6536,SUSTAIN_OFFSET(8)+RELEASE_OFFSET(8)),26) 	when X"1D", -- F1
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,46.2493,SUSTAIN_OFFSET(9)+RELEASE_OFFSET(9)),26)					when X"1E", -- F#1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(6),FS,48.9995,SUSTAIN_OFFSET(10)+RELEASE_OFFSET(10)),26) 	when X"1F", -- G1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(7),FS,51.9130,SUSTAIN_OFFSET(11)+RELEASE_OFFSET(11)),26) 	when X"20", -- G#1
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,55.0000,SUSTAIN_OFFSET(12)+RELEASE_OFFSET(12)),26)					when X"21", -- A1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(8),FS,58.2705,SUSTAIN_OFFSET(13)+RELEASE_OFFSET(13)),26) 	when X"22", -- A#1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(9),FS,61.7354,SUSTAIN_OFFSET(14)+RELEASE_OFFSET(14)),26) 	when X"23", -- B1
-																																				  
-																																				  
-				-- Octave 2                                                                                                                       
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,65.4064,SUSTAIN_OFFSET(15)+RELEASE_OFFSET(15)),26)					when X"24", -- C2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(10),FS,69.2957,SUSTAIN_OFFSET(16)+RELEASE_OFFSET(16)),26)	when X"25", -- C#2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(11),FS,73.4162,SUSTAIN_OFFSET(17)+RELEASE_OFFSET(17)),26) 	when X"26", -- D2
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,77.7817,SUSTAIN_OFFSET(18)+RELEASE_OFFSET(18)),26)					when X"27", -- D#2 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(12),FS,82.4069,SUSTAIN_OFFSET(19)+RELEASE_OFFSET(19)),26) 	when X"28", -- E2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(13),FS,87.3071,SUSTAIN_OFFSET(20)+RELEASE_OFFSET(20)),26) 	when X"29", -- F2
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,92.4986,SUSTAIN_OFFSET(21)+RELEASE_OFFSET(21),26)					when X"2A", -- F#2 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(14),FS,97.9989,SUSTAIN_OFFSET(22)+RELEASE_OFFSET(22)),26) 	when X"2B", -- G2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(15),FS,103.826,SUSTAIN_OFFSET(23)+RELEASE_OFFSET(23)),26) 	when X"2C", -- G#2
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,110.000,SUSTAIN_OFFSET(24)+RELEASE_OFFSET(24)),26)					when X"2D", -- A2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(16),FS,116.541,SUSTAIN_OFFSET(25)+RELEASE_OFFSET(25)),26) 	when X"2E", -- A#2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(17),FS,123.471,SUSTAIN_OFFSET(26)+RELEASE_OFFSET(26)),26) 	when X"2F", -- B2
-																																				  
-																																				  
-				-- Octave 3                                                                                                                       
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,130.813,SUSTAIN_OFFSET(27)+RELEASE_OFFSET(27)),26)					when X"30", -- C3 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(18),FS,138.591,SUSTAIN_OFFSET(28)+RELEASE_OFFSET(28)),26) 	when X"31", -- C#3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(19),FS,146.832,SUSTAIN_OFFSET(29)+RELEASE_OFFSET(29)),26) 	when X"32", -- D3
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,155.563,SUSTAIN_OFFSET(30)+RELEASE_OFFSET(30)),26)					when X"33", -- D#3 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(20),FS,164.814,SUSTAIN_OFFSET(31)+RELEASE_OFFSET(31)),26) 	when X"34", -- E3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(21),FS,174.614,SUSTAIN_OFFSET(32)+RELEASE_OFFSET(32)),26) 	when X"35", -- F3
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,184.997,SUSTAIN_OFFSET(33)+RELEASE_OFFSET(33)),26)					when X"36", -- F#3 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(22),FS,195.998,SUSTAIN_OFFSET(34)+RELEASE_OFFSET(34)),26) 	when X"37", -- G3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(23),FS,207.652,SUSTAIN_OFFSET(35)+RELEASE_OFFSET(35)),26) 	when X"38", -- G#3
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,220.000,SUSTAIN_OFFSET(36)+RELEASE_OFFSET(36)),26)					when X"39", -- A3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(24),FS,233.082,SUSTAIN_OFFSET(37)+RELEASE_OFFSET(37)),26) 	when X"3A", -- A#3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(25),FS,246.942,SUSTAIN_OFFSET(38)+RELEASE_OFFSET(38)),26) 	when X"3B", -- B3
-																																				  
-																																				  
-				-- Octave 4                                                                                                                       
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,261.626,SUSTAIN_OFFSET(39)+RELEASE_OFFSET(39)),26)					when X"3C", -- C4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(26),FS,277.183,SUSTAIN_OFFSET(40)+RELEASE_OFFSET(40)),26) 	when X"3D", -- C#4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(27),FS,293.665,SUSTAIN_OFFSET(41)+RELEASE_OFFSET(41)),26) 	when X"3E", -- D4
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,311.127,SUSTAIN_OFFSET(42)+RELEASE_OFFSET(42)),26)					when X"3F", -- D#4 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(28),FS,329.628,SUSTAIN_OFFSET(43)+RELEASE_OFFSET(43)),26) 	when X"40", -- E4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(29),FS,349.228,SUSTAIN_OFFSET(44)+RELEASE_OFFSET(44)),26) 	when X"41", -- F4
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,369.994,SUSTAIN_OFFSET(45)+RELEASE_OFFSET(45),26)					when X"42", -- F#4 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(30),FS,391.995,SUSTAIN_OFFSET(46)+RELEASE_OFFSET(46)),26) 	when X"43", -- G4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(31),FS,415.305,SUSTAIN_OFFSET(47)+RELEASE_OFFSET(47)),26) 	when X"44", -- G#4
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,440.000,SUSTAIN_OFFSET(48)+RELEASE_OFFSET(48)),26)					when X"45", -- A4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(32),FS,466.164,SUSTAIN_OFFSET(49)+RELEASE_OFFSET(49)),26) 	when X"46", -- A#4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(33),FS,493.883,SUSTAIN_OFFSET(50)+RELEASE_OFFSET(50)),26) 	when X"47", -- B4
-																																				  
-																																				  
-				-- Octave 5                                                                                                                       
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,523.251,SUSTAIN_OFFSET(51)+RELEASE_OFFSET(51)),26)					when X"48", -- C5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(34),FS,554.365,SUSTAIN_OFFSET(52)+RELEASE_OFFSET(52)),26) 	when X"49", -- C#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(35),FS,587.330,SUSTAIN_OFFSET(53)+RELEASE_OFFSET(53)),26) 	when X"4A", -- D5
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,622.254,SUSTAIN_OFFSET(54)+RELEASE_OFFSET(54)),26)					when X"4B", -- D#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(36),FS,659.255,SUSTAIN_OFFSET(55)+RELEASE_OFFSET(55)),26) 	when X"4C", -- E5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(37),FS,698.456,SUSTAIN_OFFSET(56)+RELEASE_OFFSET(56)),26) 	when X"4D", -- F5
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,739.989,SUSTAIN_OFFSET(57)+RELEASE_OFFSET(57),26)					when X"4E", -- F#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(38),FS,783.991,SUSTAIN_OFFSET(58)+RELEASE_OFFSET(58)),26) 	when X"4F", -- G5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(39),FS,830.609,SUSTAIN_OFFSET(59)+RELEASE_OFFSET(59)),26) 	when X"50", -- G#5
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,880.000,SUSTAIN_OFFSET(60)+RELEASE_OFFSET(60)),26)					when X"51", -- A5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(40),FS,932.328,SUSTAIN_OFFSET(61)+RELEASE_OFFSET(61)),26) 	when X"52", -- A#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(41),FS,987.767,SUSTAIN_OFFSET(62)+RELEASE_OFFSET(62)),26) 	when X"53", -- B5
-																																				  
-																																				 
-				-- Octave 6                                                                                                                       
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1046.50,SUSTAIN_OFFSET(63)+RELEASE_OFFSET(63)),26)					when X"54", -- C6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(42),FS,1108.73,SUSTAIN_OFFSET(64)+RELEASE_OFFSET(64)),26) 	when X"55", -- C#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(43),FS,1174.66,SUSTAIN_OFFSET(65)+RELEASE_OFFSET(65)),26) 	when X"56", -- D6
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1244.51,SUSTAIN_OFFSET(66)+RELEASE_OFFSET(66)),26)					when X"57", -- D#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(44),FS,1318.51,SUSTAIN_OFFSET(67)+RELEASE_OFFSET(67)),26) 	when X"58", -- E6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(45),FS,1396.91,SUSTAIN_OFFSET(68)+RELEASE_OFFSET(68)),26) 	when X"59", -- F6
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1479.98,SUSTAIN_OFFSET(69)+RELEASE_OFFSET(69)),26)					when X"5A", -- F#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(46),FS,1567.98,SUSTAIN_OFFSET(70)+RELEASE_OFFSET(70)),26) 	when X"5B", -- G6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(47),FS,1661.22,SUSTAIN_OFFSET(71)+RELEASE_OFFSET(71)),26) 	when X"5C", -- G#6
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1760.00,SUSTAIN_OFFSET(72)+RELEASE_OFFSET(72)),26)					when X"5D", -- A6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(48),FS,1864.66,SUSTAIN_OFFSET(73)+RELEASE_OFFSET(73)),26) 	when X"5E", -- A#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(49),FS,1975.53,SUSTAIN_OFFSET(74)+RELEASE_OFFSET(74)),26) 	when X"5F", -- B6
-																																				  
-																																				  
-				-- Octave 7                                                                                                                       
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2093.00,SUSTAIN_OFFSET(75)+RELEASE_OFFSET(75)),26)					when X"60", -- C7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(50),FS,2217.46,SUSTAIN_OFFSET(76)+RELEASE_OFFSET(76)),26) 	when X"61", -- C#7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(51),FS,2349.32,SUSTAIN_OFFSET(77)+RELEASE_OFFSET(77)),26) 	when X"62", -- D7
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2489.02,SUSTAIN_OFFSET(78)+RELEASE_OFFSET(78)),26)					when X"63", -- D#7 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(52),FS,2637.02,SUSTAIN_OFFSET(79)+RELEASE_OFFSET(79)),26) 	when X"64", -- E7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(53),FS,2793.83,SUSTAIN_OFFSET(80)+RELEASE_OFFSET(80)),26) 	when X"65", -- F7
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2959.96,SUSTAIN_OFFSET(81)+RELEASE_OFFSET(81),26)					when X"66", -- F#7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(54),FS,3135.96,SUSTAIN_OFFSET(82)+RELEASE_OFFSET(82)),26) 	when X"67", -- G7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(55),FS,3322.44,SUSTAIN_OFFSET(83)+RELEASE_OFFSET(83)),26) 	when X"68", -- G#7
-																																				  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,3520.00,SUSTAIN_OFFSET(84)+RELEASE_OFFSET(84)),26)					when X"69", -- A7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(56),FS,3729.31,SUSTAIN_OFFSET(85)+RELEASE_OFFSET(85)),26) 	when X"6A", -- A#7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(57),FS,3951.07,SUSTAIN_OFFSET(86)+RELEASE_OFFSET(86)),26) 	when X"6B", -- B7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(0),26)	when X"15", -- A0 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(1),26) 	when X"16", -- A#0
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(2),26) 	when X"17", -- B0
 				
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,4186.01,SUSTAIN_OFFSET(87)+RELEASE_OFFSET(87)),26) 					when X"6C" -- C8
+				-- Octave 1	                                                                                                                    
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(3),26)	when X"18", -- C1 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(4),26) 	when X"19", -- C#1
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(5),26) 	when X"1A", -- D1
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(6),26)	when X"1B", -- D#1 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(7),26) 	when X"1C", -- E1
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(8),26) 	when X"1D", -- F1
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR,26)		when X"1E", -- F#1 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(10),26) 	when X"1F", -- G1
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(11),26) 	when X"20", -- G#1
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(12),26)	when X"21", -- A1 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(13),26) 	when X"22", -- A#1
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(14),26) 	when X"23", -- B1
+				
+				
+				-- Octave 2                                                                                                                       
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(15),26)	when X"24", -- C2
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(16),26)	when X"25", -- C#2
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(17),26) 	when X"26", -- D2
+	
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(18),26)	when X"27", -- D#2 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(19),26) 	when X"28", -- E2
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(20),26) 	when X"29", -- F2
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(21),26)	when X"2A", -- F#2 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(22),26) 	when X"2B", -- G2
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(23),26) 	when X"2C", -- G#2
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(24),26)	when X"2D", -- A2
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(25),26) 	when X"2E", -- A#2
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(26),26) 	when X"2F", -- B2
+				
+				
+				-- Octave 3                                                                                                                       
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(27),26)	when X"30", -- C3 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(28),26) 	when X"31", -- C#3
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(29),26) 	when X"32", -- D3
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(30),26)	when X"33", -- D#3 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(31),26) 	when X"34", -- E3
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(32),26) 	when X"35", -- F3
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(33),26)	when X"36", -- F#3 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(34),26) 	when X"37", -- G3
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(35),26) 	when X"38", -- G#3
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(36),26)	when X"39", -- A3
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(37),26) 	when X"3A", -- A#3
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(38),26) 	when X"3B", -- B3
+				
+				
+				-- Octave 4                                                                                                                       
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(39),26)	when X"3C", -- C4
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(40),26) 	when X"3D", -- C#4
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(41),26) 	when X"3E", -- D4
+	
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(42),26)	when X"3F", -- D#4 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(43),26) 	when X"40", -- E4
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(44),26) 	when X"41", -- F4
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(45),26)	when X"42", -- F#4 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(46),26) 	when X"43", -- G4
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(47),26) 	when X"44", -- G#4
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(48),26)	when X"45", -- A4
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(49),26) 	when X"46", -- A#4
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(50),26) 	when X"47", -- B4
+				
+				
+				-- Octave 5                                                                                                                       
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(51),26)	when X"48", -- C5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(52),26) 	when X"49", -- C#5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(53),26) 	when X"4A", -- D5
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(54),26)	when X"4B", -- D#5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(55),26) 	when X"4C", -- E5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(56),26) 	when X"4D", -- F5
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(57),26)	when X"4E", -- F#5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(58),26) 	when X"4F", -- G5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(59),26) 	when X"50", -- G#5
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(60),26)	when X"51", -- A5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(61),26) 	when X"52", -- A#5
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(62),26) 	when X"53", -- B5
+				
+				
+				-- Octave 6                                                                                                                       
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(63),26)	when X"54", -- C6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(64),26) 	when X"55", -- C#6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(65),26) 	when X"56", -- D6
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(66),26)	when X"57", -- D#6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(67),26) 	when X"58", -- E6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(68),26) 	when X"59", -- F6
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(69),26)	when X"5A", -- F#6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(70),26) 	when X"5B", -- G6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(71),26) 	when X"5C", -- G#6
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(72),26)	when X"5D", -- A6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(73),26) 	when X"5E", -- A#6
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(74),26) 	when X"5F", -- B6
+				
+				
+				-- Octave 7                                                                                                                       
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(75),26)	when X"60", -- C7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(76),26) 	when X"61", -- C#7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(77),26) 	when X"62", -- D7
+
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(78),26)	when X"63", -- D#7 
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(79),26) 	when X"64", -- E7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(80),26) 	when X"65", -- F7
+
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(81),26)	when X"66", -- F#7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(82),26) 	when X"67", -- G7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(83),26) 	when X"68", -- G#7
+
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(84),26)	when X"69", -- A7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(85),26) 	when X"6A", -- A#7
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(86),26) 	when X"6B", -- B7
+				
+				to_unsigned(SUSTAIN_START_OFFSET_ADDR(87),26)	when X"6C" -- C8
 				
 				to_unsigned(0,26) when others;
 
+
+-- One entry per note
 	sustainEndOffsetAddr_ROM :
   with cmdKeyboard(7 downto 0) select
 			sustainEndOffsetAddr_In <=
 				
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,27.5,RELEASE_OFFSET(0)),26)						when X"15", -- A0 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),FS,29.1353,RELEASE_OFFSET(1)),26) 	when X"16", -- A#0
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),FS,30.8677,RELEASE_OFFSET(2)),26) 	when X"17", -- B0
-																															  
-				-- Octave 1                                                                                                   
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,32.7032,RELEASE_OFFSET(3)),26)					when X"18", -- C1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(2),FS,34.6479,RELEASE_OFFSET(4)),26) 	when X"19", -- C#1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(3),FS,36.7081,RELEASE_OFFSET(5)),26) 	when X"1A", -- D1
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,38.8909,RELEASE_OFFSET(6)),26)					when X"1B", -- D#1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(4),FS,41.2035,RELEASE_OFFSET(7)),26) 	when X"1C", -- E1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(5),FS,43.6536,RELEASE_OFFSET(8)),26) 	when X"1D", -- F1
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,46.2493,RELEASE_OFFSET(9)),26)					when X"1E", -- F#1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(6),FS,48.9995,RELEASE_OFFSET(10)),26) 	when X"1F", -- G1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(7),FS,51.9130,RELEASE_OFFSET(11)),26) 	when X"20", -- G#1
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,55.0000,RELEASE_OFFSET(12)),26)					when X"21", -- A1 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(8),FS,58.2705,RELEASE_OFFSET(13)),26) 	when X"22", -- A#1
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(9),FS,61.7354,RELEASE_OFFSET(14)),26) 	when X"23", -- B1
-																															  
-																															  
-				-- Octave 2                                                                                                   
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,65.4064,RELEASE_OFFSET(15)),26)					when X"24", -- C2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(10),FS,69.2957,RELEASE_OFFSET(16)),26) when X"25", -- C#2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(11),FS,73.4162,RELEASE_OFFSET(17)),26) when X"26", -- D2
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,77.7817,RELEASE_OFFSET(18)),26)					when X"27", -- D#2 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(12),FS,82.4069,RELEASE_OFFSET(19)),26) when X"28", -- E2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(13),FS,87.3071,RELEASE_OFFSET(20)),26) when X"29", -- F2
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,92.4986,RELEASE_OFFSET(21),26)					when X"2A", -- F#2 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(14),FS,97.9989,RELEASE_OFFSET(22)),26) when X"2B", -- G2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(15),FS,103.826,RELEASE_OFFSET(23)),26) when X"2C", -- G#2
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,110.000,RELEASE_OFFSET(24)),26)					when X"2D", -- A2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(16),FS,116.541,RELEASE_OFFSET(25)),26) when X"2E", -- A#2
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(17),FS,123.471,RELEASE_OFFSET(26)),26) when X"2F", -- B2
-																															  
-																															  
-				-- Octave 3                                                                                                   
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,130.813,RELEASE_OFFSET(27)),26)					when X"30", -- C3 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(18),FS,138.591,RELEASE_OFFSET(28)),26) when X"31", -- C#3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(19),FS,146.832,RELEASE_OFFSET(29)),26) when X"32", -- D3
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,155.563,RELEASE_OFFSET(30)),26)					when X"33", -- D#3 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(20),FS,164.814,RELEASE_OFFSET(31)),26) when X"34", -- E3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(21),FS,174.614,RELEASE_OFFSET(32)),26) when X"35", -- F3
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,184.997,RELEASE_OFFSET(33)),26)					when X"36", -- F#3 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(22),FS,195.998,RELEASE_OFFSET(34)),26) when X"37", -- G3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(23),FS,207.652,RELEASE_OFFSET(35)),26) when X"38", -- G#3
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,220.000,RELEASE_OFFSET(36)),26)					when X"39", -- A3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(24),FS,233.082,RELEASE_OFFSET(37)),26) when X"3A", -- A#3
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(25),FS,246.942,RELEASE_OFFSET(38)),26) when X"3B", -- B3
-																															  
-																															  
-				-- Octave 4                                                                                                   
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,261.626,RELEASE_OFFSET(39)),26)					when X"3C", -- C4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(26),FS,277.183,RELEASE_OFFSET(40)),26) when X"3D", -- C#4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(27),FS,293.665,RELEASE_OFFSET(41)),26) when X"3E", -- D4
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,311.127,RELEASE_OFFSET(42)),26)					when X"3F", -- D#4 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(28),FS,329.628,RELEASE_OFFSET(43)),26) when X"40", -- E4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(29),FS,349.228,RELEASE_OFFSET(44)),26) when X"41", -- F4
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,369.994,RELEASE_OFFSET(45),26)					when X"42", -- F#4 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(30),FS,391.995,RELEASE_OFFSET(46)),26) when X"43", -- G4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(31),FS,415.305,RELEASE_OFFSET(47)),26) when X"44", -- G#4
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,440.000,RELEASE_OFFSET(48)),26)					when X"45", -- A4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(32),FS,466.164,RELEASE_OFFSET(49)),26) when X"46", -- A#4
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(33),FS,493.883,RELEASE_OFFSET(50)),26) when X"47", -- B4
-																															  
-																															  
-				-- Octave 5                                                                                                   
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,523.251,RELEASE_OFFSET(51)),26)					when X"48", -- C5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(34),FS,554.365,RELEASE_OFFSET(52)),26) when X"49", -- C#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(35),FS,587.330,RELEASE_OFFSET(53)),26) when X"4A", -- D5
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,622.254,RELEASE_OFFSET(54)),26)					when X"4B", -- D#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(36),FS,659.255,RELEASE_OFFSET(55)),26) when X"4C", -- E5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(37),FS,698.456,RELEASE_OFFSET(56)),26) when X"4D", -- F5
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,739.989,RELEASE_OFFSET(57),26)					when X"4E", -- F#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(38),FS,783.991,RELEASE_OFFSET(58)),26) when X"4F", -- G5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(39),FS,830.609,RELEASE_OFFSET(59)),26) when X"50", -- G#5
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,880.000,RELEASE_OFFSET(60)),26)					when X"51", -- A5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(40),FS,932.328,RELEASE_OFFSET(61)),26) when X"52", -- A#5
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(41),FS,987.767,RELEASE_OFFSET(62)),26) when X"53", -- B5
-																															  
-																															  
-				-- Octave 6                                                                                                   
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1046.50,RELEASE_OFFSET(63)),26)					when X"54", -- C6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(42),FS,1108.73,RELEASE_OFFSET(64)),26) when X"55", -- C#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(43),FS,1174.66,RELEASE_OFFSET(65)),26) when X"56", -- D6
-																															  ,
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1244.51,RELEASE_OFFSET(66)),26)					when X"57", -- D#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(44),FS,1318.51,RELEASE_OFFSET(67)),26) when X"58", -- E6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(45),FS,1396.91,RELEASE_OFFSET(68)),26) when X"59", -- F6
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1479.98,RELEASE_OFFSET(69)),26)					when X"5A", -- F#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(46),FS,1567.98,RELEASE_OFFSET(70)),26) when X"5B", -- G6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(47),FS,1661.22,RELEASE_OFFSET(71)),26) when X"5C", -- G#6
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,1760.00,RELEASE_OFFSET(72)),26)					when X"5D", -- A6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(48),FS,1864.66,RELEASE_OFFSET(73)),26) when X"5E", -- A#6
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(49),FS,1975.53,RELEASE_OFFSET(74)),26) when X"5F", -- B6
-																															  
-																															  
-				-- Octave 7                                                                                                   
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2093.00,RELEASE_OFFSET(75)),26)					when X"60", -- C7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(50),FS,2217.46,RELEASE_OFFSET(76)),26) when X"61", -- C#7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(51),FS,2349.32,RELEASE_OFFSET(77)),26) when X"62", -- D7
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2489.02,RELEASE_OFFSET(78)),26)					when X"63", -- D#7 
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(52),FS,2637.02,RELEASE_OFFSET(79)),26) when X"64", -- E7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(53),FS,2793.83,RELEASE_OFFSET(80)),26) when X"65", -- F7
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,2959.96,RELEASE_OFFSET(81),26)					when X"66", -- F#7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(54),FS,3135.96,RELEASE_OFFSET(82)),26) when X"67", -- G7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(55),FS,3322.44,RELEASE_OFFSET(83)),26) when X"68", -- G#7
-																															  
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,3520.00,RELEASE_OFFSET(84)),26)					when X"69", -- A7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(56),FS,3729.31,RELEASE_OFFSET(85)),26) when X"6A", -- A#7
-				to_unsigned(getSustainAddr(MAX_INTERPOLATED_SAMPLES_PER_NOTE(57),FS,3951.07,RELEASE_OFFSET(86)),26) when X"6B", -- B7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(0),26)		when X"15", -- A0 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(1),26) 		when X"16", -- A#0
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(2),26) 		when X"17", -- B0
 				
-				to_unsigned(getSustainAddr(SAMPLES_PER_WAVETABLE,FS,4186.01,RELEASE_OFFSET(87)),26) 				when X"6C" -- C8
+				-- Octave 1	                                                                                                                    
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(3),26)		when X"18", -- C1 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(4),26) 		when X"19", -- C#1
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(5),26) 		when X"1A", -- D1
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(6),26)		when X"1B", -- D#1 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(7),26) 		when X"1C", -- E1
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(8),26) 		when X"1D", -- F1
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR,26)			when X"1E", -- F#1 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(10),26) 	when X"1F", -- G1
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(11),26) 	when X"20", -- G#1
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(12),26)		when X"21", -- A1 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(13),26) 	when X"22", -- A#1
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(14),26) 	when X"23", -- B1
+				
+				
+				-- Octave 2                                                                                                                       
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(15),26)		when X"24", -- C2
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(16),26)		when X"25", -- C#2
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(17),26) 	when X"26", -- D2
+	
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(18),26)		when X"27", -- D#2 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(19),26) 	when X"28", -- E2
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(20),26) 	when X"29", -- F2
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(21),26)		when X"2A", -- F#2 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(22),26) 	when X"2B", -- G2
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(23),26) 	when X"2C", -- G#2
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(24),26)		when X"2D", -- A2
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(25),26) 	when X"2E", -- A#2
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(26),26) 	when X"2F", -- B2
+				
+				
+				-- Octave 3                                                                                                                       
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(27),26)		when X"30", -- C3 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(28),26) 	when X"31", -- C#3
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(29),26) 	when X"32", -- D3
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(30),26)		when X"33", -- D#3 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(31),26) 	when X"34", -- E3
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(32),26) 	when X"35", -- F3
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(33),26)		when X"36", -- F#3 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(34),26) 	when X"37", -- G3
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(35),26) 	when X"38", -- G#3
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(36),26)		when X"39", -- A3
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(37),26) 	when X"3A", -- A#3
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(38),26) 	when X"3B", -- B3
+				
+				
+				-- Octave 4                                                                                                                       
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(39),26)		when X"3C", -- C4
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(40),26) 	when X"3D", -- C#4
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(41),26) 	when X"3E", -- D4
+	
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(42),26)		when X"3F", -- D#4 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(43),26) 	when X"40", -- E4
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(44),26) 	when X"41", -- F4
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(45),26)		when X"42", -- F#4 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(46),26) 	when X"43", -- G4
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(47),26) 	when X"44", -- G#4
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(48),26)		when X"45", -- A4
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(49),26) 	when X"46", -- A#4
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(50),26) 	when X"47", -- B4
+				
+				
+				-- Octave 5                                                                                                                       
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(51),26)		when X"48", -- C5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(52),26) 	when X"49", -- C#5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(53),26) 	when X"4A", -- D5
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(54),26)		when X"4B", -- D#5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(55),26) 	when X"4C", -- E5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(56),26) 	when X"4D", -- F5
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(57),26)		when X"4E", -- F#5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(58),26) 	when X"4F", -- G5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(59),26) 	when X"50", -- G#5
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(60),26)		when X"51", -- A5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(61),26) 	when X"52", -- A#5
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(62),26) 	when X"53", -- B5
+				
+				
+				-- Octave 6                                                                                                                       
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(63),26)		when X"54", -- C6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(64),26) 	when X"55", -- C#6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(65),26) 	when X"56", -- D6
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(66),26)		when X"57", -- D#6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(67),26) 	when X"58", -- E6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(68),26) 	when X"59", -- F6
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(69),26)		when X"5A", -- F#6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(70),26) 	when X"5B", -- G6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(71),26) 	when X"5C", -- G#6
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(72),26)		when X"5D", -- A6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(73),26) 	when X"5E", -- A#6
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(74),26) 	when X"5F", -- B6
+				
+				
+				-- Octave 7                                                                                                                       
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(75),26)		when X"60", -- C7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(76),26) 	when X"61", -- C#7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(77),26) 	when X"62", -- D7
+
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(78),26)		when X"63", -- D#7 
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(79),26) 	when X"64", -- E7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(80),26) 	when X"65", -- F7
+
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(81),26)		when X"66", -- F#7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(82),26) 	when X"67", -- G7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(83),26) 	when X"68", -- G#7
+
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(84),26)		when X"69", -- A7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(85),26) 	when X"6A", -- A#7
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(86),26) 	when X"6B", -- B7
+				
+				to_unsigned(SUSTAIN_END_OFFSET_ADDR(87),26)		when X"6C" -- C8
 				
 				to_unsigned(0,26) when others;
 				
 
 
 
-
-
+-- One entry per interpolated note
 	maxSamples_ROM :
   with cmdKeyboard(7 downto 0) select
 			maxSamples_In <=
 				
 				-- Interpolated notes
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),26)	when X"19",	-- A#0
-				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),26)	when X"1A",	-- B0
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),26)	when X"16",	-- A#0
+				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(1),26)	when X"17",	-- B0
 				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(2),26)	when X"19",	-- C#1
 				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(3),26)	when X"1A",	-- D1
 				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(4),26)	when X"1C", -- E1
@@ -722,18 +998,17 @@ end generate;
 				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(56),26)	when X"6A", -- A#7
 				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(57),26)	when X"6B", -- B7					
 				
-				to_unsigned(SAMPLES_PER_WAVETABLE,26) when others;  -- All the notes stored in memory, A0, C1,D#1,F#1,A#1, C2,D#2,F#2,A#2, .... C8
+				to_unsigned(SAMPLES_PER_WAVETABLE,26) when others;  -- For all the notes stored in memory, A0, C1,D#1,F#1,A#1, C2,D#2,F#2,A#2, .... C8
 			
 
-	
-stepVal_In	
+-- One entry per interpolated note
 	stepVal_ROM :
   with cmdKeyboard(7 downto 0) select
 			stepVal_In <=
 				
 				-- Interpolated notes
-				(to_unsigned( integer(29.1353/27.5),32)& X"00000000") or toUnFix( 29.1353/27.5 ,32,32) )			when X"19",	-- A#0
-				(to_unsigned( integer(30.8677/27.5),32)& X"00000000") or toUnFix( 30.8677/27.5 ,32,32) )			when X"1A",	-- B0
+				(to_unsigned( integer(29.1353/27.5),32)& X"00000000") or toUnFix( 29.1353/27.5 ,32,32) )			when X"17",	-- A#0
+				(to_unsigned( integer(30.8677/27.5),32)& X"00000000") or toUnFix( 30.8677/27.5 ,32,32) )			when X"18",	-- B0
 				(to_unsigned( integer(34.6479/32.7032),32)& X"00000000") or toUnFix( 34.6479/32.7032 ,32,32) )		when X"19",	-- C#1
 				(to_unsigned( integer(36.7081/32.7032),32)& X"00000000") or toUnFix( 36.7081/32.7032 ,32,32) )		when X"1A",	-- D1
 				(to_unsigned( integer(41.2035/38.8909),32)& X"00000000") or toUnFix( 41.2035/38.8909 ,32,32) )		when X"1C", -- E1
@@ -791,7 +1066,228 @@ stepVal_In
 				(to_unsigned( integer(3729.31/3520.00),32)& X"00000000") or toUnFix( 3729.31/3520.00 ,32,32) )		when X"6A", -- A#7
 				(to_unsigned( integer(3951.07/3520.00),32)& X"00000000") or toUnFix( 3951.07/3520.00 ,32,32) )		when X"6B", -- B7			
 				
-				unsigned(X"0000000100000000") when others;  -- All the notes stored in memory, A0, C1,D#1,F#1,A#1, C2,D#2,F#2,A#2, .... C8
+				unsigned(X"0000000100000000") when others;  -- For all the notes stored in memory, A0, C1,D#1,F#1,A#1, C2,D#2,F#2,A#2, .... C8
+				
+
+-- One entry per note
+	sustainStepStart_ROM :
+  with cmdKeyboard(7 downto 0) select
+			sustainStepStart_In <=
+
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(0), 32)& X"00000000")																																		when X"15", --A0		
+				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_START_OFFSET_ADDR(1) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_START_OFFSET_ADDR(1) ),32,32) )				when X"16",	-- A#0
+				(to_unsigned( integer( getSustainStep(30.8677/27.5), SUSTAIN_START_OFFSET_ADDR(2) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_START_OFFSET_ADDR(2) ),32,32) )				when X"17",	-- B0
+				
+				--Octave 1
+				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_START_OFFSET_ADDR(3) ),32)& X"00000000")																								when X"18", --C1		
+				(to_unsigned( integer( getSustainStep(34.6479/32.7032), SUSTAIN_START_OFFSET_ADDR(4) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_START_OFFSET_ADDR(4)  ),32,32) )		when X"19",	-- C#1
+				(to_unsigned( integer( getSustainStep(36.7081/32.7032), SUSTAIN_START_OFFSET_ADDR(5) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_START_OFFSET_ADDR(5)  ),32,32) )		when X"1A",	-- D1
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(6), 32)& X"00000000")																																		when X"1B", --D#1		
+				(to_unsigned( integer( getSustainStep(41.2035/38.8909), SUSTAIN_START_OFFSET_ADDR(7) ),32)& X"00000000") or  toUnFix( getSustainStep(41.2035/38.8909, SUSTAIN_START_OFFSET_ADDR(7)  ),32,32) )		when X"1C", -- E1
+				(to_unsigned( integer( getSustainStep(43.6536/38.8909), SUSTAIN_START_OFFSET_ADDR(8) ),32)& X"00000000") or  toUnFix( getSustainStep(43.6536/38.8909, SUSTAIN_START_OFFSET_ADDR(8)  ),32,32) )		when X"1D",	-- F1
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(9), 32)& X"00000000")																																		when X"1B", --F#1		
+				(to_unsigned( integer( getSustainStep(48.9995/46.2493), SUSTAIN_START_OFFSET_ADDR(10) ),32)& X"00000000") or toUnFix( getSustainStep(48.9995/46.2493, SUSTAIN_START_OFFSET_ADDR(10) ),32,32) )		when X"1F", -- G1
+				(to_unsigned( integer( getSustainStep(51.9130/46.2493), SUSTAIN_START_OFFSET_ADDR(11) ),32)& X"00000000") or toUnFix( getSustainStep(51.9130/46.2493, SUSTAIN_START_OFFSET_ADDR(11) ),32,32) )		when X"20", -- G#1
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(12), 32)& X"00000000")																																	when X"21", --A1		
+				(to_unsigned( integer( getSustainStep(58.2705/55.0000), SUSTAIN_START_OFFSET_ADDR(13) ),32)& X"00000000") or toUnFix( getSustainStep(58.2705/55.0000, SUSTAIN_START_OFFSET_ADDR(13) ),32,32) )		when X"22", -- A#1
+				(to_unsigned( integer( getSustainStep(61.7354/55.0000), SUSTAIN_START_OFFSET_ADDR(14) ),32)& X"00000000") or toUnFix( getSustainStep(61.7354/55.0000, SUSTAIN_START_OFFSET_ADDR(14) ),32,32) )		when X"23", -- B1
+				
+				--Octave 2
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(15), 32)& X"00000000")																																	when X"24", --C2		
+				(to_unsigned( integer( getSustainStep(69.2957/65.4064), SUSTAIN_START_OFFSET_ADDR(16) ),32)& X"00000000") or toUnFix( getSustainStep(69.2957/65.4064, SUSTAIN_START_OFFSET_ADDR(16) ),32,32) )		when X"25",	-- C#2
+				(to_unsigned( integer( getSustainStep(73.4162/65.4064), SUSTAIN_START_OFFSET_ADDR(17) ),32)& X"00000000") or toUnFix( getSustainStep(73.4162/65.4064, SUSTAIN_START_OFFSET_ADDR(17) ),32,32) )		when X"26", -- D2
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(18), 32)& X"00000000")																																	when X"27", --D#2		
+				(to_unsigned( integer( getSustainStep(82.4069/77.7817), SUSTAIN_START_OFFSET_ADDR(19) ),32)& X"00000000") or toUnFix( getSustainStep(82.4069/77.7817, SUSTAIN_START_OFFSET_ADDR(19) ),32,32) )		when X"28",	-- E2 
+				(to_unsigned( integer( getSustainStep(87.3071/77.7817), SUSTAIN_START_OFFSET_ADDR(20) ),32)& X"00000000") or toUnFix( getSustainStep(87.3071/77.7817, SUSTAIN_START_OFFSET_ADDR(20) ),32,32) )		when X"29", -- F2
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(21), 32)& X"00000000")																																	when X"2A", --F#2		
+				(to_unsigned( integer( getSustainStep(97.9989/92.4986), SUSTAIN_START_OFFSET_ADDR(22) ),32)& X"00000000") or toUnFix( getSustainStep(97.9989/92.4986, SUSTAIN_START_OFFSET_ADDR(22) ),32,32) )		when X"2B",	-- G2
+				(to_unsigned( integer( getSustainStep(103.826/92.4986), SUSTAIN_START_OFFSET_ADDR(23) ),32)& X"00000000") or toUnFix( getSustainStep(103.826/92.4986, SUSTAIN_START_OFFSET_ADDR(23) ),32,32) )		when X"2C",	-- G#2
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(24), 32)& X"00000000")																																	when X"2D", --A2		
+				(to_unsigned( integer( getSustainStep(116.541/110.000), SUSTAIN_START_OFFSET_ADDR(25) ),32)& X"00000000") or toUnFix( getSustainStep(116.541/110.000, SUSTAIN_START_OFFSET_ADDR(25) ),32,32) )		when X"2E", -- A#2
+				(to_unsigned( integer( getSustainStep(123.471/110.000), SUSTAIN_START_OFFSET_ADDR(26) ),32)& X"00000000") or toUnFix( getSustainStep(123.471/110.000, SUSTAIN_START_OFFSET_ADDR(26) ),32,32) )		when X"2F",	-- B2
+				
+				--Octave 3
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(27), 32)& X"00000000")																																	when X"30", --C3		
+				(to_unsigned( integer( getSustainStep(138.591/130.813), SUSTAIN_START_OFFSET_ADDR(28) ),32)& X"00000000") or toUnFix( getSustainStep(138.591/130.813, SUSTAIN_START_OFFSET_ADDR(28) ),32,32) )		when X"31", -- C#3
+				(to_unsigned( integer( getSustainStep(146.832/130.813), SUSTAIN_START_OFFSET_ADDR(29) ),32)& X"00000000") or toUnFix( getSustainStep(146.832/130.813, SUSTAIN_START_OFFSET_ADDR(29) ),32,32) )		when X"32", -- D3
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(30), 32)& X"00000000")																																	when X"33", --D#3		
+				(to_unsigned( integer( getSustainStep(164.814/155.563), SUSTAIN_START_OFFSET_ADDR(31) ),32)& X"00000000") or toUnFix( getSustainStep(164.814/155.563, SUSTAIN_START_OFFSET_ADDR(31) ),32,32) )		when X"34", -- E3
+				(to_unsigned( integer( getSustainStep(174.614/155.563), SUSTAIN_START_OFFSET_ADDR(32) ),32)& X"00000000") or toUnFix( getSustainStep(174.614/155.563, SUSTAIN_START_OFFSET_ADDR(32) ),32,32) )		when X"35", -- F3
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(33), 32)& X"00000000")																																	when X"36", --F#3						
+				(to_unsigned( integer( getSustainStep(195.998/184.997), SUSTAIN_START_OFFSET_ADDR(34) ),32)& X"00000000") or toUnFix( getSustainStep(195.998/184.997, SUSTAIN_START_OFFSET_ADDR(34) ),32,32) )		when X"37", -- G3 
+				(to_unsigned( integer( getSustainStep(207.652/184.997), SUSTAIN_START_OFFSET_ADDR(35) ),32)& X"00000000") or toUnFix( getSustainStep(207.652/184.997, SUSTAIN_START_OFFSET_ADDR(35) ),32,32) )		when X"38", -- G#3
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(36), 32)& X"00000000")																																	when X"39", --A3		
+				(to_unsigned( integer( getSustainStep(233.082/220.000), SUSTAIN_START_OFFSET_ADDR(37) ),32)& X"00000000") or toUnFix( getSustainStep(233.082/220.000, SUSTAIN_START_OFFSET_ADDR(37) ),32,32) )		when X"3A", -- A#3
+				(to_unsigned( integer( getSustainStep(246.942/220.000), SUSTAIN_START_OFFSET_ADDR(38) ),32)& X"00000000") or toUnFix( getSustainStep(246.942/220.000, SUSTAIN_START_OFFSET_ADDR(38) ),32,32) )		when X"3B", -- B3
+				
+				--Octave 4
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(39), 32)& X"00000000")																																	when X"3C", --C4		
+				(to_unsigned( integer( getSustainStep(277.183/261.626), SUSTAIN_START_OFFSET_ADDR(40) ),32)& X"00000000") or toUnFix( getSustainStep(277.183/261.626, SUSTAIN_START_OFFSET_ADDR(40) ),32,32) )		when X"3D", -- C#4
+				(to_unsigned( integer( getSustainStep(293.665/261.626), SUSTAIN_START_OFFSET_ADDR(41) ),32)& X"00000000") or toUnFix( getSustainStep(293.665/261.626, SUSTAIN_START_OFFSET_ADDR(41) ),32,32) )		when X"3E", -- D4
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(42), 32)& X"00000000")																																	when X"3F", --D#1		
+				(to_unsigned( integer( getSustainStep(329.628/311.127), SUSTAIN_START_OFFSET_ADDR(43) ),32)& X"00000000") or toUnFix( getSustainStep(329.628/311.127, SUSTAIN_START_OFFSET_ADDR(43) ),32,32) )		when X"40", -- E4
+				(to_unsigned( integer( getSustainStep(349.228/311.127), SUSTAIN_START_OFFSET_ADDR(44) ),32)& X"00000000") or toUnFix( getSustainStep(349.228/311.127, SUSTAIN_START_OFFSET_ADDR(44) ),32,32) )		when X"41", -- F4
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(45), 32)& X"00000000")																																	when X"42", --F#4		
+				(to_unsigned( integer( getSustainStep(391.995/369.994), SUSTAIN_START_OFFSET_ADDR(46) ),32)& X"00000000") or toUnFix( getSustainStep(391.995/369.994, SUSTAIN_START_OFFSET_ADDR(46) ),32,32) )		when X"43", -- G4
+				(to_unsigned( integer( getSustainStep(415.305/369.994), SUSTAIN_START_OFFSET_ADDR(47) ),32)& X"00000000") or toUnFix( getSustainStep(415.305/369.994, SUSTAIN_START_OFFSET_ADDR(47) ),32,32) )		when X"44", -- G#4
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(48), 32)& X"00000000")																																	when X"45", --A4		
+				(to_unsigned( integer( getSustainStep(466.164/440.000), SUSTAIN_START_OFFSET_ADDR(49) ),32)& X"00000000") or toUnFix( getSustainStep(466.164/440.000, SUSTAIN_START_OFFSET_ADDR(49) ),32,32) )		when X"46", -- A#4
+				(to_unsigned( integer( getSustainStep(493.883/440.000), SUSTAIN_START_OFFSET_ADDR(50) ),32)& X"00000000") or toUnFix( getSustainStep(493.883/440.000, SUSTAIN_START_OFFSET_ADDR(50) ),32,32) )		when X"47",	-- B4
+				
+				--Octave 5
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(51), 32)& X"00000000")																																	when X"48", --C5		
+				(to_unsigned( integer( getSustainStep(554.365/523.251), SUSTAIN_START_OFFSET_ADDR(52) ),32)& X"00000000") or toUnFix( getSustainStep(554.365/523.251, SUSTAIN_START_OFFSET_ADDR(52) ),32,32) )		when X"49",	-- C#5
+				(to_unsigned( integer( getSustainStep(587.330/523.251), SUSTAIN_START_OFFSET_ADDR(53) ),32)& X"00000000") or toUnFix( getSustainStep(587.330/523.251, SUSTAIN_START_OFFSET_ADDR(53) ),32,32) )		when X"4A", -- D5
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(54), 32)& X"00000000")																																	when X"4B", --D#5		
+				(to_unsigned( integer( getSustainStep(659.255/622.254), SUSTAIN_START_OFFSET_ADDR(55) ),32)& X"00000000") or toUnFix( getSustainStep(659.255/622.254, SUSTAIN_START_OFFSET_ADDR(55) ),32,32) )		when X"4C", -- E5
+				(to_unsigned( integer( getSustainStep(698.456/622.254), SUSTAIN_START_OFFSET_ADDR(56) ),32)& X"00000000") or toUnFix( getSustainStep(698.456/622.254, SUSTAIN_START_OFFSET_ADDR(56) ),32,32) )		when X"4D", -- F5
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(57), 32)& X"00000000")																																	when X"4E", --F#5		
+				(to_unsigned( integer( getSustainStep(783.991/739.989), SUSTAIN_START_OFFSET_ADDR(58) ),32)& X"00000000") or toUnFix( getSustainStep(783.991/739.989, SUSTAIN_START_OFFSET_ADDR(58) ),32,32) )		when X"4F", -- G5
+				(to_unsigned( integer( getSustainStep(830.609/739.989), SUSTAIN_START_OFFSET_ADDR(59) ),32)& X"00000000") or toUnFix( getSustainStep(830.609/739.989, SUSTAIN_START_OFFSET_ADDR(59) ),32,32) )		when X"50", -- G#5
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(60), 32)& X"00000000")																																	when X"51", --A5						
+				(to_unsigned( integer( getSustainStep(932.328/880.000), SUSTAIN_START_OFFSET_ADDR(61) ),32)& X"00000000") or toUnFix( getSustainStep(932.328/880.000, SUSTAIN_START_OFFSET_ADDR(61) ),32,32) )		when X"52", -- A#5
+				(to_unsigned( integer( getSustainStep(987.767/880.000), SUSTAIN_START_OFFSET_ADDR(62) ),32)& X"00000000") or toUnFix( getSustainStep(987.767/880.000, SUSTAIN_START_OFFSET_ADDR(62) ),32,32) )		when X"53",	-- B5
+				
+				--Octave 6
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(63), 32)& X"00000000")																																	when X"54", --C6						
+				(to_unsigned( integer( getSustainStep(1108.73/1046.50), SUSTAIN_START_OFFSET_ADDR(64) ),32)& X"00000000") or toUnFix( getSustainStep(1108.73/1046.50, SUSTAIN_START_OFFSET_ADDR(64) ),32,32) )		when X"55", -- C#6
+				(to_unsigned( integer( getSustainStep(1174.66/1046.50), SUSTAIN_START_OFFSET_ADDR(65) ),32)& X"00000000") or toUnFix( getSustainStep(1174.66/1046.50, SUSTAIN_START_OFFSET_ADDR(65) ),32,32) )		when X"56", -- D6
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(66), 32)& X"00000000")																																	when X"57", --D#6		
+				(to_unsigned( integer( getSustainStep(1318.51/1244.51), SUSTAIN_START_OFFSET_ADDR(67) ),32)& X"00000000") or toUnFix( getSustainStep(1318.51/1244.51, SUSTAIN_START_OFFSET_ADDR(67) ),32,32) )		when X"58", -- E6
+				(to_unsigned( integer( getSustainStep(1396.91/1244.51), SUSTAIN_START_OFFSET_ADDR(68) ),32)& X"00000000") or toUnFix( getSustainStep(1396.91/1244.51, SUSTAIN_START_OFFSET_ADDR(68) ),32,32) )		when X"59", -- F6
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(69), 32)& X"00000000")																																	when X"58", --F#6		
+				(to_unsigned( integer( getSustainStep(1567.98/1479.98), SUSTAIN_START_OFFSET_ADDR(70) ),32)& X"00000000") or toUnFix( getSustainStep(1567.98/1479.98, SUSTAIN_START_OFFSET_ADDR(70) ),32,32) )		when X"5B", -- G6
+				(to_unsigned( integer( getSustainStep(1661.22/1479.98), SUSTAIN_START_OFFSET_ADDR(71) ),32)& X"00000000") or toUnFix( getSustainStep(1661.22/1479.98, SUSTAIN_START_OFFSET_ADDR(71) ),32,32) )		when X"5C", -- G#6
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(72), 32)& X"00000000")																																	when X"5D", --A6		
+				(to_unsigned( integer( getSustainStep(1864.66/1760.00), SUSTAIN_START_OFFSET_ADDR(73) ),32)& X"00000000") or toUnFix( getSustainStep(1864.66/1760.00, SUSTAIN_START_OFFSET_ADDR(73) ),32,32) )		when X"5E", -- A#6
+				(to_unsigned( integer( getSustainStep(1975.53/1760.00), SUSTAIN_START_OFFSET_ADDR(74) ),32)& X"00000000") or toUnFix( getSustainStep(1975.53/1760.00, SUSTAIN_START_OFFSET_ADDR(74) ),32,32) )		when X"5F", -- B6
+				
+				--Octave 7
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(75), 32)& X"00000000")																																	when X"60", --C7						
+				(to_unsigned( integer( getSustainStep(2217.46/2093.00), SUSTAIN_START_OFFSET_ADDR(76) ),32)& X"00000000") or toUnFix( getSustainStep(2217.46/2093.00, SUSTAIN_START_OFFSET_ADDR(76) ),32,32) )		when X"61", -- C#7
+				(to_unsigned( integer( getSustainStep(2349.32/2093.00), SUSTAIN_START_OFFSET_ADDR(77) ),32)& X"00000000") or toUnFix( getSustainStep(2349.32/2093.00, SUSTAIN_START_OFFSET_ADDR(77) ),32,32) )		when X"62", -- D7
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(78), 32)& X"00000000")																																	when X"63", --D#7						
+				(to_unsigned( integer( getSustainStep(2637.02/2489.02), SUSTAIN_START_OFFSET_ADDR(79) ),32)& X"00000000") or toUnFix( getSustainStep(2637.02/2489.02, SUSTAIN_START_OFFSET_ADDR(79) ),32,32) )		when X"64", -- E7
+				(to_unsigned( integer( getSustainStep(2793.83/2489.02), SUSTAIN_START_OFFSET_ADDR(80) ),32)& X"00000000") or toUnFix( getSustainStep(2793.83/2489.02, SUSTAIN_START_OFFSET_ADDR(80) ),32,32) )		when X"65", -- F7
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(81), 32)& X"00000000")																																	when X"66", --F#7		
+				(to_unsigned( integer( getSustainStep(3135.96/2959.96), SUSTAIN_START_OFFSET_ADDR(82) ),32)& X"00000000") or toUnFix( getSustainStep(3135.96/2959.96, SUSTAIN_START_OFFSET_ADDR(82) ),32,32) )		when X"67", -- G7
+				(to_unsigned( integer( getSustainStep(3322.44/2959.96), SUSTAIN_START_OFFSET_ADDR(83) ),32)& X"00000000") or toUnFix( getSustainStep(3322.44/2959.96, SUSTAIN_START_OFFSET_ADDR(83) ),32,32) )		when X"68", -- G#7
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(84), 32)& X"00000000")																																	when X"69", --A7		
+				(to_unsigned( integer( getSustainStep(3729.31/3520.00), SUSTAIN_START_OFFSET_ADDR(85) ),32)& X"00000000") or toUnFix( getSustainStep(3729.31/3520.00, SUSTAIN_START_OFFSET_ADDR(85) ),32,32) )		when X"6A", -- A#7
+				(to_unsigned( integer( getSustainStep(3951.07/3520.00), SUSTAIN_START_OFFSET_ADDR(86) ),32)& X"00000000") or toUnFix( getSustainStep(3951.07/3520.00, SUSTAIN_START_OFFSET_ADDR(86) ),32,32) )		when X"6B", -- B7			
+				
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(87), 32)& X"00000000")																																	when X"6C", --C8		
+				to_unsigned( 0, 64)																																												when others;														
+	
+-- One entry per note
+	sustainStepEnd_ROM :
+  with cmdKeyboard(7 downto 0) select
+			sustainStepEnd_In <=
+				
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(0), 32)& X"00000000")																																		when X"15", --A0		
+				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_END_OFFSET_ADDR(1) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_END_OFFSET_ADDR(1) ),32,32) )				when X"16",	-- A#0
+				(to_unsigned( integer( getSustainStep(30.8677/27.5), SUSTAIN_END_OFFSET_ADDR(2) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_END_OFFSET_ADDR(2) ),32,32) )				when X"17",	-- B0
+				
+				--Octave 1
+				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_END_OFFSET_ADDR(3) ),32)& X"00000000")																								when X"18", --C1		
+				(to_unsigned( integer( getSustainStep(34.6479/32.7032), SUSTAIN_END_OFFSET_ADDR(4) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_END_OFFSET_ADDR(4)  ),32,32) )		when X"19",	-- C#1
+				(to_unsigned( integer( getSustainStep(36.7081/32.7032), SUSTAIN_END_OFFSET_ADDR(5) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_END_OFFSET_ADDR(5)  ),32,32) )		when X"1A",	-- D1
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(6), 32)& X"00000000")																																		when X"1B", --D#1		
+				(to_unsigned( integer( getSustainStep(41.2035/38.8909), SUSTAIN_END_OFFSET_ADDR(7) ),32)& X"00000000") or  toUnFix( getSustainStep(41.2035/38.8909, SUSTAIN_END_OFFSET_ADDR(7)  ),32,32) )		when X"1C", -- E1
+				(to_unsigned( integer( getSustainStep(43.6536/38.8909), SUSTAIN_END_OFFSET_ADDR(8) ),32)& X"00000000") or  toUnFix( getSustainStep(43.6536/38.8909, SUSTAIN_END_OFFSET_ADDR(8)  ),32,32) )		when X"1D",	-- F1
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(9), 32)& X"00000000")																																		when X"1B", --F#1		
+				(to_unsigned( integer( getSustainStep(48.9995/46.2493), SUSTAIN_END_OFFSET_ADDR(10) ),32)& X"00000000") or toUnFix( getSustainStep(48.9995/46.2493, SUSTAIN_END_OFFSET_ADDR(10) ),32,32) )		when X"1F", -- G1
+				(to_unsigned( integer( getSustainStep(51.9130/46.2493), SUSTAIN_END_OFFSET_ADDR(11) ),32)& X"00000000") or toUnFix( getSustainStep(51.9130/46.2493, SUSTAIN_END_OFFSET_ADDR(11) ),32,32) )		when X"20", -- G#1
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(12), 32)& X"00000000")																																	when X"21", --A1		
+				(to_unsigned( integer( getSustainStep(58.2705/55.0000), SUSTAIN_END_OFFSET_ADDR(13) ),32)& X"00000000") or toUnFix( getSustainStep(58.2705/55.0000, SUSTAIN_END_OFFSET_ADDR(13) ),32,32) )		when X"22", -- A#1
+				(to_unsigned( integer( getSustainStep(61.7354/55.0000), SUSTAIN_END_OFFSET_ADDR(14) ),32)& X"00000000") or toUnFix( getSustainStep(61.7354/55.0000, SUSTAIN_END_OFFSET_ADDR(14) ),32,32) )		when X"23", -- B1
+				
+				--Octave 2
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(15), 32)& X"00000000")																																	when X"24", --C2		
+				(to_unsigned( integer( getSustainStep(69.2957/65.4064), SUSTAIN_END_OFFSET_ADDR(16) ),32)& X"00000000") or toUnFix( getSustainStep(69.2957/65.4064, SUSTAIN_END_OFFSET_ADDR(16) ),32,32) )		when X"25",	-- C#2
+				(to_unsigned( integer( getSustainStep(73.4162/65.4064), SUSTAIN_END_OFFSET_ADDR(17) ),32)& X"00000000") or toUnFix( getSustainStep(73.4162/65.4064, SUSTAIN_END_OFFSET_ADDR(17) ),32,32) )		when X"26", -- D2
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(18), 32)& X"00000000")																																	when X"27", --D#2		
+				(to_unsigned( integer( getSustainStep(82.4069/77.7817), SUSTAIN_END_OFFSET_ADDR(19) ),32)& X"00000000") or toUnFix( getSustainStep(82.4069/77.7817, SUSTAIN_END_OFFSET_ADDR(19) ),32,32) )		when X"28",	-- E2 
+				(to_unsigned( integer( getSustainStep(87.3071/77.7817), SUSTAIN_END_OFFSET_ADDR(20) ),32)& X"00000000") or toUnFix( getSustainStep(87.3071/77.7817, SUSTAIN_END_OFFSET_ADDR(20) ),32,32) )		when X"29", -- F2
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(21), 32)& X"00000000")																																	when X"2A", --F#2		
+				(to_unsigned( integer( getSustainStep(97.9989/92.4986), SUSTAIN_END_OFFSET_ADDR(22) ),32)& X"00000000") or toUnFix( getSustainStep(97.9989/92.4986, SUSTAIN_END_OFFSET_ADDR(22) ),32,32) )		when X"2B",	-- G2
+				(to_unsigned( integer( getSustainStep(103.826/92.4986), SUSTAIN_END_OFFSET_ADDR(23) ),32)& X"00000000") or toUnFix( getSustainStep(103.826/92.4986, SUSTAIN_END_OFFSET_ADDR(23) ),32,32) )		when X"2C",	-- G#2
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(24), 32)& X"00000000")																																	when X"2D", --A2		
+				(to_unsigned( integer( getSustainStep(116.541/110.000), SUSTAIN_END_OFFSET_ADDR(25) ),32)& X"00000000") or toUnFix( getSustainStep(116.541/110.000, SUSTAIN_END_OFFSET_ADDR(25) ),32,32) )		when X"2E", -- A#2
+				(to_unsigned( integer( getSustainStep(123.471/110.000), SUSTAIN_END_OFFSET_ADDR(26) ),32)& X"00000000") or toUnFix( getSustainStep(123.471/110.000, SUSTAIN_END_OFFSET_ADDR(26) ),32,32) )		when X"2F",	-- B2
+				
+				--Octave 3
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(27), 32)& X"00000000")																																	when X"30", --C3		
+				(to_unsigned( integer( getSustainStep(138.591/130.813), SUSTAIN_END_OFFSET_ADDR(28) ),32)& X"00000000") or toUnFix( getSustainStep(138.591/130.813, SUSTAIN_END_OFFSET_ADDR(28) ),32,32) )		when X"31", -- C#3
+				(to_unsigned( integer( getSustainStep(146.832/130.813), SUSTAIN_END_OFFSET_ADDR(29) ),32)& X"00000000") or toUnFix( getSustainStep(146.832/130.813, SUSTAIN_END_OFFSET_ADDR(29) ),32,32) )		when X"32", -- D3
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(30), 32)& X"00000000")																																	when X"33", --D#3		
+				(to_unsigned( integer( getSustainStep(164.814/155.563), SUSTAIN_END_OFFSET_ADDR(31) ),32)& X"00000000") or toUnFix( getSustainStep(164.814/155.563, SUSTAIN_END_OFFSET_ADDR(31) ),32,32) )		when X"34", -- E3
+				(to_unsigned( integer( getSustainStep(174.614/155.563), SUSTAIN_END_OFFSET_ADDR(32) ),32)& X"00000000") or toUnFix( getSustainStep(174.614/155.563, SUSTAIN_END_OFFSET_ADDR(32) ),32,32) )		when X"35", -- F3
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(33), 32)& X"00000000")																																	when X"36", --F#3						
+				(to_unsigned( integer( getSustainStep(195.998/184.997), SUSTAIN_END_OFFSET_ADDR(34) ),32)& X"00000000") or toUnFix( getSustainStep(195.998/184.997, SUSTAIN_END_OFFSET_ADDR(34) ),32,32) )		when X"37", -- G3 
+				(to_unsigned( integer( getSustainStep(207.652/184.997), SUSTAIN_END_OFFSET_ADDR(35) ),32)& X"00000000") or toUnFix( getSustainStep(207.652/184.997, SUSTAIN_END_OFFSET_ADDR(35) ),32,32) )		when X"38", -- G#3
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(36), 32)& X"00000000")																																	when X"39", --A3		
+				(to_unsigned( integer( getSustainStep(233.082/220.000), SUSTAIN_END_OFFSET_ADDR(37) ),32)& X"00000000") or toUnFix( getSustainStep(233.082/220.000, SUSTAIN_END_OFFSET_ADDR(37) ),32,32) )		when X"3A", -- A#3
+				(to_unsigned( integer( getSustainStep(246.942/220.000), SUSTAIN_END_OFFSET_ADDR(38) ),32)& X"00000000") or toUnFix( getSustainStep(246.942/220.000, SUSTAIN_END_OFFSET_ADDR(38) ),32,32) )		when X"3B", -- B3
+				
+				--Octave 4
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(39), 32)& X"00000000")																																	when X"3C", --C4		
+				(to_unsigned( integer( getSustainStep(277.183/261.626), SUSTAIN_END_OFFSET_ADDR(40) ),32)& X"00000000") or toUnFix( getSustainStep(277.183/261.626, SUSTAIN_END_OFFSET_ADDR(40) ),32,32) )		when X"3D", -- C#4
+				(to_unsigned( integer( getSustainStep(293.665/261.626), SUSTAIN_END_OFFSET_ADDR(41) ),32)& X"00000000") or toUnFix( getSustainStep(293.665/261.626, SUSTAIN_END_OFFSET_ADDR(41) ),32,32) )		when X"3E", -- D4
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(42), 32)& X"00000000")																																	when X"3F", --D#1		
+				(to_unsigned( integer( getSustainStep(329.628/311.127), SUSTAIN_END_OFFSET_ADDR(43) ),32)& X"00000000") or toUnFix( getSustainStep(329.628/311.127, SUSTAIN_END_OFFSET_ADDR(43) ),32,32) )		when X"40", -- E4
+				(to_unsigned( integer( getSustainStep(349.228/311.127), SUSTAIN_END_OFFSET_ADDR(44) ),32)& X"00000000") or toUnFix( getSustainStep(349.228/311.127, SUSTAIN_END_OFFSET_ADDR(44) ),32,32) )		when X"41", -- F4
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(45), 32)& X"00000000")																																	when X"42", --F#4		
+				(to_unsigned( integer( getSustainStep(391.995/369.994), SUSTAIN_END_OFFSET_ADDR(46) ),32)& X"00000000") or toUnFix( getSustainStep(391.995/369.994, SUSTAIN_END_OFFSET_ADDR(46) ),32,32) )		when X"43", -- G4
+				(to_unsigned( integer( getSustainStep(415.305/369.994), SUSTAIN_END_OFFSET_ADDR(47) ),32)& X"00000000") or toUnFix( getSustainStep(415.305/369.994, SUSTAIN_END_OFFSET_ADDR(47) ),32,32) )		when X"44", -- G#4
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(48), 32)& X"00000000")																																	when X"45", --A4		
+				(to_unsigned( integer( getSustainStep(466.164/440.000), SUSTAIN_END_OFFSET_ADDR(49) ),32)& X"00000000") or toUnFix( getSustainStep(466.164/440.000, SUSTAIN_END_OFFSET_ADDR(49) ),32,32) )		when X"46", -- A#4
+				(to_unsigned( integer( getSustainStep(493.883/440.000), SUSTAIN_END_OFFSET_ADDR(50) ),32)& X"00000000") or toUnFix( getSustainStep(493.883/440.000, SUSTAIN_END_OFFSET_ADDR(50) ),32,32) )		when X"47",	-- B4
+				
+				--Octave 5
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(51), 32)& X"00000000")																																	when X"48", --C5		
+				(to_unsigned( integer( getSustainStep(554.365/523.251), SUSTAIN_END_OFFSET_ADDR(52) ),32)& X"00000000") or toUnFix( getSustainStep(554.365/523.251, SUSTAIN_END_OFFSET_ADDR(52) ),32,32) )		when X"49",	-- C#5
+				(to_unsigned( integer( getSustainStep(587.330/523.251), SUSTAIN_END_OFFSET_ADDR(53) ),32)& X"00000000") or toUnFix( getSustainStep(587.330/523.251, SUSTAIN_END_OFFSET_ADDR(53) ),32,32) )		when X"4A", -- D5
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(54), 32)& X"00000000")																																	when X"4B", --D#5		
+				(to_unsigned( integer( getSustainStep(659.255/622.254), SUSTAIN_END_OFFSET_ADDR(55) ),32)& X"00000000") or toUnFix( getSustainStep(659.255/622.254, SUSTAIN_END_OFFSET_ADDR(55) ),32,32) )		when X"4C", -- E5
+				(to_unsigned( integer( getSustainStep(698.456/622.254), SUSTAIN_END_OFFSET_ADDR(56) ),32)& X"00000000") or toUnFix( getSustainStep(698.456/622.254, SUSTAIN_END_OFFSET_ADDR(56) ),32,32) )		when X"4D", -- F5
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(57), 32)& X"00000000")																																	when X"4E", --F#5		
+				(to_unsigned( integer( getSustainStep(783.991/739.989), SUSTAIN_END_OFFSET_ADDR(58) ),32)& X"00000000") or toUnFix( getSustainStep(783.991/739.989, SUSTAIN_END_OFFSET_ADDR(58) ),32,32) )		when X"4F", -- G5
+				(to_unsigned( integer( getSustainStep(830.609/739.989), SUSTAIN_END_OFFSET_ADDR(59) ),32)& X"00000000") or toUnFix( getSustainStep(830.609/739.989, SUSTAIN_END_OFFSET_ADDR(59) ),32,32) )		when X"50", -- G#5
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(60), 32)& X"00000000")																																	when X"51", --A5						
+				(to_unsigned( integer( getSustainStep(932.328/880.000), SUSTAIN_END_OFFSET_ADDR(61) ),32)& X"00000000") or toUnFix( getSustainStep(932.328/880.000, SUSTAIN_END_OFFSET_ADDR(61) ),32,32) )		when X"52", -- A#5
+				(to_unsigned( integer( getSustainStep(987.767/880.000), SUSTAIN_END_OFFSET_ADDR(62) ),32)& X"00000000") or toUnFix( getSustainStep(987.767/880.000, SUSTAIN_END_OFFSET_ADDR(62) ),32,32) )		when X"53",	-- B5
+				
+				--Octave 6
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(63), 32)& X"00000000")																																	when X"54", --C6						
+				(to_unsigned( integer( getSustainStep(1108.73/1046.50), SUSTAIN_END_OFFSET_ADDR(64) ),32)& X"00000000") or toUnFix( getSustainStep(1108.73/1046.50, SUSTAIN_END_OFFSET_ADDR(64) ),32,32) )		when X"55", -- C#6
+				(to_unsigned( integer( getSustainStep(1174.66/1046.50), SUSTAIN_END_OFFSET_ADDR(65) ),32)& X"00000000") or toUnFix( getSustainStep(1174.66/1046.50, SUSTAIN_END_OFFSET_ADDR(65) ),32,32) )		when X"56", -- D6
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(66), 32)& X"00000000")																																	when X"57", --D#6		
+				(to_unsigned( integer( getSustainStep(1318.51/1244.51), SUSTAIN_END_OFFSET_ADDR(67) ),32)& X"00000000") or toUnFix( getSustainStep(1318.51/1244.51, SUSTAIN_END_OFFSET_ADDR(67) ),32,32) )		when X"58", -- E6
+				(to_unsigned( integer( getSustainStep(1396.91/1244.51), SUSTAIN_END_OFFSET_ADDR(68) ),32)& X"00000000") or toUnFix( getSustainStep(1396.91/1244.51, SUSTAIN_END_OFFSET_ADDR(68) ),32,32) )		when X"59", -- F6
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(69), 32)& X"00000000")																																	when X"58", --F#6		
+				(to_unsigned( integer( getSustainStep(1567.98/1479.98), SUSTAIN_END_OFFSET_ADDR(70) ),32)& X"00000000") or toUnFix( getSustainStep(1567.98/1479.98, SUSTAIN_END_OFFSET_ADDR(70) ),32,32) )		when X"5B", -- G6
+				(to_unsigned( integer( getSustainStep(1661.22/1479.98), SUSTAIN_END_OFFSET_ADDR(71) ),32)& X"00000000") or toUnFix( getSustainStep(1661.22/1479.98, SUSTAIN_END_OFFSET_ADDR(71) ),32,32) )		when X"5C", -- G#6
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(72), 32)& X"00000000")																																	when X"5D", --A6		
+				(to_unsigned( integer( getSustainStep(1864.66/1760.00), SUSTAIN_END_OFFSET_ADDR(73) ),32)& X"00000000") or toUnFix( getSustainStep(1864.66/1760.00, SUSTAIN_END_OFFSET_ADDR(73) ),32,32) )		when X"5E", -- A#6
+				(to_unsigned( integer( getSustainStep(1975.53/1760.00), SUSTAIN_END_OFFSET_ADDR(74) ),32)& X"00000000") or toUnFix( getSustainStep(1975.53/1760.00, SUSTAIN_END_OFFSET_ADDR(74) ),32,32) )		when X"5F", -- B6
+				
+				--Octave 7
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(75), 32)& X"00000000")																																	when X"60", --C7						
+				(to_unsigned( integer( getSustainStep(2217.46/2093.00), SUSTAIN_END_OFFSET_ADDR(76) ),32)& X"00000000") or toUnFix( getSustainStep(2217.46/2093.00, SUSTAIN_END_OFFSET_ADDR(76) ),32,32) )		when X"61", -- C#7
+				(to_unsigned( integer( getSustainStep(2349.32/2093.00), SUSTAIN_END_OFFSET_ADDR(77) ),32)& X"00000000") or toUnFix( getSustainStep(2349.32/2093.00, SUSTAIN_END_OFFSET_ADDR(77) ),32,32) )		when X"62", -- D7
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(78), 32)& X"00000000")																																	when X"63", --D#7						
+				(to_unsigned( integer( getSustainStep(2637.02/2489.02), SUSTAIN_END_OFFSET_ADDR(79) ),32)& X"00000000") or toUnFix( getSustainStep(2637.02/2489.02, SUSTAIN_END_OFFSET_ADDR(79) ),32,32) )		when X"64", -- E7
+				(to_unsigned( integer( getSustainStep(2793.83/2489.02), SUSTAIN_END_OFFSET_ADDR(80) ),32)& X"00000000") or toUnFix( getSustainStep(2793.83/2489.02, SUSTAIN_END_OFFSET_ADDR(80) ),32,32) )		when X"65", -- F7
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(81), 32)& X"00000000")																																	when X"66", --F#7		
+				(to_unsigned( integer( getSustainStep(3135.96/2959.96), SUSTAIN_END_OFFSET_ADDR(82) ),32)& X"00000000") or toUnFix( getSustainStep(3135.96/2959.96, SUSTAIN_END_OFFSET_ADDR(82) ),32,32) )		when X"67", -- G7
+				(to_unsigned( integer( getSustainStep(3322.44/2959.96), SUSTAIN_END_OFFSET_ADDR(83) ),32)& X"00000000") or toUnFix( getSustainStep(3322.44/2959.96, SUSTAIN_END_OFFSET_ADDR(83) ),32,32) )		when X"68", -- G#7
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(84), 32)& X"00000000")																																	when X"69", --A7		
+				(to_unsigned( integer( getSustainStep(3729.31/3520.00), SUSTAIN_END_OFFSET_ADDR(85) ),32)& X"00000000") or toUnFix( getSustainStep(3729.31/3520.00, SUSTAIN_END_OFFSET_ADDR(85) ),32,32) )		when X"6A", -- A#7
+				(to_unsigned( integer( getSustainStep(3951.07/3520.00), SUSTAIN_END_OFFSET_ADDR(86) ),32)& X"00000000") or toUnFix( getSustainStep(3951.07/3520.00, SUSTAIN_END_OFFSET_ADDR(86) ),32,32) )		when X"6B", -- B7			
+				
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(87), 32)& X"00000000")																																	when X"6C", --C8		
+				to_unsigned( 0, 64)																																												when others;														
 
 	
 ----------------------------------------------------------------------------------

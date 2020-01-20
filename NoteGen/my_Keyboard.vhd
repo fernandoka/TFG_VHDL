@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --		Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -48,7 +48,9 @@ entity my_Keyboard is
         sampleRqt       :   in  std_logic;
         sampleOut       :   out std_logic_vector(15 downto 0);
         
-        
+        --Notes generator side
+		workingNotesGen	:	in	std_logic_vector(31 downto 0);
+		
         -- Mem side
         mem_sampleIn    :   in  std_logic_vector(15 downto 0);
         mem_ack         :   in  std_logic;
@@ -480,15 +482,14 @@ architecture Behavioral of my_Keyboard is
 -- SIGNALS
 ----------------------------------------------------------------------------------            
     -- NoteParams
-	signal	startAddr                :	std_logic_vector(25 downto 0);
-	signal	sustainStartOffsetAddr   :	std_logic_vector(25 downto 0);
-	signal	sustainEndOffsetAddr     :	std_logic_vector(25 downto 0);
-	signal	maxSamples               :	std_logic_vector(25 downto 0);
-	signal	stepVal                  :	std_logic_vector(63 downto 0);
-	signal	sustainStepStart         :	std_logic_vector(63 downto 0);
-	signal	sustainStepEnd           :	std_logic_vector(63 downto 0);
+	signal	startAddrROM                :	std_logic_vector(25 downto 0);
+	signal	sustainStartOffsetAddrROM   :	std_logic_vector(25 downto 0);
+	signal	sustainEndOffsetAddrROM     :	std_logic_vector(25 downto 0);
+	signal	maxSamplesROM               :	std_logic_vector(25 downto 0);
+	signal	stepValROM                  :	std_logic_vector(63 downto 0);
+	signal	sustainStepStartROM         :	std_logic_vector(63 downto 0);
+	signal	sustainStepEndROM           :	std_logic_vector(63 downto 0);
 	
-	signal aviableNoteGen			:	std_logic; -- Inverse logic, 0 some gen is free, 1 all generetors are working
 	signal notesOnOff				:	std_logic_vector(31 downto 0);
 	
 	-- Registers
@@ -515,7 +516,7 @@ begin
 -- One entry per three notes	
 	startAddr_ROM :
   with cmdKeyboard(7 downto 0) select
-			startAddr <=
+			startAddrROM <=
 				
 				to_unsigned(SAMPLES_PER_WAVETABLE,26)		when X"18" | X"19" | X"1A", 	-- C1, C#1, D1
 				to_unsigned(SAMPLES_PER_WAVETABLE*2,26)		when X"1B" | X"1C" | X"1D", -- D#1, E1, F1
@@ -562,7 +563,7 @@ begin
 -- One entry per note
 	sustainStartOffsetAddr_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainStartOffsetAddr <=
+			sustainStartOffsetAddrROM <=
 			
 				to_unsigned(SUSTAIN_START_OFFSET_ADDR(0),26)	when X"15", -- A0 
 				to_unsigned(SUSTAIN_START_OFFSET_ADDR(1),26) 	when X"16", -- A#0
@@ -701,7 +702,7 @@ begin
 -- One entry per note
 	sustainEndOffsetAddr_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainEndOffsetAddr <=
+			sustainEndOffsetAddrROM <=
 				
 				to_unsigned(SUSTAIN_END_OFFSET_ADDR(0),26)		when X"15", -- A0 
 				to_unsigned(SUSTAIN_END_OFFSET_ADDR(1),26) 		when X"16", -- A#0
@@ -842,7 +843,7 @@ begin
 -- One entry per interpolated note
 	maxSamples_ROM :
   with cmdKeyboard(7 downto 0) select
-			maxSamples <=
+			maxSamplesROM <=
 				
 				-- Interpolated notes
 				to_unsigned(MAX_INTERPOLATED_SAMPLES_PER_NOTE(0),26)	when X"16",	-- A#0
@@ -910,7 +911,7 @@ begin
 -- One entry per interpolated note
 	stepVal_ROM :
   with cmdKeyboard(7 downto 0) select
-			stepVal <=
+			stepValROM <=
 				
 				-- Interpolated notes
 				(to_unsigned( integer(29.1353/27.5),32)& X"00000000") or toUnFix( 29.1353/27.5 ,32,32) )			when X"17",	-- A#0
@@ -978,14 +979,14 @@ begin
 -- One entry per note
 	sustainStepStart_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainStepStart <=
+			sustainStepStartROM <=
 
 				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(0), 32)& X"00000000")																																	when X"15", --A0		
 				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_START_OFFSET_ADDR(1) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_START_OFFSET_ADDR(1) ),32,32) )		when X"16",	-- A#0
 				(to_unsigned( integer( getSustainStep(30.8677/27.5), SUSTAIN_START_OFFSET_ADDR(2) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_START_OFFSET_ADDR(2) ),32,32) )		when X"17",	-- B0
 				
 				--Octave 1
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(3) ,32)& X"00000000")																							when X"18", --C1		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(3) ,32)& X"00000000")																																	when X"18", --C1		
 				(to_unsigned( integer( getSustainStep(34.6479/32.7032), SUSTAIN_START_OFFSET_ADDR(4) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_START_OFFSET_ADDR(4)  ),32,32) )	when X"19",	-- C#1
 				(to_unsigned( integer( getSustainStep(36.7081/32.7032), SUSTAIN_START_OFFSET_ADDR(5) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_START_OFFSET_ADDR(5)  ),32,32) )	when X"1A",	-- D1
 				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(6), 32)& X"00000000")																																	when X"1B", --D#1		
@@ -1088,14 +1089,14 @@ begin
 -- One entry per note
 	sustainStepEnd_ROM :
   with cmdKeyboard(7 downto 0) select
-			sustainStepEnd <=
+			sustainStepEndROM <=
 				
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(0), 32)& X"00000000")																																		when X"15", --A0		
 				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_END_OFFSET_ADDR(1) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_END_OFFSET_ADDR(1) ),32,32) )				when X"16",	-- A#0
 				(to_unsigned( integer( getSustainStep(30.8677/27.5), SUSTAIN_END_OFFSET_ADDR(2) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_END_OFFSET_ADDR(2) ),32,32) )				when X"17",	-- B0
 				
 				--Octave 1
-				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(3) ,32)& X"00000000")																								when X"18", --C1		
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(3) ,32)& X"00000000")																																		when X"18", --C1		
 				(to_unsigned( integer( getSustainStep(34.6479/32.7032), SUSTAIN_END_OFFSET_ADDR(4) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_END_OFFSET_ADDR(4)  ),32,32) )		when X"19",	-- C#1
 				(to_unsigned( integer( getSustainStep(36.7081/32.7032), SUSTAIN_END_OFFSET_ADDR(5) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_END_OFFSET_ADDR(5)  ),32,32) )		when X"1A",	-- D1
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(6), 32)& X"00000000")																																		when X"1B", --D#1		
@@ -1199,16 +1200,15 @@ begin
 ----------------------------------------------------------------------------------
 								-- ROMs End --
 ----------------------------------------------------------------------------------  
-myReduceAnd: reducedAnd 
-  generic map( WL =>32)
-  port map( a_in =>regKeyboardState, reducedA_out => aviableNoteGen);
+
 ----------------------------------------------------------------------------------
 -- CMD RECIEVER
 --		Manage the behaviour with the commands
 ----------------------------------------------------------------------------------  
 
 fsm:
-process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard)
+process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard,workingNotesGen)
+	type states is ( reciveCmd, waitTurnOff);
 	type noteState_t is record
 		currentNote   :   std_logic_vector(7 downto 0);
         OnOff   	  :   std_logic; -- High On, low Off
@@ -1216,6 +1216,7 @@ process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard)
 	type keyboardState_t is array ( 0 to 31 ) of noteState_t;
 	type checkNotes_t	is 	array (0 to 31) of  unsigned(5 downto 0);
 	
+	variable state      		:   states;
 	variable keyboardState		:	keyboardState_t;
 	
 	variable foundOff			:	std_logic_vector(31 downto 0);
@@ -1226,21 +1227,20 @@ process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard)
 	
 begin
 
-	------------------------------------------------------------------------
+	--------------------------------------------------------------------------
 	-- "Combinational Search" of note index to slect which note turn on/off --
-	------------------------------------------------------------------------
+	--------------------------------------------------------------------------
 	--On, try this !!
 	foundOn(0) <='0';
 	noteIndexOn(0) <= to_unsigned(0,5);
 	if keyboardState(0).OnOff='0' then
-		noteIndexOn(0) <= to_unsigned(1,5);	
 		foundOn(0) <='1';
 	end if;
 	for i in 1 to 31 then
 		foundOn(i) <= foundOn(i-1);
 		noteIndexOn(i) <= noteIndexOn(i-1);
 		if foundOn(i-1)='0' and keyboardState(i).OnOff='0' then
-			noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(i+1,5)) );
+			noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(i,5)) );
 			foundOn(i) <= '1';
 		end if;
 	end loop;
@@ -1250,45 +1250,55 @@ begin
 	foundOff(0) <='0';
 	noteIndexOff(0) := to_unsigned(0,4);
 	if cmdKeyboard(7 downto 0)=keyboardState(0).currentNote then
-		noteIndexOff(0) := to_unsigned(1,4);	
 		foundOff(0) <='1';
 	end if;
 	for i in 1 to 31 loop
 		foundOff(i) <= foundOff(i-1);
 		noteIndexOff(i) := auXnoteIndexOff(i-1);
 		if foundOff(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
-			noteIndexOff(i) := to_unsigned(i+1,4);	
+			noteIndexOff(i) := to_unsigned(i,4);	
 		end if;
 	end loop;
 	
 	
 	if rst_n='0' then
+		state := reciveCmd;
 		keyboard_ack <='0';
 		keyboardState <=(others=>("00",'0'));
 		
     elsif rising_edge(clk) then
 		keyboard_ack <='0';
 		
-		if emtyCmdBuffer='0' then
-			-- Note params setup
-			regStartAddr             <= startAddr             ;
-			regSustainStartOffsetAddr<= sustainStartOffsetAddr;
-			regSustainEndOffsetAddr  <= sustainEndOffsetAddr  ;
-			regMaxSamples            <= maxSamples            ;
-			regStepVal               <= stepVal               ;
-			regSustainStepStart      <= sustainStepStart      ;
-			regSustainStepEnd        <= sustainStepEnd        ;
+		case state is
+            when reciveCmd =>
+				if emtyCmdBuffer='0' then
+					-- Note params setup
+					regStartAddr             <= startAddrROM             ;
+					regSustainStartOffsetAddr<= sustainStartOffsetAddrROM;
+					regSustainEndOffsetAddr  <= sustainEndOffsetAddrROM  ;
+					regMaxSamples            <= maxSamplesROM            ;
+					regStepVal               <= stepValROM               ;
+					regSustainStepStart      <= sustainStepStartROM      ;
+					regSustainStepEnd        <= sustainStepEndROM        ;
+					
+					
+					-- Note On
+					if cmdKeyboard(9)='1' and foundOn='0' then 
+						keyboardState(noteIndexOn(31)) := (cmdKeyboard(7 downto 0),'1');
+						keyboard_ack <='1';
+					-- Note Off
+					elsif cmdKeyboard(8)='1' and foundOff(31)='1' then
+						keyboardState(noteIndexOff(31)) := ("00",'0');
+						state := waitTurnOff;
+					end if;
+				end if;
 			
-			keyboard_ack <='1';
-			-- Note On
-			if cmdKeyboard(9)='1' and aviableNoteGen='0' then 
-				keyboardState(noteIndexOn(31)-1) := (cmdKeyboard(7 downto 0),'1');
-			-- Note Off
-			elsif cmdKeyboard(8)='1' and noteIndexOff(31)/="00" then
-				keyboardState(noteIndexOff(31)-1) := ("00",'0');
-			end if;
-		end if;
-		
+			-- Wait until the end of the release phase
+			when waitTurnOff =>
+				if workingNotesGen(noteIndexOff(31))='0' then
+					keyboard_ack <='1';
+					state := reciveCmd;
+				end if;
     end if;
 end process;
   

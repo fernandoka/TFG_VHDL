@@ -31,7 +31,9 @@ entity UniversalNoteGen is
     clk                     	:	in	std_logic;  
     noteOnOff               	:	in	std_logic; -- On high, Off low
     sampleRqt    				:	in	std_logic;
+	working						:	out	std_logic;
     sample_out              	:	out	std_logic_vector(15 downto 0);
+
     
 	-- NoteParams
 	startAddr_In				:	in	std_logic_vector(25 downto 0);
@@ -44,9 +46,10 @@ entity UniversalNoteGen is
 	
     -- Mem side
     samples_in              	:   in  std_logic_vector(15 downto 0);
-    memAck                  	:   in 	std_logic;
-    addr_out                	:   out std_logic_vector(25 downto 0);
-    readMem_out             	:   out std_logic
+    memAckSend                 	:   in 	std_logic;
+    memAckResponse				:	in  std_logic;
+	addr_out                	:   out std_logic_vector(25 downto 0);
+    memSamplesSendRqt           :   out std_logic
   );
 -- Attributes for debug
 attribute   dont_touch    :   string;
@@ -97,7 +100,7 @@ Interpolate:
 
 	filterRegisters :
   process (rst_n, clk,memAck,noteOnOff,sampleRqt)
-      type states is (idle, getSample1, getSample2, interpolate, calculateNextAddr); 
+      type states is (idle, waitCmdAck ,getSample1, getSample2, interpolate, calculateNextAddr); 
       variable state: states;
       variable releaseFlag      :   std_logic;
       variable interpolatedSamplesCntr : unsigned(25 downto 0);
@@ -118,9 +121,17 @@ Interpolate:
                 	
     addr_out <= std_logic_vector(currentAddr);
     sample_out <= std_logic_vector(wtout);
-
-
-    if rst_n='0' then
+	
+	------------------
+	-- Moore output --
+	------------------
+    working <='0';
+	if state/=idle then
+		working <='1';
+	end if;
+	
+	
+	if rst_n='0' then
         state := idle;
         cntr := 0;
         interpolatedSamplesCntr := (others=>'0');
@@ -130,10 +141,9 @@ Interpolate:
         wtinIPlus1 <= (others=>'0');
         wtinI <= (others=>'0');
 		ci <=(others=>'0');
-        readMem_out <= '1';
-                
+        memSamplesSendRqt <= '0';
+        
 	elsif rising_edge(clk) then
-        readMem_out <= '1';
             
             case state is
                     
@@ -153,28 +163,28 @@ Interpolate:
                         sustainStepStart        := unsigned(sustainStepStart_In);			
 						sustainStepEnd	        := unsigned(sustainStepEnd_In);			
 						
-						state := getSample1;
+						state := waitCmdAck;
                         releaseFlag :='0';
                         ci <=(others=>'0');
-                        -- Prepare read
-                        readMem_out <= '0';
+                        memSamplesSendRqt <= '1';
                     end if;
+
+				when waitCmdAck=>
+					if memAckSend='1' then
+					   memSamplesSendRqt <= '0';
+					end if;
             
                 -- Recive samples
-                when getSample1 =>
-                    
-                    if memAck='1' then 
-                        currentAddr := currentAddr+1;
+                when getSample1 =>                    
+                    if memAckResponse='1' then 
                         wtinI <= signed(samples_in);
                         state := getSample2;
-                        -- Prepare read
-                       readMem_out <= '0';
                     end if;            
             
                 when getSample2 =>
-                   if memAck='1' then 
+                   if memAckResponse='1' then 
                        wtinIPlus1 <= signed(samples_in);
-                       state := interpolate;
+					   state := interpolate;
                   end if;
                 
                 -- Wait 2 SampleRqt because the audio is mono
@@ -192,9 +202,9 @@ Interpolate:
                     -- Prepare next sample addr
                     -- Attack+Decay+Sustain phase
                     if noteOnOff='1' and releaseFlag='0' then
-                        state := getSample1;
-                        -- Prepare read
-                        readMem_out <= '0';
+                        state := waitCmdAck;
+                        -- Read request
+                        memSamplesSendRqt <= '1';
                         
                         if interpolatedSamplesCntr < sustainEndOffsetAddr then
                             interpolatedSamplesCntr := interpolatedSamplesCntr+1;
@@ -211,9 +221,9 @@ Interpolate:
                             if interpolatedSamplesCntr < maxSamples then
                                 interpolatedSamplesCntr := interpolatedSamplesCntr+1;
                                 currentAddr := startAddr + ci(57 downto 32) - 1;-- Just use the integer part
-                                state := getSample1;
-                                -- Prepare read
-                                readMem_out <= '0';
+                                state := waitCmdAck;
+                                -- Read request
+                                memSamplesSendRqt <= '1';
                             else
                                 state := idle;
                             end if;
@@ -221,10 +231,10 @@ Interpolate:
                             interpolatedSamplesCntr := unsigned(sustainEndOffsetAddr);
                             currentAddr := startAddr + sustainStepEnd(57 downto 32) - 1;-- Just use the integer part
                             ci <= sustainStepEnd;
-                            state := getSample1;
+                            state := waitCmdAck;
                             releaseFlag :='1';
-                            -- Prepare read
-                            readMem_out <= '0';
+                            -- Read request
+                            memSamplesSendRqt <= '1';
                         end if; --releaseFlag='1'      
                                           
                   end if;--noteOnOff='1'              

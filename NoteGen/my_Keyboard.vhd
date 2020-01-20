@@ -1217,12 +1217,11 @@ process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard)
 	type checkNotes_t	is 	array (0 to 31) of  unsigned(5 downto 0);
 	
 	variable keyboardState		:	keyboardState_t;
-
-	variable auXnoteIndexOff	:	checkNotes_t; 	
+	
+	variable foundOff			:	std_logic_vector(31 downto 0);
 	variable noteIndexOff 		:   checkNotes_t
 	
-	variable auXnoteIndexOn_0	:	std_logic_vector(31 downto 0);
-	variable auXnoteIndexOn_0	:	checkNotes_t;
+	variable foundOn			:	std_logic_vector(31 downto 0);
 	variable noteIndexOn		:   checkNotes_t;
 	
 begin
@@ -1231,26 +1230,33 @@ begin
 	-- "Combinational Search" of note index to slect which note turn on/off --
 	------------------------------------------------------------------------
 	--On, try this !!
+	foundOn(0) <='0';
 	noteIndexOn(0) <= to_unsigned(0,5);
 	if keyboardState(0).OnOff='0' then
 		noteIndexOn(0) <= to_unsigned(1,5);	
+		foundOn(0) <='1';
 	end if;
 	for i in 1 to 31 then
-		noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(0,5)) or std_logic_vector(noteIndexOn(i-1)) );
-		if keyboardState(i-1).OnOff='0' and keyboardState(i).OnOff='0' then
+		foundOn(i) <= foundOn(i-1);
+		noteIndexOn(i) <= noteIndexOn(i-1);
+		if foundOn(i-1)='0' and keyboardState(i).OnOff='0' then
 			noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(i+1,5)) );
+			foundOn(i) <= '1';
 		end if;
 	end loop;
 	
 
 	--Off, try this !!
+	foundOff(0) <='0';
 	noteIndexOff(0) := to_unsigned(0,4);
 	if cmdKeyboard(7 downto 0)=keyboardState(0).currentNote then
 		noteIndexOff(0) := to_unsigned(1,4);	
+		foundOff(0) <='1';
 	end if;
 	for i in 1 to 31 loop
-		noteIndexOff(i) := to_unsigned(0,4) or auXnoteIndexOff(i-1);
-		if noteIndexOff(i-1)="00" and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
+		foundOff(i) <= foundOff(i-1);
+		noteIndexOff(i) := auXnoteIndexOff(i-1);
+		if foundOff(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
 			noteIndexOff(i) := to_unsigned(i+1,4);	
 		end if;
 	end loop;
@@ -1263,7 +1269,7 @@ begin
     elsif rising_edge(clk) then
 		keyboard_ack <='0';
 		
-		if emtyCmdBuffer='0' and aviableNoteGen='0' then
+		if emtyCmdBuffer='0' then
 			-- Note params setup
 			regStartAddr             <= startAddr             ;
 			regSustainStartOffsetAddr<= sustainStartOffsetAddr;
@@ -1275,8 +1281,8 @@ begin
 			
 			keyboard_ack <='1';
 			-- Note On
-			if cmdKeyboard(9)='1' then 
-				keyboardState(noteIndexOn) := (cmdKeyboard(7 downto 0),'1');
+			if cmdKeyboard(9)='1' and aviableNoteGen='0' then 
+				keyboardState(noteIndexOn(31)-1) := (cmdKeyboard(7 downto 0),'1');
 			-- Note Off
 			elsif cmdKeyboard(8)='1' and noteIndexOff(31)/="00" then
 				keyboardState(noteIndexOff(31)-1) := ("00",'0');

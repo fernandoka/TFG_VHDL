@@ -191,7 +191,7 @@ Interpolate:
                 when calculateNextAddr =>
                     -- Prepare next sample addr
                     -- Attack+Decay+Sustain phase
-                    if noteOnOff='1'then
+                    if noteOnOff='1' and releaseFlag='0' then
                         state := getSample1;
                         -- Prepare read
                         readMem_out <= '0';

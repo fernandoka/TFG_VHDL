@@ -489,6 +489,7 @@ architecture Behavioral of my_Keyboard is
 	signal	sustainStepEnd           :	std_logic_vector(63 downto 0);
 	
 	signal aviableNoteGen			:	std_logic; -- Inverse logic, 0 some gen is free, 1 all generetors are working
+	signal notesOnOff				:	std_logic_vector(31 downto 0);
 	
 	-- Registers
 	signal	regStartAddr                :	std_logic_vector(25 downto 0);
@@ -1208,17 +1209,57 @@ myReduceAnd: reducedAnd
 
 fsm:
 process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard)
-begin
-    
+	type noteState_t is record
+		currentNote   :   std_logic_vector(7 downto 0);
+        OnOff   	  :   std_logic; -- High On, low Off
+	end record;
+	type keyboardState_t is array ( 0 to 31 ) of noteState_t;
+	type checkNotes_t	is 	array (0 to 31) of  unsigned(5 downto 0);
+	
+	variable keyboardState		:	keyboardState_t;
 
-    if rst_n='0' then
+	variable auXnoteIndexOff	:	checkNotes_t; 	
+	variable noteIndexOff 		:   checkNotes_t
+
+	variable noteIndexOn		:   unsigned(4 downto 0);
+	
+begin
+
+	------------------------------------------------------------------------
+	-- "Combinational Search" of note index to slect which note turn on/off --
+	------------------------------------------------------------------------
+	--On, try this !!
+	if keyboardState(0).OnOff='0' then
+		noteIndexOn <= to_unsigned(0,5);
+		for i in 1 to 31 then
+			elsif keyboardState(i).OnOff='0' then
+				noteIndexOn <= to_unsigned(i,5);
+		end loop;
+	end if;
+
+	--Off
+	for i in 0 to 31 loop
+		if cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
+			auXnoteIndexOff(i) := to_unsigned(i+1,4);
+		else
+			auXnoteIndexOff(i) := to_unsigned(0,4);
+		end if;
+	end loop;
+	
+	noteIndexOff(0) <= auXnoteIndexOff(0);
+	for i in 1 to 31 loop
+		noteIndexOff(i) := auXnoteIndexOff(i) or noteIndexOff(i-1);
+	end loop;
+	
+	
+	if rst_n='0' then
 		keyboard_ack <='0';
-		regKeyboardState <=(others=>'0');
+		keyboardState <=(others=>("00",'0'));
 		
     elsif rising_edge(clk) then
 		keyboard_ack <='0';
 		
-		if emtyCmdBuffer='0' and aviableNoteGen='0' and cmdKeyboard(9 downto 8)/="00" and cmdKeyboard(9 downto 8)/="11" then
+		if emtyCmdBuffer='0' and aviableNoteGen='0' then
 			-- Note params setup
 			regStartAddr             <= startAddr             ;
 			regSustainStartOffsetAddr<= sustainStartOffsetAddr;
@@ -1229,10 +1270,12 @@ begin
 			regSustainStepEnd        <= sustainStepEnd        ;
 			
 			keyboard_ack <='1';
+			-- Note On
 			if cmdKeyboard(9)='1' then 
-				regKeyboardState(cmdKeyboard(7 downto 0)-21) := '1';
-			elsif cmdKeyboard(8)='1' then
-				regKeyboardState(cmdKeyboard(7 downto 0)-21) := '1';
+				keyboardState(noteIndexOn) := (cmdKeyboard(7 downto 0),'1');
+			-- Note Off
+			elsif cmdKeyboard(8)='1' and noteIndexOff(31)/="00" then
+				keyboardState(noteIndexOff(31)-1) := ("00",'0');
 			end if;
 		end if;
 		

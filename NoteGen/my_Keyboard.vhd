@@ -985,7 +985,7 @@ begin
 				(to_unsigned( integer( getSustainStep(30.8677/27.5), SUSTAIN_START_OFFSET_ADDR(2) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_START_OFFSET_ADDR(2) ),32,32) )		when X"17",	-- B0
 				
 				--Octave 1
-				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_START_OFFSET_ADDR(3) ),32)& X"00000000")																							when X"18", --C1		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(3) ,32)& X"00000000")																							when X"18", --C1		
 				(to_unsigned( integer( getSustainStep(34.6479/32.7032), SUSTAIN_START_OFFSET_ADDR(4) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_START_OFFSET_ADDR(4)  ),32,32) )	when X"19",	-- C#1
 				(to_unsigned( integer( getSustainStep(36.7081/32.7032), SUSTAIN_START_OFFSET_ADDR(5) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_START_OFFSET_ADDR(5)  ),32,32) )	when X"1A",	-- D1
 				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(6), 32)& X"00000000")																																	when X"1B", --D#1		
@@ -1095,7 +1095,7 @@ begin
 				(to_unsigned( integer( getSustainStep(30.8677/27.5), SUSTAIN_END_OFFSET_ADDR(2) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_END_OFFSET_ADDR(2) ),32,32) )				when X"17",	-- B0
 				
 				--Octave 1
-				(to_unsigned( integer( getSustainStep(29.1353/27.5), SUSTAIN_END_OFFSET_ADDR(3) ),32)& X"00000000")																								when X"18", --C1		
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(3) ,32)& X"00000000")																								when X"18", --C1		
 				(to_unsigned( integer( getSustainStep(34.6479/32.7032), SUSTAIN_END_OFFSET_ADDR(4) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_END_OFFSET_ADDR(4)  ),32,32) )		when X"19",	-- C#1
 				(to_unsigned( integer( getSustainStep(36.7081/32.7032), SUSTAIN_END_OFFSET_ADDR(5) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_END_OFFSET_ADDR(5)  ),32,32) )		when X"1A",	-- D1
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(6), 32)& X"00000000")																																		when X"1B", --D#1		
@@ -1231,33 +1231,28 @@ begin
 	-- "Combinational Search" of note index to slect which note turn on/off --
 	------------------------------------------------------------------------
 	--On, try this !!
-	auXnoteIndexOn_0(0) <='0';
 	noteIndexOn(0) <= to_unsigned(0,5);
 	if keyboardState(0).OnOff='0' then
-			noteIndexOn(0) <= to_unsigned(1,5);
-			auXnoteIndexOn_0(0) <='1';
+		noteIndexOn(0) <= to_unsigned(1,5);	
 	end if;
 	for i in 1 to 31 then
-		auXnoteIndexOn_0(i) <= auXnoteIndexOn_0(i-1);
 		noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(0,5)) or std_logic_vector(noteIndexOn(i-1)) );
-		if auXnoteIndexOn(i-1)='0' and keyboardState(i-1).OnOff='0' then
-			noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(i+1,5)) or std_logic_vector(noteIndexOn(i-1)) );
-			auXnoteIndexOn_0(i) <='1';
+		if keyboardState(i-1).OnOff='0' and keyboardState(i).OnOff='0' then
+			noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(i+1,5)) );
 		end if;
 	end loop;
 	
 
 	--Off, try this !!
-	for i in 0 to 31 loop
-		auXnoteIndexOff(i) := to_unsigned(0,4);
-		if cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
-			auXnoteIndexOff(i) := to_unsigned(i+1,4);	
-		end if;
-	end loop;
-	
-	noteIndexOff(0) <= auXnoteIndexOff(0);
+	noteIndexOff(0) := to_unsigned(0,4);
+	if cmdKeyboard(7 downto 0)=keyboardState(0).currentNote then
+		noteIndexOff(0) := to_unsigned(1,4);	
+	end if;
 	for i in 1 to 31 loop
-		noteIndexOff(i) := auXnoteIndexOff(i) or noteIndexOff(i-1);
+		noteIndexOff(i) := to_unsigned(0,4) or auXnoteIndexOff(i-1);
+		if noteIndexOff(i-1)="00" and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
+			noteIndexOff(i) := to_unsigned(i+1,4);	
+		end if;
 	end loop;
 	
 	

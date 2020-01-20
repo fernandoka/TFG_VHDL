@@ -1220,8 +1220,10 @@ process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard)
 
 	variable auXnoteIndexOff	:	checkNotes_t; 	
 	variable noteIndexOff 		:   checkNotes_t
-
-	variable noteIndexOn		:   unsigned(4 downto 0);
+	
+	variable auXnoteIndexOn_0	:	std_logic_vector(31 downto 0);
+	variable auXnoteIndexOn_0	:	checkNotes_t;
+	variable noteIndexOn		:   checkNotes_t;
 	
 begin
 
@@ -1229,20 +1231,27 @@ begin
 	-- "Combinational Search" of note index to slect which note turn on/off --
 	------------------------------------------------------------------------
 	--On, try this !!
+	auXnoteIndexOn_0(0) <='0';
+	noteIndexOn(0) <= to_unsigned(0,5);
 	if keyboardState(0).OnOff='0' then
-		noteIndexOn <= to_unsigned(0,5);
-		for i in 1 to 31 then
-			elsif keyboardState(i).OnOff='0' then
-				noteIndexOn <= to_unsigned(i,5);
-		end loop;
+			noteIndexOn(0) <= to_unsigned(1,5);
+			auXnoteIndexOn_0(0) <='1';
 	end if;
+	for i in 1 to 31 then
+		auXnoteIndexOn_0(i) <= auXnoteIndexOn_0(i-1);
+		noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(0,5)) or std_logic_vector(noteIndexOn(i-1)) );
+		if auXnoteIndexOn(i-1)='0' and keyboardState(i-1).OnOff='0' then
+			noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(i+1,5)) or std_logic_vector(noteIndexOn(i-1)) );
+			auXnoteIndexOn_0(i) <='1';
+		end if;
+	end loop;
+	
 
-	--Off
+	--Off, try this !!
 	for i in 0 to 31 loop
+		auXnoteIndexOff(i) := to_unsigned(0,4);
 		if cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
-			auXnoteIndexOff(i) := to_unsigned(i+1,4);
-		else
-			auXnoteIndexOff(i) := to_unsigned(0,4);
+			auXnoteIndexOff(i) := to_unsigned(i+1,4);	
 		end if;
 	end loop;
 	

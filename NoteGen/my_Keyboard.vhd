@@ -49,7 +49,7 @@ entity my_Keyboard is
         sampleOut       :   out std_logic_vector(15 downto 0);
         
         --Notes generator side
-		workingNotesGen	:	in	std_logic_vector(31 downto 0);
+		workingNotesGen	:	in	std_logic_vector(15 downto 0);
 		
         -- Mem side
         mem_sampleIn    :   in  std_logic_vector(15 downto 0);
@@ -1213,16 +1213,16 @@ process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard,workingNotesGen)
 		currentNote   :   std_logic_vector(7 downto 0);
         OnOff   	  :   std_logic; -- High On, low Off
 	end record;
-	type keyboardState_t is array ( 0 to 31 ) of noteState_t;
-	type checkNotes_t	is 	array (0 to 31) of  unsigned(5 downto 0);
+	type keyboardState_t is array ( 0 to 15 ) of noteState_t;
+	type checkNotes_t	is 	array (0 to 15) of  unsigned(5 downto 0);
 	
 	variable state      		:   states;
 	variable keyboardState		:	keyboardState_t;
 	
-	variable foundOff			:	std_logic_vector(31 downto 0);
+	variable foundCode			:	std_logic_vector(15 downto 0);
 	variable noteIndexOff 		:   checkNotes_t
 	
-	variable foundOn			:	std_logic_vector(31 downto 0);
+	variable foundOn			:	std_logic_vector(15 downto 0);
 	variable noteIndexOn		:   checkNotes_t;
 	
 begin
@@ -1246,16 +1246,16 @@ begin
 	end loop;
 	
 
-	--Off, try this !!
-	foundOff(0) <='0';
+	--Off, search
+	foundCode(0) <='0';
 	noteIndexOff(0) := to_unsigned(0,4);
 	if cmdKeyboard(7 downto 0)=keyboardState(0).currentNote then
-		foundOff(0) <='1';
+		foundCode(0) <='1';
 	end if;
-	for i in 1 to 31 loop
-		foundOff(i) <= foundOff(i-1);
+	for i in 1 to 15 loop
+		foundCode(i) <= foundCode(i-1);
 		noteIndexOff(i) := auXnoteIndexOff(i-1);
-		if foundOff(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
+		if foundCode(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
 			noteIndexOff(i) := to_unsigned(i,4);	
 		end if;
 	end loop;
@@ -1283,19 +1283,23 @@ begin
 					
 					
 					-- Note On
-					if cmdKeyboard(9)='1' and foundOn='0' then 
-						keyboardState(noteIndexOn(31)) := (cmdKeyboard(7 downto 0),'1');
+					-- Turn on a new generator if there is some generator not working (foundOn(15)='1')
+					-- and if the note requested to turn on is not already on
+					if cmdKeyboard(9 downto 8)="10" and foundOn(15)='1' and foundCode(15)='0' then 
+						keyboardState(noteIndexOn(15)) := (cmdKeyboard(7 downto 0),'1');
 						keyboard_ack <='1';
+
 					-- Note Off
-					elsif cmdKeyboard(8)='1' and foundOff(31)='1' then
-						keyboardState(noteIndexOff(31)) := ("00",'0');
+					-- Turn off a note if there is some generator working with that note code
+					elsif cmdKeyboard(9 downto 8)="01" and foundCode(15)='1' then
+						keyboardState(noteIndexOff(15)) := ("00",'0');
 						state := waitTurnOff;
 					end if;
 				end if;
 			
 			-- Wait until the end of the release phase
 			when waitTurnOff =>
-				if workingNotesGen(noteIndexOff(31))='0' then
+				if workingNotesGen(noteIndexOff(15))='0' then
 					keyboard_ack <='1';
 					state := reciveCmd;
 				end if;

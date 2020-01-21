@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.5
+-- Revision 0.7
 -- Additional Comments:
 --		Not completly generic component, the pipelined sum and the NotesGenerators 
 --		have to be done by hand
@@ -37,8 +37,9 @@ entity NotesGenerator is
   Port ( 
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
-        notes_on        			:   in  std_logic_vector(31 downto 0);
-        
+        notes_on        			:   in  std_logic_vector(15 downto 0);
+        working						:	out	std_logic_vector(15 downto 0);
+		
 		--Note params
 		startAddr_In             	: in std_logic_vector(25 downto 0);
 		sustainStartOffsetAddr_In	: in std_logic_vector(25 downto 0);
@@ -73,18 +74,11 @@ architecture Behavioral of NotesGenerator is
 ----------------------------------------------------------------------------------
 -- TYPES DECLARATIONS
 ----------------------------------------------------------------------------------     
-    type    samplesOut  is array(0 to NUM_NOTES-1) of std_logic_vector(WL-1 downto 0);
-    type    addrOut  is array(0 to NUM_NOTES-1) of std_logic_vector(25 downto 0);
-    type    sumStage0   is array( 0 to (NUM_NOTES/2)-1 ) of std_logic_vector(WL-1 downto 0);
-    type    sumStage1   is array( 0 to (NUM_NOTES/4)-1 ) of std_logic_vector(WL-1 downto 0);
-    type    sumStage2   is array( 0 to (NUM_NOTES/8)-1 ) of std_logic_vector(WL-1 downto 0);
-    type    sumStage3   is array( 0 to (NUM_NOTES/16)-1 ) of std_logic_vector(WL-1 downto 0);
-    type    sumStage4   is array( 0 to 2) of std_logic_vector(WL-1 downto 0);
+    -- This generate more signals that the necessary ones
+	-- Trust in the syntesis tool to avoid the mapping of unnecesary signals
+	type    signalsPerLevel  is array(0 to 16/2**(i)-1) of std_logic_vector(15 downto 0); 
+	type    samples  is array( 0 to log2(16)-1 ) of signalsPerLevel;
 
-	
-    type    iniData  is array(0 to 59) of natural;
-    type    freq is array(0 to 87) of real;
-	type	offset_t is array(0 to 87) of natural;
 	
 ----------------------------------------------------------------------------------
 -- CONSTANTS DECLARATIONS
@@ -93,92 +87,28 @@ architecture Behavioral of NotesGenerator is
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
-    -- Registers
-    signal  notesGen_samplesOut         :   samplesOut;
-             
-    signal  notesEnable                 :   std_logic_vector(NUM_NOTES-1 downto 0);
-    signal  memSamplesSendRqt, muxMemAck   :   std_logic_vector(NUM_NOTES-1 downto 0);
-    
-    signal  notesGen_addrOut            :   addrOut;
-        
-    signal  sampleOutAux_S0             :   sumStage0;
-    signal  sampleOutAux_S1             :   sumStage1;
-    signal  sampleOutAux_S2             :   sumStage2;
-    signal  sampleOutAux_S3             :   sumStage3;
-    signal  sampleOutAux_S4             :   sumStage4;
-    
-    signal  sampleOutAux_S5, sampleOutAux_S6    :   std_logic_vector(WL-1 downto 0);
-
+    -- For sum
+    signal  notesGen_samplesOut         :   samples;
+	
+	signal fsmsCen						:	std_logic;
+	
 begin
-             
-NotesEnableGen:
-for i in 0 to (NUM_NOTES-1) generate
-    notesEnable(i) <= notes_on(i) and cen;
-end generate;
-
 
 ----------------------------------------------------------------------------------
 -- PIPELINED SUM
 --      Manage the sums of all notes, is organized like a balanced tree
 ---------------------------------------------------------------------------------- 
-
-
---Level 0
-genSumLevel0:
-for i in 0 to (NUM_NOTES/2)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>notesGen_samplesOut(i*2),b_in=>notesGen_samplesOut(i*2+1),c_out=>sampleOutAux_S0(i));
+genTreeLevels:
+for i in 0 to log2(16) generate
+	genFixedSumsPerTreeLevel:
+	for j in 0 to (16/2**(i)-1) generate
+		sum: MyFiexedSum
+		generic map(WL=>16)
+		port map( rst_n =>rst_n, clk=>clk,a_in=>notesGen_samplesOut(i)(j),b_in=>notesGen_samplesOut(i)(j),c_out=>notesGen_samplesOut(i+1)(j));
+	end generate;
 end generate;
 
---Level 1
-genSumLevel1:
-for i in 0 to (NUM_NOTES/4)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S0(i*2),b_in=>sampleOutAux_S0(i*2+1),c_out=>sampleOutAux_S1(i));
-end generate;
-
---Level 2
-genSumLevel2:
-for i in 0 to (NUM_NOTES/8)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S1(i*2),b_in=>sampleOutAux_S1(i*2+1),c_out=>sampleOutAux_S2(i));
-end generate;
-
---Level 3
-genSumLevel3:
-for i in 0 to (NUM_NOTES/16)-1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S2(i*2),b_in=>sampleOutAux_S2(i*2+1),c_out=>sampleOutAux_S3(i));
-end generate;
-
--- Level 4
-genSumLevel4:
-for i in 0 to 1 generate
-    sum_i: MyFiexedSum
-    generic map(WL=>16)
-    port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S3(i*2),b_in=>sampleOutAux_S3(i*2+1),c_out=>sampleOutAux_S4(i));
-end generate;
-
-sum_L4: MyFiexedSum
-generic map(WL=>16)
-port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S3(4),b_in=>sampleOutAux_S2(10),c_out=>sampleOutAux_S4(2));
-
--- Level 5
-sum_L5: MyFiexedSum
-generic map(WL=>16)
-port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S4(0),b_in=>sampleOutAux_S4(1),c_out=>sampleOutAux_S5);
-
--- Level 6, final sum
-sum_L6: MyFiexedSum
-generic map(WL=>16)
-port map( rst_n =>rst_n, clk=>clk,a_in=>sampleOutAux_S5,b_in=>sampleOutAux_S4(2),c_out=>sampleOutAux_S6);
-
-
-sampleOut <= sampleOutAux_S6;
+sampleOut <= notesGen_samplesOut(log2(16))(0);
 
 ----------------------------------------------------------------------------------
 -- NOTES GENERATOR
@@ -187,16 +117,16 @@ sampleOut <= sampleOutAux_S6;
 ----------------------------------------------------------------------------------
 
 genNotes:
-for i in 0 to (NUM_NOTES/3)-1 generate
+for i in 0 to 15 generate
 	NoteGen: UniversalNoteGen
 	  port map(
 		-- Host side
 		rst_n                   	=> rst_n,
 		clk                     	=> clk,
 		noteOnOff               	=> notes_on(i),
-		sampleRqt    				=> (i),
+		sampleRqt    				=> sampleRqt, -- IIS new sample Rqt
 		working						=> working(i),
-		sample_out              	=> sample_out(i),
+		sample_out              	=> notesGen_samplesOut(0)(i),
 
 		-- NoteParams               
 		startAddr_In				=> startAddr_In				,
@@ -218,6 +148,10 @@ for i in 0 to (NUM_NOTES/3)-1 generate
 end generate;
 
 
+cenForFsms: reducedOr
+  generic map(WL=>16)
+  port map(a_in=>notes_on, reducedA_out=>fsmsCen);
+
 ----------------------------------------------------------------------------------
 -- MEM CMD READ RESPONSE ARBITRATOR
 --      Manage the read response commands of the DDR for the notes generators components 
@@ -234,7 +168,7 @@ begin
         memAckResponse <=(others=>'0');
 		mem_readResponseBuffer <='0';
 		
-		 if mem_emptyBuffer='0' then
+		 if fsmsCen='1' and mem_emptyBuffer='0' then
 			memAckResponse(to_integer(mem_CmdReadResponse(19 downto 16))) <='1';
 			mem_readResponseBuffer <='1';
 		 end if;           
@@ -275,7 +209,7 @@ begin
 		case state is
 			-- Two Cmd per read request
             when checkGeneratorRqt =>
-                 if memSamplesSendRqt(to_integer(turnCntr))='1' then
+                 if fsmsCen='1' and memSamplesSendRqt(to_integer(turnCntr))='1' then
                         regReadCmdRqt := std_logic_vector(turnCntr) & notesGen_addrOut(to_integer(turnCntr)); -- Note Gen index + addr
                         -- Send read command in the next cycle
                         mem_writeReciveBuffer <= '1';
@@ -283,7 +217,7 @@ begin
                         memAckSend(to_integer(turnCntr)) <='1';
 						state := waitMemAck0;
                  else
-                    if turnCntr=NUM_NOTES-1 then
+                    if turnCntr=15 then -- Until max notes
                         turnCntr := (others=>'0');
                     else
                         turnCntr := turnCntr+1;
@@ -302,7 +236,7 @@ begin
 			
             when waitMemAck1 =>
                 if mem_fullBuffer='0' then
-					if turnCntr=NUM_NOTES-1 then
+					if turnCntr=15 then -- Until max notes
                         turnCntr := (others=>'0');
                     else
                         turnCntr := turnCntr+1;

@@ -51,7 +51,6 @@ entity CmdKeyboardSequencer is
 		
 		-- Debug
 		statesOut		:	out	std_logic_vector(1 downto 0);
-		lastCmdOut		:	out	std_logic_vector(9 downto 0);
 		
 		--Keyboard side
 		keyboard_ack	:	in	std_logic; -- Request of a new command
@@ -117,8 +116,6 @@ FifoInterface: my_fifo
 process(rst_n,clk,cen,sendCmdRqt,fullFifo)
 	type states is (s0, s1);	
 	variable state	:	states;
-	
-	variable lastCmd	:	std_logic_vector(9 downto 0);
 begin
 
     ------------------
@@ -126,8 +123,8 @@ begin
 	------------------
 	wrFifo <='0';
 	if cen='1' and fullFifo='0' then
-		if (state=s0 and sendCmdRqt(0)='1' and lastCmd/=cmdTrack_0) or 
-			(state=s1 and sendCmdRqt(1)='1' and lastCmd/=cmdTrack_1) then
+		if (state=s0 and sendCmdRqt(0)='1') or 
+			(state=s1 and sendCmdRqt(1)='1') then
 			wrFifo <='1';
 		end if;
 	end if;
@@ -143,8 +140,6 @@ begin
 	end if;
 	
 	-- Debug
-	lastCmdOut <= lastCmd;
-	
 	statesOut <=(others=>'0');
 	if state=s0 then
 		statesOut(0) <='1';
@@ -158,7 +153,6 @@ begin
 	
 	
     if rst_n='0' then
-		lastCmd := (others=>'0');
 		seq_ack <=(others=>'0');
 		
     
@@ -169,8 +163,7 @@ begin
 			when s0=>
 				if cen='1' and fullFifo='0' then
 					state:=s1;
-					if sendCmdRqt(0)='1' and lastCmd/=cmdTrack_0 then			
-						lastCmd	:= cmdTrack_0;
+					if sendCmdRqt(0)='1' then	
 						seq_ack(0) <= '1';
 					end if;
 				end if;
@@ -179,8 +172,7 @@ begin
 			when s1=>
 				if cen='1' and fullFifo='0' then
 					state:=s0;
-					if sendCmdRqt(1)='1' and lastCmd/=cmdTrack_1 then
-						lastCmd	:= cmdTrack_1;
+					if sendCmdRqt(1)='1' then
 						seq_ack(1) <= '1';
 					end if;
 				end if;

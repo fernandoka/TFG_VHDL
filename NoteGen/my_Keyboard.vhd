@@ -53,6 +53,18 @@ entity my_Keyboard is
         --IIS side	
         sampleRqt       			:   in  std_logic;
         sampleOut       			:   out std_logic_vector(15 downto 0);
+       
+       --Debug
+       regStartAddr               : out	   std_logic_vector(25 downto 0);  
+       regSustainStartOffsetAddr  : out    std_logic_vector(25 downto 0);
+       regSustainEndOffsetAddr    : out    std_logic_vector(25 downto 0);
+       regMaxSamples              : out    std_logic_vector(25 downto 0);
+       regStepVal                 : out    std_logic_vector(63 downto 0);
+       regSustainStepStart        : out    std_logic_vector(63 downto 0);
+       regSustainStepEnd          : out    std_logic_vector(63 downto 0);
+       notesOnOff				  :	out    std_logic_vector(15 downto 0);
+       --
+       
         		
         -- Mem side
 		mem_emptyBuffer				:	in	std_logic;
@@ -497,16 +509,17 @@ architecture Behavioral of my_Keyboard is
 	
 	-- Signals for notesGen component
 	signal	workingNotesGen				:	std_logic_vector(15 downto 0);
-	signal	notesOnOff					:	std_logic_vector(15 downto 0);
+	-- Commented signal for the test
+--	signal	notesOnOff					:	std_logic_vector(15 downto 0);
 	
 	-- Registers
-	signal	regStartAddr                :	std_logic_vector(25 downto 0);
-	signal	regSustainStartOffsetAddr   :	std_logic_vector(25 downto 0);
-	signal	regSustainEndOffsetAddr     :	std_logic_vector(25 downto 0);
-	signal	regMaxSamples               :	std_logic_vector(25 downto 0);
-	signal	regStepVal                  :	std_logic_vector(63 downto 0);
-	signal	regSustainStepStart         :	std_logic_vector(63 downto 0);
-	signal	regSustainStepEnd           :	std_logic_vector(63 downto 0);
+--	signal	regStartAddr                :	std_logic_vector(25 downto 0);
+--	signal	regSustainStartOffsetAddr   :	std_logic_vector(25 downto 0);
+--	signal	regSustainEndOffsetAddr     :	std_logic_vector(25 downto 0);
+--	signal	regMaxSamples               :	std_logic_vector(25 downto 0);
+--	signal	regStepVal                  :	std_logic_vector(63 downto 0);
+--	signal	regSustainStepStart         :	std_logic_vector(63 downto 0);
+--	signal	regSustainStepEnd           :	std_logic_vector(63 downto 0);
 	
 	-- State of the NoteGenerators
 	signal regKeyboardState	:	std_logic_vector(31 downto 0);
@@ -988,110 +1001,109 @@ begin
   with cmdKeyboard(7 downto 0) select
 			sustainStepStartROM <=
 
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(0), 32)& X"00000000")																																	when X"15", --A0		
-				( (to_unsigned( integer( getSustainStep(29.1353/27.5, SUSTAIN_START_OFFSET_ADDR(1)) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_START_OFFSET_ADDR(1) ),32,32) )		when X"16",	-- A#0
-				( (to_unsigned( integer( getSustainStep(30.8677/27.5, SUSTAIN_START_OFFSET_ADDR(2)) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_START_OFFSET_ADDR(2) ),32,32) )		when X"17",	-- B0
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(0), 32)& X"00000000")																																		when X"15", --A0		
+				( (to_unsigned( integer( getSustainStep(29.1353/27.5, SUSTAIN_START_OFFSET_ADDR(1)) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_START_OFFSET_ADDR(1) ),32,32) )			when X"16",	-- A#0
+				( (to_unsigned( integer( getSustainStep(30.8677/27.5, SUSTAIN_START_OFFSET_ADDR(2)) ),32)& X"00000000") or 	toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_START_OFFSET_ADDR(2) ),32,32) )			when X"17",	-- B0
 				
 				--Octave 1
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(3) ,32)& X"00000000")																																	when X"18", --C1		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(3) ,32)& X"00000000")																																		when X"18", --C1		
 				( (to_unsigned( integer( getSustainStep(34.6479/32.7032, SUSTAIN_START_OFFSET_ADDR(4)) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_START_OFFSET_ADDR(4)  ),32,32) )	when X"19",	-- C#1
                 ( (to_unsigned( integer( getSustainStep(36.7081/32.7032, SUSTAIN_START_OFFSET_ADDR(5)) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_START_OFFSET_ADDR(5)  ),32,32) )    when X"1A",    -- D1
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(6), 32)& X"00000000")																																	when X"1B", --D#1		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(6), 32)& X"00000000")																																		when X"1B", --D#1		
 				( (to_unsigned( integer( getSustainStep(41.2035/38.8909, SUSTAIN_START_OFFSET_ADDR(7)) ),32)& X"00000000") or  toUnFix( getSustainStep(41.2035/38.8909, SUSTAIN_START_OFFSET_ADDR(7)  ),32,32) )	when X"1C", -- E1
                 ( (to_unsigned( integer( getSustainStep(43.6536/38.8909, SUSTAIN_START_OFFSET_ADDR(8)) ),32)& X"00000000") or  toUnFix( getSustainStep(43.6536/38.8909, SUSTAIN_START_OFFSET_ADDR(8)  ),32,32) )    when X"1D",    -- F1
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(9), 32)& X"00000000")																																	when X"1B", --F#1		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(9), 32)& X"00000000")																																		when X"1E", --F#1		
 				( (to_unsigned( integer( getSustainStep(48.9995/46.2493, SUSTAIN_START_OFFSET_ADDR(10)) ),32)& X"00000000") or toUnFix( getSustainStep(48.9995/46.2493, SUSTAIN_START_OFFSET_ADDR(10) ),32,32) )	when X"1F", -- G1
                 ( (to_unsigned( integer( getSustainStep(51.9130/46.2493, SUSTAIN_START_OFFSET_ADDR(11)) ),32)& X"00000000") or toUnFix( getSustainStep(51.9130/46.2493, SUSTAIN_START_OFFSET_ADDR(11) ),32,32) )    when X"20", -- G#1
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(12), 32)& X"00000000")																																	when X"21", --A1		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(12), 32)& X"00000000")																																		when X"21", --A1		
 				( (to_unsigned( integer( getSustainStep(58.2705/55.0000, SUSTAIN_START_OFFSET_ADDR(13)) ),32)& X"00000000") or toUnFix( getSustainStep(58.2705/55.0000, SUSTAIN_START_OFFSET_ADDR(13) ),32,32) )	when X"22", -- A#1
                 ( (to_unsigned( integer( getSustainStep(61.7354/55.0000, SUSTAIN_START_OFFSET_ADDR(14)) ),32)& X"00000000") or toUnFix( getSustainStep(61.7354/55.0000, SUSTAIN_START_OFFSET_ADDR(14) ),32,32) )    when X"23", -- B1
 				
 				--Octave 2
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(15), 32)& X"00000000")																																	when X"24", --C2		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(15), 32)& X"00000000")																																		when X"24", --C2		
 				( (to_unsigned( integer( getSustainStep(69.2957/65.4064, SUSTAIN_START_OFFSET_ADDR(16)) ),32)& X"00000000") or toUnFix( getSustainStep(69.2957/65.4064, SUSTAIN_START_OFFSET_ADDR(16) ),32,32) )	when X"25",	-- C#2
-                ( (to_unsigned( integer( getSustainStep(73.4162/65.40614, SUSTAIN_START_OFFSET_ADDR(17)) ),32)& X"00000000") or toUnFix( getSustainStep(73.4162/65.4064, SUSTAIN_START_OFFSET_ADDR(17) ),32,32) )    when X"26", -- D2
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(18), 32)& X"00000000")																																	when X"27", --D#2		
+                ( (to_unsigned( integer( getSustainStep(73.4162/65.40614, SUSTAIN_START_OFFSET_ADDR(17)) ),32)& X"00000000") or toUnFix( getSustainStep(73.4162/65.4064, SUSTAIN_START_OFFSET_ADDR(17) ),32,32) )   when X"26", -- D2
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(18), 32)& X"00000000")																																		when X"27", --D#2		
 				( (to_unsigned( integer( getSustainStep(82.4069/77.7817, SUSTAIN_START_OFFSET_ADDR(19)) ),32)& X"00000000") or toUnFix( getSustainStep(82.4069/77.7817, SUSTAIN_START_OFFSET_ADDR(19) ),32,32) )	when X"28",	-- E2 
                 ( (to_unsigned( integer( getSustainStep(87.3071/77.7817, SUSTAIN_START_OFFSET_ADDR(20)) ),32)& X"00000000") or toUnFix( getSustainStep(87.3071/77.7817, SUSTAIN_START_OFFSET_ADDR(20) ),32,32) )    when X"29", -- F2
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(21), 32)& X"00000000")																																	when X"2A", --F#2		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(21), 32)& X"00000000")																																		when X"2A", --F#2		
 				( (to_unsigned( integer( getSustainStep(97.9989/92.4986, SUSTAIN_START_OFFSET_ADDR(22)) ),32)& X"00000000") or toUnFix( getSustainStep(97.9989/92.4986, SUSTAIN_START_OFFSET_ADDR(22) ),32,32) )	when X"2B",	-- G2
                 ( (to_unsigned( integer( getSustainStep(103.826/92.4986, SUSTAIN_START_OFFSET_ADDR(23)) ),32)& X"00000000") or toUnFix( getSustainStep(103.826/92.4986, SUSTAIN_START_OFFSET_ADDR(23) ),32,32) )    when X"2C",    -- G#2
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(24), 32)& X"00000000")																																	when X"2D", --A2		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(24), 32)& X"00000000")																																		when X"2D", --A2		
 				( (to_unsigned( integer( getSustainStep(116.541/110.000, SUSTAIN_START_OFFSET_ADDR(25)) ),32)& X"00000000") or toUnFix( getSustainStep(116.541/110.000, SUSTAIN_START_OFFSET_ADDR(25) ),32,32) )	when X"2E", -- A#2
                 ( (to_unsigned( integer( getSustainStep(123.471/110.000, SUSTAIN_START_OFFSET_ADDR(26)) ),32)& X"00000000") or toUnFix( getSustainStep(123.471/110.000, SUSTAIN_START_OFFSET_ADDR(26) ),32,32) )    when X"2F",    -- B2
 				
 				--Octave 3
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(27), 32)& X"00000000")																																	when X"30", --C3		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(27), 32)& X"00000000")																																		when X"30", --C3		
 				( (to_unsigned( integer( getSustainStep(138.591/130.813, SUSTAIN_START_OFFSET_ADDR(28)) ),32)& X"00000000") or toUnFix( getSustainStep(138.591/130.813, SUSTAIN_START_OFFSET_ADDR(28) ),32,32) )	when X"31", -- C#3
                 ( (to_unsigned( integer( getSustainStep(146.832/130.813, SUSTAIN_START_OFFSET_ADDR(29)) ),32)& X"00000000") or toUnFix( getSustainStep(146.832/130.813, SUSTAIN_START_OFFSET_ADDR(29) ),32,32) )    when X"32", -- D3
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(30), 32)& X"00000000")																																	when X"33", --D#3		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(30), 32)& X"00000000")																																		when X"33", --D#3		
 				( (to_unsigned( integer( getSustainStep(164.814/155.563, SUSTAIN_START_OFFSET_ADDR(31)) ),32)& X"00000000") or toUnFix( getSustainStep(164.814/155.563, SUSTAIN_START_OFFSET_ADDR(31) ),32,32) )	when X"34", -- E3
                 ( (to_unsigned( integer( getSustainStep(174.614/155.563, SUSTAIN_START_OFFSET_ADDR(32)) ),32)& X"00000000") or toUnFix( getSustainStep(174.614/155.563, SUSTAIN_START_OFFSET_ADDR(32) ),32,32) )    when X"35", -- F3
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(33), 32)& X"00000000")																																	when X"36", --F#3						
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(33), 32)& X"00000000")																																		when X"36", --F#3						
 				( (to_unsigned( integer( getSustainStep(195.998/184.997, SUSTAIN_START_OFFSET_ADDR(34)) ),32)& X"00000000") or toUnFix( getSustainStep(195.998/184.997, SUSTAIN_START_OFFSET_ADDR(34) ),32,32) )	when X"37", -- G3 
                 ( (to_unsigned( integer( getSustainStep(207.652/184.997, SUSTAIN_START_OFFSET_ADDR(35)) ),32)& X"00000000") or toUnFix( getSustainStep(207.652/184.997, SUSTAIN_START_OFFSET_ADDR(35) ),32,32) )    when X"38", -- G#3
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(36), 32)& X"00000000")																																	when X"39", --A3		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(36), 32)& X"00000000")																																		when X"39", --A3		
 				( (to_unsigned( integer( getSustainStep(233.082/220.000, SUSTAIN_START_OFFSET_ADDR(37)) ),32)& X"00000000") or toUnFix( getSustainStep(233.082/220.000, SUSTAIN_START_OFFSET_ADDR(37) ),32,32) )	when X"3A", -- A#3
                 ( (to_unsigned( integer( getSustainStep(246.942/220.000, SUSTAIN_START_OFFSET_ADDR(38)) ),32)& X"00000000") or toUnFix( getSustainStep(246.942/220.000, SUSTAIN_START_OFFSET_ADDR(38) ),32,32) )    when X"3B", -- B3
 				
 				--Octave 4
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(39), 32)& X"00000000")																																	when X"3C", --C4		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(39), 32)& X"00000000")																																		when X"3C", --C4		
 				( (to_unsigned( integer( getSustainStep(277.183/261.626, SUSTAIN_START_OFFSET_ADDR(40)) ),32)& X"00000000") or toUnFix( getSustainStep(277.183/261.626, SUSTAIN_START_OFFSET_ADDR(40) ),32,32) )	when X"3D", -- C#4
                 ( (to_unsigned( integer( getSustainStep(293.665/261.626, SUSTAIN_START_OFFSET_ADDR(41)) ),32)& X"00000000") or toUnFix( getSustainStep(293.665/261.626, SUSTAIN_START_OFFSET_ADDR(41) ),32,32) )    when X"3E", -- D4
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(42), 32)& X"00000000")																																	when X"3F", --D#1		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(42), 32)& X"00000000")																																		when X"3F", --D#1		
 				( (to_unsigned( integer( getSustainStep(329.628/311.127, SUSTAIN_START_OFFSET_ADDR(43)) ),32)& X"00000000") or toUnFix( getSustainStep(329.628/311.127, SUSTAIN_START_OFFSET_ADDR(43) ),32,32) )	when X"40", -- E4
                 ( (to_unsigned( integer( getSustainStep(349.228/311.127, SUSTAIN_START_OFFSET_ADDR(44)) ),32)& X"00000000") or toUnFix( getSustainStep(349.228/311.127, SUSTAIN_START_OFFSET_ADDR(44) ),32,32) )    when X"41", -- F4
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(45), 32)& X"00000000")																																	when X"42", --F#4		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(45), 32)& X"00000000")																																		when X"42", --F#4		
 				( (to_unsigned( integer( getSustainStep(391.995/369.994, SUSTAIN_START_OFFSET_ADDR(46)) ),32)& X"00000000") or toUnFix( getSustainStep(391.995/369.994, SUSTAIN_START_OFFSET_ADDR(46) ),32,32) )	when X"43", -- G4
                 ( (to_unsigned( integer( getSustainStep(415.305/369.994, SUSTAIN_START_OFFSET_ADDR(47)) ),32)& X"00000000") or toUnFix( getSustainStep(415.305/369.994, SUSTAIN_START_OFFSET_ADDR(47) ),32,32) )    when X"44", -- G#4
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(48), 32)& X"00000000")																																	when X"45", --A4		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(48), 32)& X"00000000")																																		when X"45", --A4		
 				( (to_unsigned( integer( getSustainStep(466.164/440.000, SUSTAIN_START_OFFSET_ADDR(49)) ),32)& X"00000000") or toUnFix( getSustainStep(466.164/440.000, SUSTAIN_START_OFFSET_ADDR(49) ),32,32) )	when X"46", -- A#4
                 ( (to_unsigned( integer( getSustainStep(493.883/440.000, SUSTAIN_START_OFFSET_ADDR(50)) ),32)& X"00000000") or toUnFix( getSustainStep(493.883/440.000, SUSTAIN_START_OFFSET_ADDR(50) ),32,32) )    when X"47",    -- B4
 				
 				--Octave 5
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(51), 32)& X"00000000")																																	when X"48", --C5		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(51), 32)& X"00000000")																																		when X"48", --C5		
 				( (to_unsigned( integer( getSustainStep(554.365/523.251, SUSTAIN_START_OFFSET_ADDR(52)) ),32)& X"00000000") or toUnFix( getSustainStep(554.365/523.251, SUSTAIN_START_OFFSET_ADDR(52) ),32,32) )	when X"49",	-- C#5
                 ( (to_unsigned( integer( getSustainStep(587.330/523.251, SUSTAIN_START_OFFSET_ADDR(53)) ),32)& X"00000000") or toUnFix( getSustainStep(587.330/523.251, SUSTAIN_START_OFFSET_ADDR(53) ),32,32) )    when X"4A", -- D5
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(54), 32)& X"00000000")																																	when X"4B", --D#5		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(54), 32)& X"00000000")																																		when X"4B", --D#5		
 				( (to_unsigned( integer( getSustainStep(659.255/622.254, SUSTAIN_START_OFFSET_ADDR(55)) ),32)& X"00000000") or toUnFix( getSustainStep(659.255/622.254, SUSTAIN_START_OFFSET_ADDR(55) ),32,32) )	when X"4C", -- E5
                 ( (to_unsigned( integer( getSustainStep(698.456/622.254, SUSTAIN_START_OFFSET_ADDR(56)) ),32)& X"00000000") or toUnFix( getSustainStep(698.456/622.254, SUSTAIN_START_OFFSET_ADDR(56) ),32,32) )    when X"4D", -- F5
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(57), 32)& X"00000000")																																	when X"4E", --F#5		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(57), 32)& X"00000000")																																		when X"4E", --F#5		
 				( (to_unsigned( integer( getSustainStep(783.991/739.989, SUSTAIN_START_OFFSET_ADDR(58)) ),32)& X"00000000") or toUnFix( getSustainStep(783.991/739.989, SUSTAIN_START_OFFSET_ADDR(58) ),32,32) )	when X"4F", -- G5
                 ( (to_unsigned( integer( getSustainStep(830.609/739.989, SUSTAIN_START_OFFSET_ADDR(59)) ),32)& X"00000000") or toUnFix( getSustainStep(830.609/739.989, SUSTAIN_START_OFFSET_ADDR(59) ),32,32) )    when X"50", -- G#5
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(60), 32)& X"00000000")																																	when X"51", --A5						
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(60), 32)& X"00000000")																																		when X"51", --A5						
 				( (to_unsigned( integer( getSustainStep(932.328/880.000, SUSTAIN_START_OFFSET_ADDR(61)) ),32)& X"00000000") or toUnFix( getSustainStep(932.328/880.000, SUSTAIN_START_OFFSET_ADDR(61) ),32,32) )	when X"52", -- A#5
                 ( (to_unsigned( integer( getSustainStep(987.767/880.000, SUSTAIN_START_OFFSET_ADDR(62)) ),32)& X"00000000") or toUnFix( getSustainStep(987.767/880.000, SUSTAIN_START_OFFSET_ADDR(62) ),32,32) )    when X"53",    -- B5
 				
 				--Octave 6
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(63), 32)& X"00000000")																																	when X"54", --C6						
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(63), 32)& X"00000000")																																		when X"54", --C6						
 				( (to_unsigned( integer( getSustainStep(1108.73/1046.50, SUSTAIN_START_OFFSET_ADDR(64)) ),32)& X"00000000") or toUnFix( getSustainStep(1108.73/1046.50, SUSTAIN_START_OFFSET_ADDR(64) ),32,32) )	when X"55", -- C#6
                 ( (to_unsigned( integer( getSustainStep(1174.66/1046.50, SUSTAIN_START_OFFSET_ADDR(65)) ),32)& X"00000000") or toUnFix( getSustainStep(1174.66/1046.50, SUSTAIN_START_OFFSET_ADDR(65) ),32,32) )    when X"56", -- D6
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(66), 32)& X"00000000")																																	when X"57", --D#6		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(66), 32)& X"00000000")																																		when X"57", --D#6		
 				( (to_unsigned( integer( getSustainStep(1318.51/1244.51, SUSTAIN_START_OFFSET_ADDR(67)) ),32)& X"00000000") or toUnFix( getSustainStep(1318.51/1244.51, SUSTAIN_START_OFFSET_ADDR(67) ),32,32) )	when X"58", -- E6
                 ( (to_unsigned( integer( getSustainStep(1396.91/1244.51, SUSTAIN_START_OFFSET_ADDR(68)) ),32)& X"00000000") or toUnFix( getSustainStep(1396.91/1244.51, SUSTAIN_START_OFFSET_ADDR(68) ),32,32) )    when X"59", -- F6
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(69), 32)& X"00000000")																																	when X"58", --F#6		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(69), 32)& X"00000000")																																		when X"5A", --F#6		
 				( (to_unsigned( integer( getSustainStep(1567.98/1479.98, SUSTAIN_START_OFFSET_ADDR(70)) ),32)& X"00000000") or toUnFix( getSustainStep(1567.98/1479.98, SUSTAIN_START_OFFSET_ADDR(70) ),32,32) )	when X"5B", -- G6
                 ( (to_unsigned( integer( getSustainStep(1661.22/1479.98, SUSTAIN_START_OFFSET_ADDR(71)) ),32)& X"00000000") or toUnFix( getSustainStep(1661.22/1479.98, SUSTAIN_START_OFFSET_ADDR(71) ),32,32) )    when X"5C", -- G#6
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(72), 32)& X"00000000")																																	when X"5D", --A6		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(72), 32)& X"00000000")																																		when X"5D", --A6		
 				( (to_unsigned( integer( getSustainStep(1864.66/1760.00, SUSTAIN_START_OFFSET_ADDR(73)) ),32)& X"00000000") or toUnFix( getSustainStep(1864.66/1760.00, SUSTAIN_START_OFFSET_ADDR(73) ),32,32) )	when X"5E", -- A#6
                 ( (to_unsigned( integer( getSustainStep(1975.53/1760.00, SUSTAIN_START_OFFSET_ADDR(74)) ),32)& X"00000000") or toUnFix( getSustainStep(1975.53/1760.00, SUSTAIN_START_OFFSET_ADDR(74) ),32,32) )    when X"5F", -- B6
 				
 				--Octave 7
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(75), 32)& X"00000000")																																	when X"60", --C7						
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(75), 32)& X"00000000")																																		when X"60", --C7						
 				( (to_unsigned( integer( getSustainStep(2217.46/2093.00, SUSTAIN_START_OFFSET_ADDR(76)) ),32)& X"00000000") or toUnFix( getSustainStep(2217.46/2093.00, SUSTAIN_START_OFFSET_ADDR(76) ),32,32) )	when X"61", -- C#7
                 ( (to_unsigned( integer( getSustainStep(2349.32/2093.00, SUSTAIN_START_OFFSET_ADDR(77)) ),32)& X"00000000") or toUnFix( getSustainStep(2349.32/2093.00, SUSTAIN_START_OFFSET_ADDR(77) ),32,32) )    when X"62", -- D7
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(78), 32)& X"00000000")																																	when X"63", --D#7						
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(78), 32)& X"00000000")																																		when X"63", --D#7						
 				( (to_unsigned( integer( getSustainStep(2637.02/2489.02, SUSTAIN_START_OFFSET_ADDR(79)) ),32)& X"00000000") or toUnFix( getSustainStep(2637.02/2489.02, SUSTAIN_START_OFFSET_ADDR(79) ),32,32) )	when X"64", -- E7
                 ( (to_unsigned( integer( getSustainStep(2793.83/2489.02, SUSTAIN_START_OFFSET_ADDR(80)) ),32)& X"00000000") or toUnFix( getSustainStep(2793.83/2489.02, SUSTAIN_START_OFFSET_ADDR(80) ),32,32) )    when X"65", -- F7
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(81), 32)& X"00000000")																																	when X"66", --F#7		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(81), 32)& X"00000000")																																		when X"66", --F#7		
 				( (to_unsigned( integer( getSustainStep(3135.96/2959.96, SUSTAIN_START_OFFSET_ADDR(82)) ),32)& X"00000000") or toUnFix( getSustainStep(3135.96/2959.96, SUSTAIN_START_OFFSET_ADDR(82) ),32,32) )	when X"67", -- G7
                 ( (to_unsigned( integer( getSustainStep(3322.44/2959.96, SUSTAIN_START_OFFSET_ADDR(83)) ),32)& X"00000000") or toUnFix( getSustainStep(3322.44/2959.96, SUSTAIN_START_OFFSET_ADDR(83) ),32,32) )    when X"68", -- G#7
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(84), 32)& X"00000000")																																	when X"69", --A7		
-				( to_unsigned( SUSTAIN_START_OFFSET_ADDR(84), 32)& X"00000000")																																	when X"69", --A7		
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(84), 32)& X"00000000")																																		when X"69", --A7		
                 ( (to_unsigned( integer( getSustainStep(3729.31/3520.00, SUSTAIN_START_OFFSET_ADDR(85)) ),32)& X"00000000") or toUnFix( getSustainStep(3729.31/3520.00, SUSTAIN_START_OFFSET_ADDR(85) ),32,32) )    when X"6A", -- A#7
 				
-				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(87), 32)& X"00000000")																																	when X"6C", --C8		
-				to_unsigned( 0, 64)																																												when others;														
+				(to_unsigned( SUSTAIN_START_OFFSET_ADDR(87), 32)& X"00000000")																																		when X"6C", --C8		
+				to_unsigned( 0, 64)																																													when others;														
 	
 -- One entry per note
 	sustainStepEnd_ROM :
@@ -1099,106 +1111,106 @@ begin
 			sustainStepEndROM <=
 				
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(0), 32)& X"00000000")																																		when X"15", --A0		
-				( (to_unsigned( integer( getSustainStep(29.1353/27.5, SUSTAIN_END_OFFSET_ADDR(1)) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_END_OFFSET_ADDR(1) ),32,32) )				when X"16",	-- A#0
-                ( (to_unsigned( integer( getSustainStep(30.8677/27.5, SUSTAIN_END_OFFSET_ADDR(2)) ),32)& X"00000000") or     toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_END_OFFSET_ADDR(2) ),32,32) )                when X"17",    -- B0
+				( (to_unsigned( integer( getSustainStep(29.1353/27.5, SUSTAIN_END_OFFSET_ADDR(1)) ),32)& X"00000000") or 	toUnFix( getSustainStep(29.1353/27.5, SUSTAIN_END_OFFSET_ADDR(1) ),32,32) )			when X"16",	-- A#0
+                ( (to_unsigned( integer( getSustainStep(30.8677/27.5, SUSTAIN_END_OFFSET_ADDR(2)) ),32)& X"00000000") or     toUnFix( getSustainStep(30.8677/27.5, SUSTAIN_END_OFFSET_ADDR(2) ),32,32) )        when X"17",    -- B0
 				
 				--Octave 1
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(3) ,32)& X"00000000")																																		when X"18", --C1		
-				( (to_unsigned( integer( getSustainStep(34.6479/32.7032, SUSTAIN_END_OFFSET_ADDR(4)) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_END_OFFSET_ADDR(4)  ),32,32) )		when X"19",	-- C#1
-                ( (to_unsigned( integer( getSustainStep(36.7081/32.7032, SUSTAIN_END_OFFSET_ADDR(5)) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_END_OFFSET_ADDR(5)  ),32,32) )        when X"1A",    -- D1
+				( (to_unsigned( integer( getSustainStep(34.6479/32.7032, SUSTAIN_END_OFFSET_ADDR(4)) ),32)& X"00000000") or  toUnFix( getSustainStep(34.6479/32.7032, SUSTAIN_END_OFFSET_ADDR(4)  ),32,32) )	when X"19",	-- C#1
+                ( (to_unsigned( integer( getSustainStep(36.7081/32.7032, SUSTAIN_END_OFFSET_ADDR(5)) ),32)& X"00000000") or  toUnFix( getSustainStep(36.7081/32.7032, SUSTAIN_END_OFFSET_ADDR(5)  ),32,32) )    when X"1A",    -- D1
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(6), 32)& X"00000000")																																		when X"1B", --D#1		
-				( (to_unsigned( integer( getSustainStep(41.2035/38.8909, SUSTAIN_END_OFFSET_ADDR(7)) ),32)& X"00000000") or  toUnFix( getSustainStep(41.2035/38.8909, SUSTAIN_END_OFFSET_ADDR(7)  ),32,32) )		when X"1C", -- E1
-                ( (to_unsigned( integer( getSustainStep(43.6536/38.8909, SUSTAIN_END_OFFSET_ADDR(8)) ),32)& X"00000000") or  toUnFix( getSustainStep(43.6536/38.8909, SUSTAIN_END_OFFSET_ADDR(8)  ),32,32) )        when X"1D",    -- F1
-				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(9), 32)& X"00000000")																																		when X"1B", --F#1		
-				( (to_unsigned( integer( getSustainStep(48.9995/46.2493, SUSTAIN_END_OFFSET_ADDR(10)) ),32)& X"00000000") or toUnFix( getSustainStep(48.9995/46.2493, SUSTAIN_END_OFFSET_ADDR(10) ),32,32) )		when X"1F", -- G1
-                ( (to_unsigned( integer( getSustainStep(51.9130/46.2493, SUSTAIN_END_OFFSET_ADDR(11)) ),32)& X"00000000") or toUnFix( getSustainStep(51.9130/46.2493, SUSTAIN_END_OFFSET_ADDR(11) ),32,32) )        when X"20", -- G#1
+				( (to_unsigned( integer( getSustainStep(41.2035/38.8909, SUSTAIN_END_OFFSET_ADDR(7)) ),32)& X"00000000") or  toUnFix( getSustainStep(41.2035/38.8909, SUSTAIN_END_OFFSET_ADDR(7)  ),32,32) )	when X"1C", -- E1
+                ( (to_unsigned( integer( getSustainStep(43.6536/38.8909, SUSTAIN_END_OFFSET_ADDR(8)) ),32)& X"00000000") or  toUnFix( getSustainStep(43.6536/38.8909, SUSTAIN_END_OFFSET_ADDR(8)  ),32,32) )    when X"1D",    -- F1
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(9), 32)& X"00000000")																																		when X"1E", --F#1		
+				( (to_unsigned( integer( getSustainStep(48.9995/46.2493, SUSTAIN_END_OFFSET_ADDR(10)) ),32)& X"00000000") or toUnFix( getSustainStep(48.9995/46.2493, SUSTAIN_END_OFFSET_ADDR(10) ),32,32) )	when X"1F", -- G1
+                ( (to_unsigned( integer( getSustainStep(51.9130/46.2493, SUSTAIN_END_OFFSET_ADDR(11)) ),32)& X"00000000") or toUnFix( getSustainStep(51.9130/46.2493, SUSTAIN_END_OFFSET_ADDR(11) ),32,32) )    when X"20", -- G#1
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(12), 32)& X"00000000")																																	when X"21", --A1		
-				( (to_unsigned( integer( getSustainStep(58.2705/55.0000, SUSTAIN_END_OFFSET_ADDR(13)) ),32)& X"00000000") or toUnFix( getSustainStep(58.2705/55.0000, SUSTAIN_END_OFFSET_ADDR(13) ),32,32) )		when X"22", -- A#1
-                ( (to_unsigned( integer( getSustainStep(61.7354/55.0000, SUSTAIN_END_OFFSET_ADDR(14)) ),32)& X"00000000") or toUnFix( getSustainStep(61.7354/55.0000, SUSTAIN_END_OFFSET_ADDR(14) ),32,32) )        when X"23", -- B1
+				( (to_unsigned( integer( getSustainStep(58.2705/55.0000, SUSTAIN_END_OFFSET_ADDR(13)) ),32)& X"00000000") or toUnFix( getSustainStep(58.2705/55.0000, SUSTAIN_END_OFFSET_ADDR(13) ),32,32) )	when X"22", -- A#1
+                ( (to_unsigned( integer( getSustainStep(61.7354/55.0000, SUSTAIN_END_OFFSET_ADDR(14)) ),32)& X"00000000") or toUnFix( getSustainStep(61.7354/55.0000, SUSTAIN_END_OFFSET_ADDR(14) ),32,32) )    when X"23", -- B1
 				
 				--Octave 2
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(15), 32)& X"00000000")																																	when X"24", --C2		
-				( (to_unsigned( integer( getSustainStep(69.2957/65.4064, SUSTAIN_END_OFFSET_ADDR(16)) ),32)& X"00000000") or toUnFix( getSustainStep(69.2957/65.4064, SUSTAIN_END_OFFSET_ADDR(16) ),32,32) )		when X"25",	-- C#2
-                ( (to_unsigned( integer( getSustainStep(73.4162/65.4064, SUSTAIN_END_OFFSET_ADDR(17)) ),32)& X"00000000") or toUnFix( getSustainStep(73.4162/65.4064, SUSTAIN_END_OFFSET_ADDR(17) ),32,32) )        when X"26", -- D2
+				( (to_unsigned( integer( getSustainStep(69.2957/65.4064, SUSTAIN_END_OFFSET_ADDR(16)) ),32)& X"00000000") or toUnFix( getSustainStep(69.2957/65.4064, SUSTAIN_END_OFFSET_ADDR(16) ),32,32) )	when X"25",	-- C#2
+                ( (to_unsigned( integer( getSustainStep(73.4162/65.4064, SUSTAIN_END_OFFSET_ADDR(17)) ),32)& X"00000000") or toUnFix( getSustainStep(73.4162/65.4064, SUSTAIN_END_OFFSET_ADDR(17) ),32,32) )    when X"26", -- D2
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(18), 32)& X"00000000")																																	when X"27", --D#2		
-				( (to_unsigned( integer( getSustainStep(82.4069/77.7817, SUSTAIN_END_OFFSET_ADDR(19)) ),32)& X"00000000") or toUnFix( getSustainStep(82.4069/77.7817, SUSTAIN_END_OFFSET_ADDR(19) ),32,32) )		when X"28",	-- E2 
-                ( (to_unsigned( integer( getSustainStep(87.3071/77.7817, SUSTAIN_END_OFFSET_ADDR(20)) ),32)& X"00000000") or toUnFix( getSustainStep(87.3071/77.7817, SUSTAIN_END_OFFSET_ADDR(20) ),32,32) )        when X"29", -- F2
+				( (to_unsigned( integer( getSustainStep(82.4069/77.7817, SUSTAIN_END_OFFSET_ADDR(19)) ),32)& X"00000000") or toUnFix( getSustainStep(82.4069/77.7817, SUSTAIN_END_OFFSET_ADDR(19) ),32,32) )	when X"28",	-- E2 
+                ( (to_unsigned( integer( getSustainStep(87.3071/77.7817, SUSTAIN_END_OFFSET_ADDR(20)) ),32)& X"00000000") or toUnFix( getSustainStep(87.3071/77.7817, SUSTAIN_END_OFFSET_ADDR(20) ),32,32) )    when X"29", -- F2
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(21), 32)& X"00000000")																																	when X"2A", --F#2		
-				( (to_unsigned( integer( getSustainStep(97.9989/92.4986, SUSTAIN_END_OFFSET_ADDR(22)) ),32)& X"00000000") or toUnFix( getSustainStep(97.9989/92.4986, SUSTAIN_END_OFFSET_ADDR(22) ),32,32) )		when X"2B",	-- G2
-                ( (to_unsigned( integer( getSustainStep(103.826/92.4986, SUSTAIN_END_OFFSET_ADDR(23)) ),32)& X"00000000") or toUnFix( getSustainStep(103.826/92.4986, SUSTAIN_END_OFFSET_ADDR(23) ),32,32) )        when X"2C",    -- G#2
+				( (to_unsigned( integer( getSustainStep(97.9989/92.4986, SUSTAIN_END_OFFSET_ADDR(22)) ),32)& X"00000000") or toUnFix( getSustainStep(97.9989/92.4986, SUSTAIN_END_OFFSET_ADDR(22) ),32,32) )	when X"2B",	-- G2
+                ( (to_unsigned( integer( getSustainStep(103.826/92.4986, SUSTAIN_END_OFFSET_ADDR(23)) ),32)& X"00000000") or toUnFix( getSustainStep(103.826/92.4986, SUSTAIN_END_OFFSET_ADDR(23) ),32,32) )    when X"2C",    -- G#2
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(24), 32)& X"00000000")																																	when X"2D", --A2		
-				( (to_unsigned( integer( getSustainStep(116.541/110.000, SUSTAIN_END_OFFSET_ADDR(25)) ),32)& X"00000000") or toUnFix( getSustainStep(116.541/110.000, SUSTAIN_END_OFFSET_ADDR(25) ),32,32) )		when X"2E", -- A#2
-                ( (to_unsigned( integer( getSustainStep(123.471/110.000, SUSTAIN_END_OFFSET_ADDR(26)) ),32)& X"00000000") or toUnFix( getSustainStep(123.471/110.000, SUSTAIN_END_OFFSET_ADDR(26) ),32,32) )        when X"2F",    -- B2
+				( (to_unsigned( integer( getSustainStep(116.541/110.000, SUSTAIN_END_OFFSET_ADDR(25)) ),32)& X"00000000") or toUnFix( getSustainStep(116.541/110.000, SUSTAIN_END_OFFSET_ADDR(25) ),32,32) )	when X"2E", -- A#2
+                ( (to_unsigned( integer( getSustainStep(123.471/110.000, SUSTAIN_END_OFFSET_ADDR(26)) ),32)& X"00000000") or toUnFix( getSustainStep(123.471/110.000, SUSTAIN_END_OFFSET_ADDR(26) ),32,32) )    when X"2F",    -- B2
 				
 				--Octave 3
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(27), 32)& X"00000000")																																	when X"30", --C3		
-				( (to_unsigned( integer( getSustainStep(138.591/130.813, SUSTAIN_END_OFFSET_ADDR(28)) ),32)& X"00000000") or toUnFix( getSustainStep(138.591/130.813, SUSTAIN_END_OFFSET_ADDR(28) ),32,32) )		when X"31", -- C#3
-                ( (to_unsigned( integer( getSustainStep(146.832/130.813, SUSTAIN_END_OFFSET_ADDR(29)) ),32)& X"00000000") or toUnFix( getSustainStep(146.832/130.813, SUSTAIN_END_OFFSET_ADDR(29) ),32,32) )        when X"32", -- D3
+				( (to_unsigned( integer( getSustainStep(138.591/130.813, SUSTAIN_END_OFFSET_ADDR(28)) ),32)& X"00000000") or toUnFix( getSustainStep(138.591/130.813, SUSTAIN_END_OFFSET_ADDR(28) ),32,32) )	when X"31", -- C#3
+                ( (to_unsigned( integer( getSustainStep(146.832/130.813, SUSTAIN_END_OFFSET_ADDR(29)) ),32)& X"00000000") or toUnFix( getSustainStep(146.832/130.813, SUSTAIN_END_OFFSET_ADDR(29) ),32,32) )    when X"32", -- D3
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(30), 32)& X"00000000")																																	when X"33", --D#3		
-				( (to_unsigned( integer( getSustainStep(164.814/155.563, SUSTAIN_END_OFFSET_ADDR(31)) ),32)& X"00000000") or toUnFix( getSustainStep(164.814/155.563, SUSTAIN_END_OFFSET_ADDR(31) ),32,32) )		when X"34", -- E3
-                ( (to_unsigned( integer( getSustainStep(174.614/155.563, SUSTAIN_END_OFFSET_ADDR(32)) ),32)& X"00000000") or toUnFix( getSustainStep(174.614/155.563, SUSTAIN_END_OFFSET_ADDR(32) ),32,32) )        when X"35", -- F3
+				( (to_unsigned( integer( getSustainStep(164.814/155.563, SUSTAIN_END_OFFSET_ADDR(31)) ),32)& X"00000000") or toUnFix( getSustainStep(164.814/155.563, SUSTAIN_END_OFFSET_ADDR(31) ),32,32) )	when X"34", -- E3
+                ( (to_unsigned( integer( getSustainStep(174.614/155.563, SUSTAIN_END_OFFSET_ADDR(32)) ),32)& X"00000000") or toUnFix( getSustainStep(174.614/155.563, SUSTAIN_END_OFFSET_ADDR(32) ),32,32) )    when X"35", -- F3
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(33), 32)& X"00000000")																																	when X"36", --F#3						
-				( (to_unsigned( integer( getSustainStep(195.998/184.997, SUSTAIN_END_OFFSET_ADDR(34)) ),32)& X"00000000") or toUnFix( getSustainStep(195.998/184.997, SUSTAIN_END_OFFSET_ADDR(34) ),32,32) )		when X"37", -- G3 
-                ( (to_unsigned( integer( getSustainStep(207.652/184.997, SUSTAIN_END_OFFSET_ADDR(35)) ),32)& X"00000000") or toUnFix( getSustainStep(207.652/184.997, SUSTAIN_END_OFFSET_ADDR(35) ),32,32) )        when X"38", -- G#3
+				( (to_unsigned( integer( getSustainStep(195.998/184.997, SUSTAIN_END_OFFSET_ADDR(34)) ),32)& X"00000000") or toUnFix( getSustainStep(195.998/184.997, SUSTAIN_END_OFFSET_ADDR(34) ),32,32) )	when X"37", -- G3 
+                ( (to_unsigned( integer( getSustainStep(207.652/184.997, SUSTAIN_END_OFFSET_ADDR(35)) ),32)& X"00000000") or toUnFix( getSustainStep(207.652/184.997, SUSTAIN_END_OFFSET_ADDR(35) ),32,32) )    when X"38", -- G#3
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(36), 32)& X"00000000")																																	when X"39", --A3		
-				( (to_unsigned( integer( getSustainStep(233.082/220.000, SUSTAIN_END_OFFSET_ADDR(37)) ),32)& X"00000000") or toUnFix( getSustainStep(233.082/220.000, SUSTAIN_END_OFFSET_ADDR(37) ),32,32) )		when X"3A", -- A#3
-                ( (to_unsigned( integer( getSustainStep(246.942/220.000, SUSTAIN_END_OFFSET_ADDR(38)) ),32)& X"00000000") or toUnFix( getSustainStep(246.942/220.000, SUSTAIN_END_OFFSET_ADDR(38) ),32,32) )        when X"3B", -- B3
+				( (to_unsigned( integer( getSustainStep(233.082/220.000, SUSTAIN_END_OFFSET_ADDR(37)) ),32)& X"00000000") or toUnFix( getSustainStep(233.082/220.000, SUSTAIN_END_OFFSET_ADDR(37) ),32,32) )	when X"3A", -- A#3
+                ( (to_unsigned( integer( getSustainStep(246.942/220.000, SUSTAIN_END_OFFSET_ADDR(38)) ),32)& X"00000000") or toUnFix( getSustainStep(246.942/220.000, SUSTAIN_END_OFFSET_ADDR(38) ),32,32) )    when X"3B", -- B3
 				
 				--Octave 4
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(39), 32)& X"00000000")																																	when X"3C", --C4		
-				( (to_unsigned( integer( getSustainStep(277.183/261.626, SUSTAIN_END_OFFSET_ADDR(40)) ),32)& X"00000000") or toUnFix( getSustainStep(277.183/261.626, SUSTAIN_END_OFFSET_ADDR(40) ),32,32) )		when X"3D", -- C#4
-                ( (to_unsigned( integer( getSustainStep(293.665/261.626, SUSTAIN_END_OFFSET_ADDR(41)) ),32)& X"00000000") or toUnFix( getSustainStep(293.665/261.626, SUSTAIN_END_OFFSET_ADDR(41) ),32,32) )        when X"3E", -- D4
+				( (to_unsigned( integer( getSustainStep(277.183/261.626, SUSTAIN_END_OFFSET_ADDR(40)) ),32)& X"00000000") or toUnFix( getSustainStep(277.183/261.626, SUSTAIN_END_OFFSET_ADDR(40) ),32,32) )	when X"3D", -- C#4
+                ( (to_unsigned( integer( getSustainStep(293.665/261.626, SUSTAIN_END_OFFSET_ADDR(41)) ),32)& X"00000000") or toUnFix( getSustainStep(293.665/261.626, SUSTAIN_END_OFFSET_ADDR(41) ),32,32) )    when X"3E", -- D4
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(42), 32)& X"00000000")																																	when X"3F", --D#1		
-				( (to_unsigned( integer( getSustainStep(329.628/311.127, SUSTAIN_END_OFFSET_ADDR(43)) ),32)& X"00000000") or toUnFix( getSustainStep(329.628/311.127, SUSTAIN_END_OFFSET_ADDR(43) ),32,32) )		when X"40", -- E4
-                ( (to_unsigned( integer( getSustainStep(349.228/311.127, SUSTAIN_END_OFFSET_ADDR(44)) ),32)& X"00000000") or toUnFix( getSustainStep(349.228/311.127, SUSTAIN_END_OFFSET_ADDR(44) ),32,32) )        when X"41", -- F4
+				( (to_unsigned( integer( getSustainStep(329.628/311.127, SUSTAIN_END_OFFSET_ADDR(43)) ),32)& X"00000000") or toUnFix( getSustainStep(329.628/311.127, SUSTAIN_END_OFFSET_ADDR(43) ),32,32) )	when X"40", -- E4
+                ( (to_unsigned( integer( getSustainStep(349.228/311.127, SUSTAIN_END_OFFSET_ADDR(44)) ),32)& X"00000000") or toUnFix( getSustainStep(349.228/311.127, SUSTAIN_END_OFFSET_ADDR(44) ),32,32) )    when X"41", -- F4
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(45), 32)& X"00000000")																																	when X"42", --F#4		
-				( (to_unsigned( integer( getSustainStep(391.995/369.994, SUSTAIN_END_OFFSET_ADDR(46)) ),32)& X"00000000") or toUnFix( getSustainStep(391.995/369.994, SUSTAIN_END_OFFSET_ADDR(46) ),32,32) )		when X"43", -- G4
-                ( (to_unsigned( integer( getSustainStep(415.305/369.994, SUSTAIN_END_OFFSET_ADDR(47)) ),32)& X"00000000") or toUnFix( getSustainStep(415.305/369.994, SUSTAIN_END_OFFSET_ADDR(47) ),32,32) )        when X"44", -- G#4
+				( (to_unsigned( integer( getSustainStep(391.995/369.994, SUSTAIN_END_OFFSET_ADDR(46)) ),32)& X"00000000") or toUnFix( getSustainStep(391.995/369.994, SUSTAIN_END_OFFSET_ADDR(46) ),32,32) )	when X"43", -- G4
+                ( (to_unsigned( integer( getSustainStep(415.305/369.994, SUSTAIN_END_OFFSET_ADDR(47)) ),32)& X"00000000") or toUnFix( getSustainStep(415.305/369.994, SUSTAIN_END_OFFSET_ADDR(47) ),32,32) )    when X"44", -- G#4
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(48), 32)& X"00000000")																																	when X"45", --A4		
-				( (to_unsigned( integer( getSustainStep(466.164/440.000, SUSTAIN_END_OFFSET_ADDR(49)) ),32)& X"00000000") or toUnFix( getSustainStep(466.164/440.000, SUSTAIN_END_OFFSET_ADDR(49) ),32,32) )		when X"46", -- A#4
-                ( (to_unsigned( integer( getSustainStep(493.883/440.000, SUSTAIN_END_OFFSET_ADDR(50)) ),32)& X"00000000") or toUnFix( getSustainStep(493.883/440.000, SUSTAIN_END_OFFSET_ADDR(50) ),32,32) )        when X"47",    -- B4
+				( (to_unsigned( integer( getSustainStep(466.164/440.000, SUSTAIN_END_OFFSET_ADDR(49)) ),32)& X"00000000") or toUnFix( getSustainStep(466.164/440.000, SUSTAIN_END_OFFSET_ADDR(49) ),32,32) )	when X"46", -- A#4
+                ( (to_unsigned( integer( getSustainStep(493.883/440.000, SUSTAIN_END_OFFSET_ADDR(50)) ),32)& X"00000000") or toUnFix( getSustainStep(493.883/440.000, SUSTAIN_END_OFFSET_ADDR(50) ),32,32) )    when X"47",    -- B4
 				
 				--Octave 5
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(51), 32)& X"00000000")																																	when X"48", --C5		
-				( (to_unsigned( integer( getSustainStep(554.365/523.251, SUSTAIN_END_OFFSET_ADDR(52)) ),32)& X"00000000") or toUnFix( getSustainStep(554.365/523.251, SUSTAIN_END_OFFSET_ADDR(52) ),32,32) )		when X"49",	-- C#5
-                ( (to_unsigned( integer( getSustainStep(587.330/523.251, SUSTAIN_END_OFFSET_ADDR(53)) ),32)& X"00000000") or toUnFix( getSustainStep(587.330/523.251, SUSTAIN_END_OFFSET_ADDR(53) ),32,32) )        when X"4A", -- D5
+				( (to_unsigned( integer( getSustainStep(554.365/523.251, SUSTAIN_END_OFFSET_ADDR(52)) ),32)& X"00000000") or toUnFix( getSustainStep(554.365/523.251, SUSTAIN_END_OFFSET_ADDR(52) ),32,32) )	when X"49",	-- C#5
+                ( (to_unsigned( integer( getSustainStep(587.330/523.251, SUSTAIN_END_OFFSET_ADDR(53)) ),32)& X"00000000") or toUnFix( getSustainStep(587.330/523.251, SUSTAIN_END_OFFSET_ADDR(53) ),32,32) )    when X"4A", -- D5
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(54), 32)& X"00000000")																																	when X"4B", --D#5		
-				( (to_unsigned( integer( getSustainStep(659.255/622.254, SUSTAIN_END_OFFSET_ADDR(55)) ),32)& X"00000000") or toUnFix( getSustainStep(659.255/622.254, SUSTAIN_END_OFFSET_ADDR(55) ),32,32) )		when X"4C", -- E5
-                ( (to_unsigned( integer( getSustainStep(698.456/622.254, SUSTAIN_END_OFFSET_ADDR(56)) ),32)& X"00000000") or toUnFix( getSustainStep(698.456/622.254, SUSTAIN_END_OFFSET_ADDR(56) ),32,32) )        when X"4D", -- F5
+				( (to_unsigned( integer( getSustainStep(659.255/622.254, SUSTAIN_END_OFFSET_ADDR(55)) ),32)& X"00000000") or toUnFix( getSustainStep(659.255/622.254, SUSTAIN_END_OFFSET_ADDR(55) ),32,32) )	when X"4C", -- E5
+                ( (to_unsigned( integer( getSustainStep(698.456/622.254, SUSTAIN_END_OFFSET_ADDR(56)) ),32)& X"00000000") or toUnFix( getSustainStep(698.456/622.254, SUSTAIN_END_OFFSET_ADDR(56) ),32,32) )    when X"4D", -- F5
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(57), 32)& X"00000000")																																	when X"4E", --F#5		
-				( (to_unsigned( integer( getSustainStep(783.991/739.989, SUSTAIN_END_OFFSET_ADDR(58)) ),32)& X"00000000") or toUnFix( getSustainStep(783.991/739.989, SUSTAIN_END_OFFSET_ADDR(58) ),32,32) )		when X"4F", -- G5
-                ( (to_unsigned( integer( getSustainStep(830.609/739.989, SUSTAIN_END_OFFSET_ADDR(59)) ),32)& X"00000000") or toUnFix( getSustainStep(830.609/739.989, SUSTAIN_END_OFFSET_ADDR(59) ),32,32) )        when X"50", -- G#5
+				( (to_unsigned( integer( getSustainStep(783.991/739.989, SUSTAIN_END_OFFSET_ADDR(58)) ),32)& X"00000000") or toUnFix( getSustainStep(783.991/739.989, SUSTAIN_END_OFFSET_ADDR(58) ),32,32) )	when X"4F", -- G5
+                ( (to_unsigned( integer( getSustainStep(830.609/739.989, SUSTAIN_END_OFFSET_ADDR(59)) ),32)& X"00000000") or toUnFix( getSustainStep(830.609/739.989, SUSTAIN_END_OFFSET_ADDR(59) ),32,32) )    when X"50", -- G#5
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(60), 32)& X"00000000")																																	when X"51", --A5						
-				( (to_unsigned( integer( getSustainStep(932.328/880.000, SUSTAIN_END_OFFSET_ADDR(61)) ),32)& X"00000000") or toUnFix( getSustainStep(932.328/880.000, SUSTAIN_END_OFFSET_ADDR(61) ),32,32) )		when X"52", -- A#5
-                ( (to_unsigned( integer( getSustainStep(987.767/880.000, SUSTAIN_END_OFFSET_ADDR(62)) ),32)& X"00000000") or toUnFix( getSustainStep(987.767/880.000, SUSTAIN_END_OFFSET_ADDR(62) ),32,32) )        when X"53",    -- B5
+				( (to_unsigned( integer( getSustainStep(932.328/880.000, SUSTAIN_END_OFFSET_ADDR(61)) ),32)& X"00000000") or toUnFix( getSustainStep(932.328/880.000, SUSTAIN_END_OFFSET_ADDR(61) ),32,32) )	when X"52", -- A#5
+                ( (to_unsigned( integer( getSustainStep(987.767/880.000, SUSTAIN_END_OFFSET_ADDR(62)) ),32)& X"00000000") or toUnFix( getSustainStep(987.767/880.000, SUSTAIN_END_OFFSET_ADDR(62) ),32,32) )    when X"53",    -- B5
 				
 				--Octave 6
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(63), 32)& X"00000000")																																	when X"54", --C6						
-				( (to_unsigned( integer( getSustainStep(1108.73/1046.50, SUSTAIN_END_OFFSET_ADDR(64)) ),32)& X"00000000") or toUnFix( getSustainStep(1108.73/1046.50, SUSTAIN_END_OFFSET_ADDR(64) ),32,32) )		when X"55", -- C#6
-                ( (to_unsigned( integer( getSustainStep(1174.66/1046.50, SUSTAIN_END_OFFSET_ADDR(65)) ),32)& X"00000000") or toUnFix( getSustainStep(1174.66/1046.50, SUSTAIN_END_OFFSET_ADDR(65) ),32,32) )        when X"56", -- D6
+				( (to_unsigned( integer( getSustainStep(1108.73/1046.50, SUSTAIN_END_OFFSET_ADDR(64)) ),32)& X"00000000") or toUnFix( getSustainStep(1108.73/1046.50, SUSTAIN_END_OFFSET_ADDR(64) ),32,32) )	when X"55", -- C#6
+                ( (to_unsigned( integer( getSustainStep(1174.66/1046.50, SUSTAIN_END_OFFSET_ADDR(65)) ),32)& X"00000000") or toUnFix( getSustainStep(1174.66/1046.50, SUSTAIN_END_OFFSET_ADDR(65) ),32,32) )    when X"56", -- D6
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(66), 32)& X"00000000")																																	when X"57", --D#6		
-				( (to_unsigned( integer( getSustainStep(1318.51/1244.51, SUSTAIN_END_OFFSET_ADDR(67)) ),32)& X"00000000") or toUnFix( getSustainStep(1318.51/1244.51, SUSTAIN_END_OFFSET_ADDR(67) ),32,32) )		when X"58", -- E6
-                ( (to_unsigned( integer( getSustainStep(1396.91/1244.51, SUSTAIN_END_OFFSET_ADDR(68)) ),32)& X"00000000") or toUnFix( getSustainStep(1396.91/1244.51, SUSTAIN_END_OFFSET_ADDR(68) ),32,32) )        when X"59", -- F6
-				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(69), 32)& X"00000000")																																	when X"58", --F#6		
-				( (to_unsigned( integer( getSustainStep(1567.98/1479.98, SUSTAIN_END_OFFSET_ADDR(70)) ),32)& X"00000000") or toUnFix( getSustainStep(1567.98/1479.98, SUSTAIN_END_OFFSET_ADDR(70) ),32,32) )		when X"5B", -- G6
-                ( (to_unsigned( integer( getSustainStep(1661.22/1479.98, SUSTAIN_END_OFFSET_ADDR(71)) ),32)& X"00000000") or toUnFix( getSustainStep(1661.22/1479.98, SUSTAIN_END_OFFSET_ADDR(71) ),32,32) )        when X"5C", -- G#6
+				( (to_unsigned( integer( getSustainStep(1318.51/1244.51, SUSTAIN_END_OFFSET_ADDR(67)) ),32)& X"00000000") or toUnFix( getSustainStep(1318.51/1244.51, SUSTAIN_END_OFFSET_ADDR(67) ),32,32) )	when X"58", -- E6
+                ( (to_unsigned( integer( getSustainStep(1396.91/1244.51, SUSTAIN_END_OFFSET_ADDR(68)) ),32)& X"00000000") or toUnFix( getSustainStep(1396.91/1244.51, SUSTAIN_END_OFFSET_ADDR(68) ),32,32) )    when X"59", -- F6
+				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(69), 32)& X"00000000")																																	when X"5A", --F#6		
+				( (to_unsigned( integer( getSustainStep(1567.98/1479.98, SUSTAIN_END_OFFSET_ADDR(70)) ),32)& X"00000000") or toUnFix( getSustainStep(1567.98/1479.98, SUSTAIN_END_OFFSET_ADDR(70) ),32,32) )	when X"5B", -- G6
+                ( (to_unsigned( integer( getSustainStep(1661.22/1479.98, SUSTAIN_END_OFFSET_ADDR(71)) ),32)& X"00000000") or toUnFix( getSustainStep(1661.22/1479.98, SUSTAIN_END_OFFSET_ADDR(71) ),32,32) )    when X"5C", -- G#6
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(72), 32)& X"00000000")																																	when X"5D", --A6		
-				( (to_unsigned( integer( getSustainStep(1864.66/1760.00, SUSTAIN_END_OFFSET_ADDR(73)) ),32)& X"00000000") or toUnFix( getSustainStep(1864.66/1760.00, SUSTAIN_END_OFFSET_ADDR(73) ),32,32) )		when X"5E", -- A#6
-                ( (to_unsigned( integer( getSustainStep(1975.53/1760.00, SUSTAIN_END_OFFSET_ADDR(74)) ),32)& X"00000000") or toUnFix( getSustainStep(1975.53/1760.00, SUSTAIN_END_OFFSET_ADDR(74) ),32,32) )        when X"5F", -- B6
+				( (to_unsigned( integer( getSustainStep(1864.66/1760.00, SUSTAIN_END_OFFSET_ADDR(73)) ),32)& X"00000000") or toUnFix( getSustainStep(1864.66/1760.00, SUSTAIN_END_OFFSET_ADDR(73) ),32,32) )	when X"5E", -- A#6
+                ( (to_unsigned( integer( getSustainStep(1975.53/1760.00, SUSTAIN_END_OFFSET_ADDR(74)) ),32)& X"00000000") or toUnFix( getSustainStep(1975.53/1760.00, SUSTAIN_END_OFFSET_ADDR(74) ),32,32) )    when X"5F", -- B6
 				
 				--Octave 7
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(75), 32)& X"00000000")																																	when X"60", --C7						
-				( (to_unsigned( integer( getSustainStep(2217.46/2093.00, SUSTAIN_END_OFFSET_ADDR(76)) ),32)& X"00000000") or toUnFix( getSustainStep(2217.46/2093.00, SUSTAIN_END_OFFSET_ADDR(76) ),32,32) )		when X"61", -- C#7
-                ( (to_unsigned( integer( getSustainStep(2349.32/2093.00, SUSTAIN_END_OFFSET_ADDR(77)) ),32)& X"00000000") or toUnFix( getSustainStep(2349.32/2093.00, SUSTAIN_END_OFFSET_ADDR(77) ),32,32) )        when X"62", -- D7
+				( (to_unsigned( integer( getSustainStep(2217.46/2093.00, SUSTAIN_END_OFFSET_ADDR(76)) ),32)& X"00000000") or toUnFix( getSustainStep(2217.46/2093.00, SUSTAIN_END_OFFSET_ADDR(76) ),32,32) )	when X"61", -- C#7
+                ( (to_unsigned( integer( getSustainStep(2349.32/2093.00, SUSTAIN_END_OFFSET_ADDR(77)) ),32)& X"00000000") or toUnFix( getSustainStep(2349.32/2093.00, SUSTAIN_END_OFFSET_ADDR(77) ),32,32) )    when X"62", -- D7
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(78), 32)& X"00000000")																																	when X"63", --D#7						
-				( (to_unsigned( integer( getSustainStep(2637.02/2489.02, SUSTAIN_END_OFFSET_ADDR(79)) ),32)& X"00000000") or toUnFix( getSustainStep(2637.02/2489.02, SUSTAIN_END_OFFSET_ADDR(79) ),32,32) )		when X"64", -- E7
-                ( (to_unsigned( integer( getSustainStep(2793.83/2489.02, SUSTAIN_END_OFFSET_ADDR(80)) ),32)& X"00000000") or toUnFix( getSustainStep(2793.83/2489.02, SUSTAIN_END_OFFSET_ADDR(80) ),32,32) )        when X"65", -- F7
+				( (to_unsigned( integer( getSustainStep(2637.02/2489.02, SUSTAIN_END_OFFSET_ADDR(79)) ),32)& X"00000000") or toUnFix( getSustainStep(2637.02/2489.02, SUSTAIN_END_OFFSET_ADDR(79) ),32,32) )	when X"64", -- E7
+                ( (to_unsigned( integer( getSustainStep(2793.83/2489.02, SUSTAIN_END_OFFSET_ADDR(80)) ),32)& X"00000000") or toUnFix( getSustainStep(2793.83/2489.02, SUSTAIN_END_OFFSET_ADDR(80) ),32,32) )    when X"65", -- F7
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(81), 32)& X"00000000")																																	when X"66", --F#7		
-				( (to_unsigned( integer( getSustainStep(3135.96/2959.96, SUSTAIN_END_OFFSET_ADDR(82)) ),32)& X"00000000") or toUnFix( getSustainStep(3135.96/2959.96, SUSTAIN_END_OFFSET_ADDR(82) ),32,32) )		when X"67", -- G7
-                ( (to_unsigned( integer( getSustainStep(3322.44/2959.96, SUSTAIN_END_OFFSET_ADDR(83)) ),32)& X"00000000") or toUnFix( getSustainStep(3322.44/2959.96, SUSTAIN_END_OFFSET_ADDR(83) ),32,32) )        when X"68", -- G#7
+				( (to_unsigned( integer( getSustainStep(3135.96/2959.96, SUSTAIN_END_OFFSET_ADDR(82)) ),32)& X"00000000") or toUnFix( getSustainStep(3135.96/2959.96, SUSTAIN_END_OFFSET_ADDR(82) ),32,32) )	when X"67", -- G7
+                ( (to_unsigned( integer( getSustainStep(3322.44/2959.96, SUSTAIN_END_OFFSET_ADDR(83)) ),32)& X"00000000") or toUnFix( getSustainStep(3322.44/2959.96, SUSTAIN_END_OFFSET_ADDR(83) ),32,32) )    when X"68", -- G#7
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(84), 32)& X"00000000")																																	when X"69", --A7		
-				( (to_unsigned( integer( getSustainStep(3729.31/3520.00, SUSTAIN_END_OFFSET_ADDR(85)) ),32)& X"00000000") or toUnFix( getSustainStep(3729.31/3520.00, SUSTAIN_END_OFFSET_ADDR(85) ),32,32) )		when X"6A", -- A#7
-                ( (to_unsigned( integer( getSustainStep(3951.07/3520.00, SUSTAIN_END_OFFSET_ADDR(86)) ),32)& X"00000000") or toUnFix( getSustainStep(3951.07/3520.00, SUSTAIN_END_OFFSET_ADDR(86) ),32,32) )        when X"6B", -- B7            
+				( (to_unsigned( integer( getSustainStep(3729.31/3520.00, SUSTAIN_END_OFFSET_ADDR(85)) ),32)& X"00000000") or toUnFix( getSustainStep(3729.31/3520.00, SUSTAIN_END_OFFSET_ADDR(85) ),32,32) )	when X"6A", -- A#7
+                ( (to_unsigned( integer( getSustainStep(3951.07/3520.00, SUSTAIN_END_OFFSET_ADDR(86)) ),32)& X"00000000") or toUnFix( getSustainStep(3951.07/3520.00, SUSTAIN_END_OFFSET_ADDR(86) ),32,32) )    when X"6B", -- B7            
 				
 				(to_unsigned( SUSTAIN_END_OFFSET_ADDR(87), 32)& X"00000000")																																	when X"6C", --C8		
 				to_unsigned( 0, 64)																																												when others;														
@@ -1257,7 +1269,7 @@ process(rst_n,clk,cen,emtyCmdKeyboardBuffer,cmdKeyboard,workingNotesGen)
         OnOff   	  :   std_logic; -- High On, low Off
 	end record;
 	type keyboardState_t 	is array ( 0 to 15 ) of noteState_t;
-	type checkNotes_t		is 	array (0 to 15) of  unsigned(5 downto 0);
+	type checkNotes_t		is 	array (0 to 15) of  unsigned(4 downto 0);
 	
 	variable state      	:   states;
 	variable keyboardState	:	keyboardState_t;
@@ -1265,13 +1277,14 @@ process(rst_n,clk,cen,emtyCmdKeyboardBuffer,cmdKeyboard,workingNotesGen)
 	variable foundCode		:	std_logic_vector(15 downto 0);
 	variable noteIndexOff 	:   checkNotes_t;
 	
-	variable foundAviable		:	std_logic_vector(15 downto 0);
+	variable foundAviable	:	std_logic_vector(15 downto 0);
 	variable noteIndexOn	:   checkNotes_t;
 	
 begin
 	
-	-- Try this!!
---	notesOnOff <= keyboardState_t(others);
+	for i in 0 to 15 loop
+	   notesOnOff(i) <= keyboardState(i).OnOff;
+	end loop;
 	
 	--------------------------------------------------------------------------
 	-- "Combinational Search" of note index to slect which note turn on/off --
@@ -1293,7 +1306,7 @@ begin
 
 	--searchIndexByNoteCode
 	foundCode(0) :='0';
-	noteIndexOff(0) := to_unsigned(0,4);
+	noteIndexOff(0) := to_unsigned(0,5);
 	if cmdKeyboard(7 downto 0)=keyboardState(0).currentNote then
 		foundCode(0) :='1';
 	end if;
@@ -1301,14 +1314,22 @@ begin
 		foundCode(i) := foundCode(i-1);
 		noteIndexOff(i) := noteIndexOff(i-1);
 		if foundCode(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
-			noteIndexOff(i) := to_unsigned(i,4);	
+			noteIndexOff(i) := to_unsigned(i,5);	
 		end if;
 	end loop;
 	
 	
 	if rst_n='0' then
-		keyboardState :=(others=>("00",'0'));
+		keyboardState :=(others=>(X"00",'0'));
 		state := reciveCmd;
+		-- Note params rst value
+		regStartAddr               <= (others=>'0');
+        regSustainStartOffsetAddr  <= (others=>'0');
+        regSustainEndOffsetAddr    <= (others=>'0');
+        regMaxSamples              <= (others=>'0');
+        regStepVal                 <= (others=>'0');
+        regSustainStepStart        <= (others=>'0');
+        regSustainStepEnd          <= (others=>'0');
 		keyboard_ack <='0';
 		
     elsif rising_edge(clk) then
@@ -1337,7 +1358,7 @@ begin
 					-- Note Off
 					-- Turn off a note if there is some generator working with that note code
 					elsif cmdKeyboard(9 downto 8)="01" and foundCode(15)='1' then
-						keyboardState(to_integer(noteIndexOff(15))) := ("00",'0');
+						keyboardState(to_integer(noteIndexOff(15))) := (X"00",'0');
 						state := waitTurnOff;
 					end if;
 				end if;

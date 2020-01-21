@@ -107,8 +107,7 @@ sampleOut <= notesGen_samplesOut(log2(16))(0);
 
 ----------------------------------------------------------------------------------
 -- NOTES GENERATOR
---      Creation of the notes generators components,
---
+--      Creation of the notes generators components
 ----------------------------------------------------------------------------------
 
 genNotes:

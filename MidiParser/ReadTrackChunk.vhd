@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.9
+-- Revision 1.0
 -- Additional Comments:
 --    Notes: In play mode, infinite loop are not checked !!           
 --
@@ -42,10 +42,10 @@ entity ReadTrackChunk is
   Port ( 
         rst_n           		:   in  std_logic;
         clk             		:   in  std_logic;
-        cen                     :   in std_logic;
+        cen                     :   in 	std_logic;
 		readRqt					:	in	std_logic_vector(1 downto 0); -- One cycle high to request a read 
-		trackAddrStart			:	in std_logic_vector(26 downto 0); -- Must be stable for the whole read
-		OneDividedByDivision	:	in std_logic_vector(23 downto 0); -- Q4.20
+		trackAddrStart			:	in 	std_logic_vector(26 downto 0); -- Must be stable for the whole read
+		OneDividedByDivision	:	in 	std_logic_vector(23 downto 0); -- Q4.20
 		finishRead				:	out std_logic; -- One cycle high to notify the end of track reached
 		trackOK					:	out	std_logic; -- High track data is ok, low track data is not ok			
 		notesOn					:	out std_logic_vector(87 downto 0);
@@ -248,9 +248,9 @@ begin
     addAux2 := ('0' & mulAux2)+('0' & ROUND_VAL_1); --Q37.20 = Q36.20+Q36.20
     
 	-- Final Satur, 57 bits to 17 bits
-	resWait <= addAux2(37 downto 20);
-	if addAux2(18)='1' then
-		resWait <=(others=>'1');
+			resWait := addAux2(37 downto 20);
+	if addAux2(38)='1' then
+	   resWait :=(others=>'1'); 
 	end if;
 	
     readedBytes := (regAddr - (unsigned(trackAddrStart) + 6)); -- 6 instead of 8, do not count the ini and end byte address

@@ -15,11 +15,17 @@
 -- Revision:
 -- Revision 0.2
 -- Additional Comments:
---		Command format: cmd(7 downto 0) = note code
+--		Keyboard Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
 --						cmd(8) = when high, note off
 --						Null command when -> cmd(9 downto 0) = (others=>'0')
 -- 
+--		Mem Read Request command format: cmd(29 downto 26)=note gen index 
+--										 cmd(25 downto 0)=sample addr
+--
+--		Mem Read Response command format: cmd(15+4 downto 16)=note gen index 
+--										 cmd(15 downto 0)=sample 
+--
 ----------------------------------------------------------------------------------
 
 
@@ -37,25 +43,24 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity my_Keyboard is
   Port ( 
-        rst_n           :   in  std_logic;
-        clk             :   in  std_logic;
-        cen             :   in  std_logic;
-		emtyCmdBuffer	:	in std_logic;	
-		cmdKeyboard		:	in std_logic_vector(9 downto 0);
-		keyboard_ack	:	out	std_logic;
-        
-        --IIS side
-        sampleRqt       :   in  std_logic;
-        sampleOut       :   out std_logic_vector(15 downto 0);
-        
-        --Notes generator side
-		workingNotesGen	:	in	std_logic_vector(15 downto 0);
-		
+        rst_n           			:   in  std_logic;
+        clk             			:   in  std_logic;
+        cen             			:   in  std_logic;
+		emtyCmdKeyboardBuffer		:	in std_logic;	
+		cmdKeyboard					:	in std_logic_vector(9 downto 0);
+		keyboard_ack				:	out	std_logic;
+			
+        --IIS side	
+        sampleRqt       			:   in  std_logic;
+        sampleOut       			:   out std_logic_vector(15 downto 0);
+        		
         -- Mem side
-        mem_sampleIn    :   in  std_logic_vector(15 downto 0);
-        mem_ack         :   in  std_logic;
-        mem_addrOut     :   out std_logic_vector(25 downto 0);
-        mem_readOut     :   out std_logic
+		mem_emptyBuffer				:	in	std_logic;
+        mem_CmdReadResponse    		:   in  std_logic_vector(15+4 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
+        mem_fullBuffer         		:   in  std_logic; 
+        mem_CmdReadRequest		    :   out std_logic_vector(25+4 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(25 downto 0) = sample addr
+		mem_readResponseBuffer		:	out std_logic;
+        mem_writeReciveBuffer     	:   out std_logic -- One cycle high to send a new CmdReadRqt
   
   );
 -- Attributes for debug
@@ -490,7 +495,9 @@ architecture Behavioral of my_Keyboard is
 	signal	sustainStepStartROM         :	std_logic_vector(63 downto 0);
 	signal	sustainStepEndROM           :	std_logic_vector(63 downto 0);
 	
-	signal notesOnOff				:	std_logic_vector(31 downto 0);
+	-- Signals for notesGen component
+	signal	workingNotesGen				:	std_logic_vector(15 downto 0);
+	signal	notesOnOff					:	std_logic_vector(15 downto 0);
 	
 	-- Registers
 	signal	regStartAddr                :	std_logic_vector(25 downto 0);
@@ -1201,13 +1208,46 @@ begin
 								-- ROMs End --
 ----------------------------------------------------------------------------------  
 
+notesGen: NotesGenerator 
+  port map( 
+        rst_n           			=> rst_n,
+        clk             			=> clk,
+        notes_on        			=> notesOnOff,
+        working						=> workingNotesGen,
+
+		--Note params               
+		startAddr_In             	=> regStartAddr             ,
+		sustainStartOffsetAddr_In	=> regSustainStartOffsetAddr,
+		sustainEndOffsetAddr_In     => regSustainEndOffsetAddr  ,
+		maxSamples_In               => regMaxSamples            ,
+		stepVal_In                  => regStepVal               ,
+		sustainStepStart_In         => regSustainStepStart      ,
+		sustainStepEnd_In           => regSustainStepEnd        ,
+
+		--IIS side                  
+        sampleRqt       			=> sampleRqt,
+        sampleOut       			=> sampleOut,
+
+        -- Mem side                 
+		mem_emptyBuffer				=> mem_emptyBuffer		 ,
+        mem_CmdReadResponse    		=> mem_CmdReadResponse   ,
+        mem_fullBuffer         		=> mem_fullBuffer        ,
+        mem_CmdReadRequest		    => mem_CmdReadRequest	 ,
+		mem_readResponseBuffer		=> mem_readResponseBuffer,
+        mem_writeReciveBuffer     	=> mem_writeReciveBuffer 
+  
+  );
+
+
+
+
 ----------------------------------------------------------------------------------
 -- CMD RECIEVER
 --		Manage the behaviour with the commands
 ----------------------------------------------------------------------------------  
 
 fsm:
-process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard,workingNotesGen)
+process(rst_n,clk,cen,emtyCmdKeyboardBuffer,cmdKeyboard,workingNotesGen)
 	type states is ( reciveCmd, waitTurnOff);
 	type noteState_t is record
 		currentNote   :   std_logic_vector(7 downto 0);
@@ -1226,7 +1266,10 @@ process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard,workingNotesGen)
 	variable noteIndexOn	:   checkNotes_t;
 	
 begin
-
+	
+	-- Try this!!
+	notesOnOff <= keyboardState_t(others).OnOff;
+	
 	--------------------------------------------------------------------------
 	-- "Combinational Search" of note index to slect which note turn on/off --
 	--------------------------------------------------------------------------
@@ -1271,15 +1314,15 @@ begin
 		
 		case state is
             when reciveCmd =>
-				if cen='1' and emtyCmdBuffer='0' then
+				if cen='1' and emtyCmdKeyboardBuffer='0' then
 					-- Note params setup
-					regStartAddr             <= startAddrROM             ;
-					regSustainStartOffsetAddr<= sustainStartOffsetAddrROM;
-					regSustainEndOffsetAddr  <= sustainEndOffsetAddrROM  ;
-					regMaxSamples            <= maxSamplesROM            ;
-					regStepVal               <= stepValROM               ;
-					regSustainStepStart      <= sustainStepStartROM      ;
-					regSustainStepEnd        <= sustainStepEndROM        ;
+					regStartAddr             	<= startAddrROM             ;
+					regSustainStartOffsetAddr	<= sustainStartOffsetAddrROM;
+					regSustainEndOffsetAddr  	<= sustainEndOffsetAddrROM  ;
+					regMaxSamples            	<= maxSamplesROM            ;
+					regStepVal               	<= stepValROM               ;
+					regSustainStepStart      	<= sustainStepStartROM      ;
+					regSustainStepEnd        	<= sustainStepEndROM        ;
 					
 					
 					-- Note On

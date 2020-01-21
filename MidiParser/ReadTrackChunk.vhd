@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.8
+-- Revision 0.9
 -- Additional Comments:
 --    Notes: In play mode, infinite loop are not checked !!           
 --
@@ -56,7 +56,7 @@ entity ReadTrackChunk is
 		statesOut       		: out std_logic_vector(8 downto 0);
 		runningStatusOut        : out std_logic_vector(7 downto 0);  
 		dataBytesOut            : out std_logic_vector(15 downto 0);
-		regWaitOut              : out std_logic_vector(36 downto 0);
+		regWaitOut              : out std_logic_vector(17 downto 0);
 		 
 		--Byte provider side
 		nextByte        		:   in  std_logic_vector(7 downto 0);
@@ -192,7 +192,7 @@ process(rst_n,clk,readRqt,byteAck,varLengthRdy)
 	
 	variable regAddr        :	unsigned(26 downto 0);
 	variable regNotesOn     :	std_logic_vector(87 downto 0);
-	variable regWait	    :	unsigned(36 downto 0);
+	variable regWait	    :	unsigned(17 downto 0); -- aprox 4 mins of max waiting time
 	
 	variable mulAux0        : unsigned(47 downto 0);
 	variable mulAux1        : unsigned(91 downto 0);
@@ -200,6 +200,7 @@ process(rst_n,clk,readRqt,byteAck,varLengthRdy)
 
 	variable addAux0        : unsigned(48 downto 0);
 	variable addAux2        : unsigned(56 downto 0);
+	variable resWait		: unsigned(17 downto 0);
 	
 	variable regAux0        : unsigned(27 downto 0);
 	variable regAux1        : unsigned(31 downto 0);
@@ -245,7 +246,12 @@ begin
 
     mulAux2 := regAux1*ONE_DIVIDED_BY_ONE_THOUSAND; -- Q36.20=Q32.0*Q4.20
     addAux2 := ('0' & mulAux2)+('0' & ROUND_VAL_1); --Q37.20 = Q36.20+Q36.20
-        
+    
+	-- Final Satur, 57 bits to 17 bits
+	resWait <= addAux2(37 downto 20);
+	if addAux2(18)='1' then
+		resWait <=(others=>'1');
+	end if;
 	
     readedBytes := (regAddr - (unsigned(trackAddrStart) + 6)); -- 6 instead of 8, do not count the ini and end byte address
 
@@ -420,7 +426,7 @@ begin
                     else
                         -- This condition to avoid infinite loops
                         if fsm_state.mode=play or (fsm_state.mode=check and (readedBytes<=unsigned(regAux))) then                                    
-                            regWait := unsigned(addAux2(56 downto 20));
+                            regWait := resWait;
                             regAddr := unsigned(varLengthByteAddr) + 1; -- Update the value of the current addr                    
                             cntr :=(others=>'0');
                             if fsm_state.mode = check then

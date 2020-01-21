@@ -79,11 +79,6 @@ architecture Behavioral of NotesGenerator is
 	type    signalsPerLevel  is array(0 to 16/2**(i)-1) of std_logic_vector(15 downto 0); 
 	type    samples  is array( 0 to log2(16)-1 ) of signalsPerLevel;
 
-	
-----------------------------------------------------------------------------------
--- CONSTANTS DECLARATIONS
-----------------------------------------------------------------------------------         
-
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
@@ -147,7 +142,7 @@ for i in 0 to 15 generate
 
 end generate;
 
-
+-- Internal cen signal for the FSMs, check if some note is on
 cenForFsms: reducedOr
   generic map(WL=>16)
   port map(a_in=>notes_on, reducedA_out=>fsmsCen);
@@ -207,11 +202,11 @@ begin
 		memAckSend <=(others=>'0'); -- Just one cycle
         
 		case state is
-			-- Two Cmd per read request
+			-- Two Cmd per read request of a note generator
             when checkGeneratorRqt =>
                  if fsmsCen='1' and memSamplesSendRqt(to_integer(turnCntr))='1' then
                         regReadCmdRqt := std_logic_vector(turnCntr) & notesGen_addrOut(to_integer(turnCntr)); -- Note Gen index + addr
-                        -- Send read command in the next cycle
+                        -- Write command in the mem buffer
                         mem_writeReciveBuffer <= '1';
 						-- Send ack to note gen
                         memAckSend(to_integer(turnCntr)) <='1';
@@ -228,7 +223,7 @@ begin
 			when waitMemAck0 =>
                 if mem_fullBuffer='0' then		
 					regReadCmdRqt(25 downto 0) := regReadCmdRqt(25 downto 0)+1; -- Note Gen index + addr
-					-- Order read in the next cycle
+					-- Write command in the mem buffer
 					mem_writeReciveBuffer <= '1';
 					state := waitMemAck0;
 				end if;

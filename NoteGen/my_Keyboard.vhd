@@ -1213,40 +1213,40 @@ process(rst_n,clk,cen,emtyCmdBuffer,cmdKeyboard,workingNotesGen)
 		currentNote   :   std_logic_vector(7 downto 0);
         OnOff   	  :   std_logic; -- High On, low Off
 	end record;
-	type keyboardState_t is array ( 0 to 15 ) of noteState_t;
-	type checkNotes_t	is 	array (0 to 15) of  unsigned(5 downto 0);
+	type keyboardState_t 	is array ( 0 to 15 ) of noteState_t;
+	type checkNotes_t		is 	array (0 to 15) of  unsigned(5 downto 0);
 	
-	variable state      		:   states;
-	variable keyboardState		:	keyboardState_t;
+	variable state      	:   states;
+	variable keyboardState	:	keyboardState_t;
 	
-	variable foundCode			:	std_logic_vector(15 downto 0);
-	variable noteIndexOff 		:   checkNotes_t
+	variable foundCode		:	std_logic_vector(15 downto 0);
+	variable noteIndexOff 	:   checkNotes_t
 	
-	variable foundOn			:	std_logic_vector(15 downto 0);
-	variable noteIndexOn		:   checkNotes_t;
+	variable foundAvibiable		:	std_logic_vector(15 downto 0);
+	variable noteIndexOn	:   checkNotes_t;
 	
 begin
 
 	--------------------------------------------------------------------------
 	-- "Combinational Search" of note index to slect which note turn on/off --
 	--------------------------------------------------------------------------
-	--On, try this !!
-	foundOn(0) <='0';
+	--searchFirstAviableNoteGen
+	foundAvibiable(0) <='0';
 	noteIndexOn(0) <= to_unsigned(0,5);
 	if keyboardState(0).OnOff='0' then
-		foundOn(0) <='1';
+		foundAvibiable(0) <='1';
 	end if;
 	for i in 1 to 31 then
-		foundOn(i) <= foundOn(i-1);
+		foundAvibiable(i) <= foundAvibiable(i-1);
 		noteIndexOn(i) <= noteIndexOn(i-1);
-		if foundOn(i-1)='0' and keyboardState(i).OnOff='0' then
+		if foundAvibiable(i-1)='0' and keyboardState(i).OnOff='0' then
 			noteIndexOn(i) <= unsigned( std_logic_vector(to_unsigned(i,5)) );
-			foundOn(i) <= '1';
+			foundAvibiable(i) <= '1';
 		end if;
 	end loop;
 	
 
-	--Off, search
+	--searchIndexByNoteCode
 	foundCode(0) <='0';
 	noteIndexOff(0) := to_unsigned(0,4);
 	if cmdKeyboard(7 downto 0)=keyboardState(0).currentNote then
@@ -1254,7 +1254,7 @@ begin
 	end if;
 	for i in 1 to 15 loop
 		foundCode(i) <= foundCode(i-1);
-		noteIndexOff(i) := auXnoteIndexOff(i-1);
+		noteIndexOff(i) := noteIndexOff(i-1);
 		if foundCode(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
 			noteIndexOff(i) := to_unsigned(i,4);	
 		end if;
@@ -1271,7 +1271,7 @@ begin
 		
 		case state is
             when reciveCmd =>
-				if emtyCmdBuffer='0' then
+				if cen='1' and emtyCmdBuffer='0' then
 					-- Note params setup
 					regStartAddr             <= startAddrROM             ;
 					regSustainStartOffsetAddr<= sustainStartOffsetAddrROM;
@@ -1283,9 +1283,9 @@ begin
 					
 					
 					-- Note On
-					-- Turn on a new generator if there is some generator not working (foundOn(15)='1')
-					-- and if the note requested to turn on is not already on
-					if cmdKeyboard(9 downto 8)="10" and foundOn(15)='1' and foundCode(15)='0' then 
+					-- Turn on a new generator if there is some generator not working (foundAvibiable(15)='1')
+					-- and if the note requested to turn on is not already on (foundCode='0')
+					if cmdKeyboard(9 downto 8)="10" and foundAvibiable(15)='1' and foundCode(15)='0' then 
 						keyboardState(noteIndexOn(15)) := (cmdKeyboard(7 downto 0),'1');
 						keyboard_ack <='1';
 

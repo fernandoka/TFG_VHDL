@@ -40,7 +40,6 @@ entity CmdKeyboardSequencer is
   Port ( 
         rst_n           :   in  std_logic;
         clk             :   in  std_logic;
-        cen				:	in	std_logic;
 		
 		-- Read Tracks Side
 		cmdTrack_0		:	in	std_logic_vector(9 downto 0);
@@ -113,16 +112,20 @@ FifoInterface: my_fifo
 
 
   
-process(rst_n,clk,cen,sendCmdRqt,fullFifo)
+process(rst_n,clk,sendCmdRqt,fullFifo)
 	type states is (s0, s1);	
 	variable state	:	states;
+	
+	variable internalCen   :   std_logic;
 begin
-
+    
+    internalCen := sendCmdRqt(0) or sendCmdRqt(1);
+    
     ------------------
 	-- MEALY OUTPUT --
 	------------------
 	wrFifo <='0';
-	if cen='1' and fullFifo='0' then
+	if internalCen='1' and fullFifo='0' then
 		if (state=s0 and sendCmdRqt(0)='1') or 
 			(state=s1 and sendCmdRqt(1)='1') then
 			wrFifo <='1';
@@ -161,7 +164,7 @@ begin
 		
 		case state is
 			when s0=>
-				if cen='1' and fullFifo='0' then
+				if internalCen='1' and fullFifo='0' then
 					state:=s1;
 					if sendCmdRqt(0)='1' then	
 						seq_ack(0) <= '1';
@@ -170,7 +173,7 @@ begin
 			
 				
 			when s1=>
-				if cen='1' and fullFifo='0' then
+				if internalCen='1' and fullFifo='0' then
 					state:=s0;
 					if sendCmdRqt(1)='1' then
 						seq_ack(1) <= '1';

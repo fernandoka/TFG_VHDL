@@ -70,37 +70,9 @@ entity ReadTrackChunk is
 --attribute   dont_touch  of  ReadHeaderChunk  :   entity  is  "true";
 end ReadTrackChunk;
 
+use work.my_common.all;
+
 architecture Behavioral of ReadTrackChunk is
-
-component ReadVarLength is
-  Port ( 
-        rst_n           :   in  std_logic;
-        clk             :   in  std_logic;
-        readRqt			:	in	std_logic; -- One cycle high to request a read
-        iniAddr			:	in	std_logic_vector(26 downto 0);
-        valOut			:	out	std_logic_vector(63 downto 0);
-        dataRdy			:	out std_logic;  -- One cycle high when the data is ready
-
-		--Byte provider side
-		nextByte        :   in  std_logic_vector(7 downto 0);
-		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
-        byteAddr		:	out std_logic_vector(26 downto 0);
-		byteRqt			:	out std_logic -- One cycle high to request a new byte
-  ); 
-end component;
-
-
-component MilisecondDivisor is
-  Generic(FREQ : in natural);-- Frequency in Khz
-  Port ( 
-        rst_n           :   in  std_logic;
-        clk             :   in  std_logic;
-		cen				:	in	std_logic;
-		Tc				:	out std_logic
-		
-  );
-end component;
-
 ----------------------------- Constants --------------------------------------------
 
 	constant TRACK_CHUNK_MARK : std_logic_vector(31 downto 0) := X"4d54726b";

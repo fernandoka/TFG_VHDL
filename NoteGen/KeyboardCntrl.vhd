@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.3
+-- Revision 0.4
 -- Additional Comments:
 --		Keyboard Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -1315,6 +1315,7 @@ begin
 		noteIndexOff(i) := noteIndexOff(i-1);
 		if foundCode(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
 			noteIndexOff(i) := to_unsigned(i,5);	
+		    foundCode(i) := '1';
 		end if;
 	end loop;
 	
@@ -1337,21 +1338,21 @@ begin
 		
 		case state is
             when reciveCmd =>
-				if cen='1' and emtyCmdKeyboardBuffer='0' then
-					-- Note params setup
-					regStartAddr             	 <= std_logic_vector(startAddrROM);
-                    regSustainStartOffsetAddr    <= std_logic_vector(sustainStartOffsetAddrROM);
-                    regSustainEndOffsetAddr      <= std_logic_vector(sustainEndOffsetAddrROM);
-                    regMaxSamples                <= std_logic_vector(maxSamplesROM);
-                    regStepVal                   <= std_logic_vector(stepValROM);
-                    regSustainStepStart          <= std_logic_vector(sustainStepStartROM);
-                    regSustainStepEnd            <= std_logic_vector(sustainStepEndROM);
-					
+				if cen='1' and emtyCmdKeyboardBuffer='0' then			
 					
 					-- Note On
 					-- Turn on a new generator if there is some generator not working (foundAviable(15)='1')
 					-- and if the note requested to turn on is not already on (foundCode='0')
-					if cmdKeyboard(9 downto 8)="10" and foundAviable(15)='1' and foundCode(15)='0' then 
+					if cmdKeyboard(9 downto 8)="10" and foundAviable(15)='1' and foundCode(15)='0' then
+                        -- Note params setup
+                        regStartAddr                  <= std_logic_vector(startAddrROM);
+                        regSustainStartOffsetAddr    <= std_logic_vector(sustainStartOffsetAddrROM);
+                        regSustainEndOffsetAddr      <= std_logic_vector(sustainEndOffsetAddrROM);
+                        regMaxSamples                <= std_logic_vector(maxSamplesROM);
+                        regStepVal                   <= std_logic_vector(stepValROM);
+                        regSustainStepStart          <= std_logic_vector(sustainStepStartROM);
+                        regSustainStepEnd            <= std_logic_vector(sustainStepEndROM);
+
 						keyboardState(to_integer(noteIndexOn(15))) := (cmdKeyboard(7 downto 0),'1');
 						keyboard_ack <='1';
 
@@ -1360,6 +1361,12 @@ begin
 					elsif cmdKeyboard(9 downto 8)="01" and foundCode(15)='1' then
 						keyboardState(to_integer(noteIndexOff(15))) := (X"00",'0');
 						state := waitTurnOff;
+					
+					-- This if the command has no effect on the keyboard state,
+					-- it's needed to keep consuming commands from the buffer
+					-- Example (turn on/off a note that is already on/off)
+					else
+					   keyboard_ack <='1';
 					end if;
 				end if;
 			

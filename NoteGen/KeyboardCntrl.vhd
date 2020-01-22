@@ -4,7 +4,7 @@
 -- 
 -- Create Date: 14.12.2019 20:22:30
 -- Design Name: 
--- Module Name: my_Keyboard - Behavioral
+-- Module Name: KeyboardCntrl - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -41,7 +41,7 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity my_Keyboard is
+entity KeyboardCntrl is
   Port ( 
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
@@ -77,13 +77,13 @@ entity my_Keyboard is
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
---attribute   dont_touch  of  my_Keyboard  :   entity  is  "true";
+--attribute   dont_touch  of  KeyboardCntrl  :   entity  is  "true";
     
-end my_Keyboard;
+end KeyboardCntrl;
 
 use work.my_common.all;
 
-architecture Behavioral of my_Keyboard is
+architecture Behavioral of KeyboardCntrl is
 ----------------------------------------------------------------------------------
 -- TYPES DECLARATIONS
 ----------------------------------------------------------------------------------     

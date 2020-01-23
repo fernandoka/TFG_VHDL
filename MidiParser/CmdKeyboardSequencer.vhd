@@ -116,10 +116,10 @@ process(rst_n,clk,sendCmdRqt,fullFifo)
 	type states is (s0, s1);	
 	variable state	:	states;
 	
-	variable internalCen   :   std_logic;
+	variable internalCe   :   std_logic;
 begin
     
-    internalCen := sendCmdRqt(0) or sendCmdRqt(1);
+    internalCe := sendCmdRqt(0) or sendCmdRqt(1);
     
     ------------------
 	-- MEALY OUTPUT --
@@ -159,7 +159,7 @@ begin
 		
 		case state is
 			when s0=>
-				if internalCen='1' and fullFifo='0' then
+				if internalCe='1' and fullFifo='0' then
 					state:=s1;
 					if sendCmdRqt(0)='1' then	
 						seq_ack(0) <= '1';
@@ -168,7 +168,7 @@ begin
 			
 				
 			when s1=>
-				if internalCen='1' and fullFifo='0' then
+				if internalCe='1' and fullFifo='0' then
 					state:=s0;
 					if sendCmdRqt(1)='1' then
 						seq_ack(1) <= '1';

@@ -1287,7 +1287,7 @@ begin
 	end loop;
 	
 	--------------------------------------------------------------------------
-	-- "Combinational Search" of note index to slect which note turn on/off --
+	-- "Combinationals Searchs" of note index to slect which note turn on/off --
 	--------------------------------------------------------------------------
 	--searchFirstAviableNoteGen
 	foundAviable(0) :='0';

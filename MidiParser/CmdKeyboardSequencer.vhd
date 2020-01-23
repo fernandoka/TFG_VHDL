@@ -98,7 +98,7 @@ begin
 ---------------------------------------------------------------------------------- 
 
 FifoInterface: my_fifo
-  generic map(WIDTH =>10, DEPTH =>4)
+  generic map(WIDTH =>4, DEPTH =>4)
   port map(
     rst_n   => rst_n,
     clk     => clk,
@@ -124,13 +124,8 @@ begin
     ------------------
 	-- MEALY OUTPUT --
 	------------------
-	wrFifo <='0';
-	if internalCen='1' and fullFifo='0' then
-		if (state=s0 and sendCmdRqt(0)='1') or 
-			(state=s1 and sendCmdRqt(1)='1') then
-			wrFifo <='1';
-		end if;
-	end if;
+	wrFifo <=(state=s0 and sendCmdRqt(0)='1') or 
+			(state=s1 and sendCmdRqt(1)='1');
 
     ------------------
 	-- MOORE OUTPUT --

@@ -2,7 +2,14 @@
 --
 --
 -- Fernando Candelario Herrero
--- 2.2v
+-- 2.3v  
+-- Notes:
+--		Wirte 2B read 16B.
+--		For write addr represet 2B.
+--		For read addr represet 16B, the 3 last bits of the addr are not used.
+--
+--
+--
 -- fdi Madrid 2019
 ----------------------------------------------------------------------------------------------
 
@@ -20,15 +27,14 @@ entity Ram2Ddr is
       -- RAM interface
       ram_a                : in    std_logic_vector(25 downto 0); -- Mem addr is stable in the whole transaction
       ram_dq_i             : in    std_logic_vector(15 downto 0);
-      ram_dq_o             : out   std_logic_vector(15 downto 0);
-      ram_dq_o_128         : out   std_logic_vector(127 downto 0); -- Read all the 128 bits
+      ram_dq_o			   : out   std_logic_vector(127 downto 0); -- Read all the 128 bits
       ram_cen              : in    std_logic;
       ram_oen              : in    std_logic;
       ram_wen              : in    std_logic;
-      ram_ack              : out    std_logic;
+      ram_ack              : out   std_logic;
       
 	  -- Debug
-      leds                   : out std_logic_vector(5 downto 0);
+      leds                 : out std_logic_vector(5 downto 0);
 	  
       -- DDR2 interface
       ddr2_addr            : out   std_logic_vector(12 downto 0);
@@ -102,7 +108,7 @@ port (
    init_calib_complete  : out   std_logic);
 end component;
 
-type states is (idleQuickRead,
+type states is (idle,
                 send_data,
                 set_cmd,
                 wait_ack);
@@ -145,11 +151,6 @@ signal mem_rd_data         : std_logic_vector(127 downto 0);
 signal mem_rd_data_end     : std_logic; -- active-high last 'rd_data'
 signal mem_rd_data_valid   : std_logic; -- active-high 'rd_data' valid
 signal calib_complete      : std_logic; -- active-high calibration complete
-
---Optimization 128 bits cache
-signal  reg128bitsCache    :   std_logic_vector(127 downto 0);
-signal  regLast128Addr     :   std_logic_vector(22 downto 0);
-signal  OneReadFlag        :   std_logic;
 
 
 begin
@@ -220,7 +221,7 @@ begin
      
           leds <=(others=>'0');
                     
-          if state = idleQuickRead then
+          if state = idle then
               leds(0) <= '1';
           end if;
           
@@ -247,7 +248,7 @@ begin
    WR_DATA_MSK: process(mem_ui_clk)
    begin
       if rising_edge(mem_ui_clk) then
-         if  state = idleQuickRead  and (ram_wen ='0' or ram_oen = '0' )then
+         if  state = idle  and (ram_wen ='0' or ram_oen = '0' )then
             case(ram_a(2 downto 0)) is
                when "000" =>
                      mem_wdf_mask <= "1111111111111100";
@@ -284,7 +285,7 @@ begin
   state_change : process(mem_ui_rst, mem_ui_clk)
   begin
     if mem_ui_rst = '1' then
-      state <= idleQuickRead;
+      state <= idle;
       OneReadFlag <= '0';
       
     elsif rising_edge(mem_ui_clk) then
@@ -292,17 +293,12 @@ begin
          
          -- If calibration is done successfully and CEN is
          -- deasserted then start a new transaction
-         when idleQuickRead =>
+         when idle =>
             if ram_cen = '0' and calib_complete = '1' then
               if ram_wen = '0' then
                  state <= send_data;
               elsif ram_oen = '0' then
-                 if OneReadFlag='0' or regLast128Addr/=ram_a(25 downto 3) then
-                    state <= set_cmd;
-                    OneReadFlag<='1';
-                 -- else: use the quickRead feature, see line 389  
-                 end if;
-                 
+                 state <= set_cmd;
               end if;
             end if;
             
@@ -329,14 +325,15 @@ begin
          when wait_ack =>
             if (mem_rd_data_valid = '1' and mem_rd_data_end = '1') or -- Ack when reading
                (ram_wen_int = '0') then                               -- Ack when writing
-              state <= idleQuickRead;
+              state <= idle;
             end if;
 
 
          when others =>
-           state <= idleQuickRead;            
+           state <= idle;            
       end case;
-    end if;
+	  
+    end if; --rising_edge(clk)
   end process;
 
 -------------------------------------------------------------------------
@@ -347,12 +344,10 @@ begin
     
     mem_en <= '0';
     mem_cmd <= (others => '0');
-    
-    ram_dq_o_128 <= reg128bitsCache;
-    
+        
     
     case state is
-      when idleQuickRead =>
+      when idle =>
       when send_data =>
         mem_wdf_wren <= '1';
         mem_wdf_end <= '1';
@@ -373,9 +368,6 @@ begin
       mem_addr <= (others=>'0');
       ram_dq_o <= (others=>'0');
       
-      reg128bitsCache <= (others=>'0');
-      regLast128Addr <= (others=>'0');
-      
       ram_oen_int <= '1';
       ram_wen_int <= '1';
       
@@ -384,44 +376,7 @@ begin
       ram_ack <= '0';
       
       case state is
-        when idleQuickRead =>
-          
-          -- Quick read feauture
-          if ram_oen='0' then
-              if ( OneReadFlag='0' or regLast128Addr/=ram_a(25 downto 3) ) then
-                regLast128Addr <= ram_a(25 downto 3);
-              else
-                   -- Use the previous reads to serve the 16 bits data  
-                  ram_ack <= '1';
-                  case(ram_a(2 downto 0)) is
-                   when "000" => 
-                         ram_dq_o <= reg128bitsCache(15 downto 0);
-       
-                   when "001" => 
-                         ram_dq_o <= reg128bitsCache(31 downto 16);
-                         
-                   when "010" => 
-                         ram_dq_o <= reg128bitsCache(47 downto 32);
-       
-                   when "011" => 
-                         ram_dq_o <= reg128bitsCache(63 downto 48);
-       
-                   when "100" => 
-                         ram_dq_o <= reg128bitsCache(79 downto 64);
-                         
-                   when "101" => 
-                         ram_dq_o <= reg128bitsCache(95 downto 80);
-                         
-                   when "110" => 
-                         ram_dq_o <= reg128bitsCache(111 downto 96);
-                         
-                   when "111" => 
-                         ram_dq_o <= reg128bitsCache(127 downto 112);
-                         
-                   when others => null;
-                end case;
-              end if;
-          end if;--ram_oen='0'
+        when idle =>
           
           mem_addr <= ram_a(25 downto 3) & "0000";
           mem_wdf_data <= ram_dq_i & ram_dq_i & ram_dq_i
@@ -439,35 +394,7 @@ begin
           end if;
           
           if mem_rd_data_valid = '1' and mem_rd_data_end = '1' then
-            reg128bitsCache <= mem_rd_data;
-			
-			case(ram_a(2 downto 0)) is
-                 when "000" => 
-                       ram_dq_o <= mem_rd_data(15 downto 0);
-     
-                 when "001" => 
-                       ram_dq_o <= mem_rd_data(31 downto 16);
-                       
-                 when "010" => 
-                       ram_dq_o <= mem_rd_data(47 downto 32);
-     
-                 when "011" => 
-                       ram_dq_o <= mem_rd_data(63 downto 48);
-     
-                 when "100" => 
-                       ram_dq_o <= mem_rd_data(79 downto 64);
-                       
-                 when "101" => 
-                       ram_dq_o <= mem_rd_data(95 downto 80);
-                       
-                 when "110" => 
-                       ram_dq_o <= mem_rd_data(111 downto 96);
-                       
-                 when "111" => 
-                       ram_dq_o <= mem_rd_data(127 downto 112);
-                       
-                 when others => null;
-              end case;
+            ram_dq_o <= mem_rd_data;
           end if;
        
         when others =>

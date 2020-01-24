@@ -13,9 +13,11 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
+--		
+--		With Quick Read feature
 --
 --		-- For Midi parser component --
 --		Format of inCmdReadBuffer_0	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -129,7 +131,7 @@ architecture syn of RamCntrl is
 	-- Mem
 	signal	mem_ui_clk       			:	std_logic; 
 	signal	mem_cen              		:	std_logic;
-	signal	mem_rdn, mem_wrn            	:	std_logic;
+	signal	mem_rdn, mem_wrn            :	std_logic;
 	signal	mem_addr             		:	std_logic_vector(25 downto 0);
 	signal	mem_mem_ack          		:	std_logic;
 	signal	mem_data_out, mem_data_in	:	std_logic_vector(15 downto 0);
@@ -151,6 +153,9 @@ begin
 
 
 ui_clk_o <= mem_ui_clk;
+----------------------------------------------------------------------------------
+-- RAM2DDR COMPONENT, INTERFACE
+----------------------------------------------------------------------------------
 
 RAM: Ram2Ddr 
    port map(
@@ -253,7 +258,7 @@ Fifo_outCmdReadBuffer_1: my_fifo
   );
   
   
- -- Buffers to manage the writes commands
+ -- Buffer to manage the writes commands
 Fifo_inCmdWriteBuffer: my_fifo
   generic map(WIDTH =>42, DEPTH =>4)
   port map(
@@ -277,8 +282,15 @@ process (rst_n,mem_ui_clk)
 	
 	-- turn=0 or turn=1 -> read commands from Keyboard
 	-- turn=2 -> read commands from Midi parser
-	variable turn	:	natural range 0 to 2;
-	variable regAux	:	std_logic_vector(6 downto 0);
+	variable	turn			:	natural range 0 to 2;
+	variable	regAux			:	std_logic_vector(6 downto 0);
+	variable	regAuxDecode	:	std_logic_vector(2 downto 0);
+	variable	flagAck			:	std_logic; -- Used to wait until the correspondant outputbuffer is not full
+	
+	-- Quick read feature
+	variable	reg128bitsCache	:	std_logic_vector(127 downto 0);
+	variable	regLast128Addr	:	std_logic_vector(22 downto 0);
+	variable	OneReadFlag		:	std_logic;
 	
 begin
 
@@ -299,6 +311,10 @@ begin
 		rdRqtReadBuffer <=(others=>'0');
 		wrResponseReadBuffer <=(others=>'0');
 		regAux := (others=>'0');
+		reg128bitsCache :=(others=>'0');
+		regLast128Addr :=(others=>'0');
+		flagAck :='0';
+		OneReadFlag := '0';
 		turn := 0;
 		state := idle;
 		
@@ -315,7 +331,7 @@ begin
 				if rdWr='0' and emptyCmdWriteBuffer='0' then
 					state := readCmdWriteBuffer;
 				-- Read ram
-				elsif rdWr='1' and (emtyFifoRqtRd(0)='1' or emtyFifoRqtRd(1)='1') then
+				elsif rdWr='1' and (emtyFifoRqtRd(0)='0' or emtyFifoRqtRd(1)='0') then
 					if turn < 2 then
 						-- Priority of KeyboardCntrl component
 						if emtyFifoRqtRd(1)='1' then
@@ -329,14 +345,16 @@ begin
 						state := readInCmdReadBuffer_0;
 					end if;
 				end if;
-			
-			-- States to perform a write
+				
+			-----------------------------
+			-- States to perform write --
+			-----------------------------
 			when => readCmdWriteBuffer
 				mem_addr <= CmdWrite(41 downto 16);
 				mem_data_in <= CmdWrite(15 downto 0);
 				-- Write order to mem
 				mem_wrn <='0';
-				-- Read order to fifo
+				-- Read order to fifo, consume a mem command
 				rdCmdWriteBuffer <='1';
 				state := reciveWriteAck;
 				
@@ -345,21 +363,62 @@ begin
 					state := idle;
 				end if;
 			
-			
-			-- State to perform a read
+			----------------------------
+			-- States to perform read --
+			----------------------------
+			-- READ IN CMD READ BUFFER 0
 			when => readInCmdReadBuffer_0
-				mem_addr <= fifoRqtRdData_0(24 downto 0) & 0;
-				regAux(1 downto 0) := fifoRqtRdData_0(26 downto 25);
-				-- Read order to mem
-				mem_rdn <='0';
-				-- Read order to fifo
+				-- Read order to fifo, consume a mem command
 				rdRqtReadBuffer(0) <='1';
+				
+				-- QucikRead
+				if OneReadFlagfifoRqtRdData_0(24 downto 2)=regLast128Addr then
+					-- Write command to fifo
+					wrResponseReadBuffer(0)<='1';
+					state := idle;
+					if regAux(1 downto 0)/="11" then
+						inCmdResponseRdBuffer_0 <= fifoRqtRdData_0(26 downto 25) & reg128bitsCache;
+					-- OneByDivisionValue
+					else
+						inCmdResponseRdBuffer_0 <=(others=>'0');
+						inCmdResponseRdBuffer_0(129 downto 128) <= fifoRqtRdData_0(26 downto 25);
+						-- Decode addr
+						case fifoRqtRdData_0(1 downto 0) is
+							when "00" =>
+								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(31 downto 0);
+							when "01" =>
+								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(63 downto 32);
+							when "10" =>
+								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(95 downto 64);
+							when "11" =>
+								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(127 downto 96);
+						end case;
+				-- Order read
+				else
+					OneReadFlag := '1';
+					regLast128Addr := fifoRqtRdData_0(24 downto 2); -- Update last addr
+					
+					mem_addr <= fifoRqtRdData_0(24 downto 2);
+					regAux(1 downto 0) := fifoRqtRdData_0(26 downto 25);
+					regAuxDecode(1 downto 0) := fifoRqtRdData_0(1 downto 0);
+					-- Read order to mem
+					mem_rdn <='0';
+					
+					flagAck := '0';-- Set flagAck value
+					state := reciveAckInCmdReadBuffer_0;
+				end if;
 				
 			when => reciveAckInCmdReadBuffer_0
 				if mem_ack='1' then
-					inCmdResponseRdBuffer_0 <= regAux(1 downto 0);
+					flagAck :='1';
+				end if;
+
+				-- Check if the buffer it's not full
+				if mem_ack='1' then
+					state := idle;
 					-- Write command to fifo
-					wrResponseReadBuffer(0)<='1';
+					wrResponseReadBuffer(0)<='1'; 
+					reg128bitsCache := mem_data_out_16B;-- Update cache
 					if regAux(1 downto 0)/="11" then
 						inCmdResponseRdBuffer_0 <= regAux(1 downto 0) & mem_data_out_16B;
 					-- OneByDivisionValue
@@ -367,7 +426,7 @@ begin
 						inCmdResponseRdBuffer_0<=(others=>'0');
 						inCmdResponseRdBuffer_0(129 downto 128) <= regAux(1 downto 0);
 						-- Decode addr
-						case mem_addr(1 downto 0) is
+						case regAuxDecode(1 downto 0) is
 							when "00" =>
 								inCmdResponseRdBuffer_0(31 downto 0) <= mem_data_out_16B(31 downto 0);
 							when "01" =>
@@ -379,11 +438,98 @@ begin
 						end case;
 					end if;
 				end if;-- mem_ack='1'
-			
+				
+			-- READ IN CMD READ BUFFER 1
 			when => readInCmdReadBuffer_1
+				-- Read order to fifo, consume a mem command
+				rdRqtReadBuffer(1) <='1';
+				
+				-- QucikRead
+				if OneReadFlag='1' and fifoRqtRdData_0(25 downto 3)=regLast128Addr then
+					state := idle;
+					-- Write command to fifo
+					wrResponseReadBuffer(1)<='1';
+					inCmdResponseRdBuffer_1(22 downto 16) <= fifoRqtRdData_1(32 downto 26);
+					case fifoRqtRdData_0(2 downto 0) is
+					   when "000" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(15 downto 0);
+		   
+					   when "001" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(31 downto 16);
+							 
+					   when "010" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(47 downto 32);
+		   
+					   when "011" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(63 downto 48);
+		   
+					   when "100" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(79 downto 64);
+							 
+					   when "101" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(95 downto 80);
+							 
+					   when "110" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(111 downto 96);
+							 
+					   when "111" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(127 downto 112);						
+					end case;
+					
+				-- Order read
+				else
+					OneReadFlag := '1';
+					regLast128Addr := fifoRqtRdData_1(25 downto 3); -- Update last addr
+					
+					mem_addr <= fifoRqtRdData_1(25 downto 3);
+					regAux := fifoRqtRdData_1(32 downto 26); -- Save note gen index
+					regAuxDecode := fifoRqtRdData_1(2 downto 0)
+					-- Read order to mem
+					mem_rdn <='0';
+	
+					flagAck :='0'; -- Set flagAck value
+					state := reciveAckInCmdReadBuffer_1;				
+				end if;
+
 			
 			when => reciveAckInCmdReadBuffer_1
+				if mem_ack='1' then
+					flagAck :='1';
+				end if;
 
+				-- Check if the buffer it's not full
+				if fullResponseRdBuffer(1)='0' and (mem_ack='1' or flagAck ='1') then
+					state := idle;
+					reg128bitsCache := mem_data_out_16B; -- Update cache
+					-- Write command to fifo
+					wrResponseReadBuffer(1)<='1';
+					inCmdResponseRdBuffer_1(22 downto 16) <= regAux;
+					case regAuxDecode is
+					   when "000" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(15 downto 0);
+		   
+					   when "001" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(31 downto 16);
+							 
+					   when "010" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(47 downto 32);
+		   
+					   when "011" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(63 downto 48);
+		   
+					   when "100" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(79 downto 64);
+							 
+					   when "101" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(95 downto 80);
+							 
+					   when "110" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(111 downto 96);
+							 
+					   when "111" => 
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(127 downto 112);						
+					end case;
+				end if;-- mem_ack='1'
 
 			
 		end case;

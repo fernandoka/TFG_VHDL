@@ -53,7 +53,7 @@
 --										cmd(22 downto 16) = NoteGen index, the one which request a read
 --
 --
---		-- For SetupComponent and for BLstoreMidiFile --
+--		-- For SetupComponent and for BL_MidiFileLoader --
 --		Format of inCmdWriteBuffer :	cmd(15 downto 0) = 2 data bytes 
 --									 	
 --										cmd(41 downto 16) = NoteGen index, the one which request a read

@@ -1,17 +1,26 @@
--- Ram2Ddr.vhd --------------------------------------------------------------------
---
---
--- Fernando Candelario Herrero
--- 2.3v  
--- Notes:
+----------------------------------------------------------------------------------
+-- Company: fdi UCM Madrid
+-- Engineer: Fernando Candelario Herrero, 
+--			 Borja
+-- 
+-- Create Date: 24.01.2020 10:51:30
+-- Design Name: 
+-- Module Name: Ram2Ddr - Behavioral
+-- Project Name: 
+-- Target Devices: 
+-- Tool Versions: 
+-- Description: 
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 2.3
+-- Additional Comments:
 --		Wirte 2B read 16B.
 --		For write addr represet 2B.
 --		For read addr represet 16B, the 3 last bits of the addr are not used.
---
---
---
--- fdi Madrid 2019
-----------------------------------------------------------------------------------------------
+-- 
+----------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

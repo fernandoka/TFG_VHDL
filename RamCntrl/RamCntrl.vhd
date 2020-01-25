@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.4
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
 --		
@@ -69,6 +69,21 @@ use ieee.std_logic_1164.all;
 
 entity RamCntrl is
    port (
+      -- Only for Test
+      clk                       :   in  std_logic;
+      
+      statesOut                 :   out std_logic_vector(9 downto 0);
+      
+      memOut_addr		    :	 out	std_logic_vector(25 downto 0);
+      memOut_cen            :    out    std_logic;
+      memOut_rd             :    out    std_logic;
+      memOut_wr             :    out    std_logic;
+      memOut_ack            :    out    std_logic;
+      memOut_data_in        :    out    std_logic_vector(15 downto 0);
+      memOut_data_out       :    out    std_logic_vector(127 downto 0);
+
+      --
+      
       -- Common
       clk_200MHz_i				:	in    std_logic; -- 200 MHz system clock
       rst_n      				:	in    std_logic; -- active low system reset
@@ -99,23 +114,23 @@ entity RamCntrl is
 	  inCmdWriteBuffer			:	in	std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
 	  wrRqtWriteBuffer			:	in	std_logic;
 	  fullCmdWriteBuffer		:	out	std_logic;
-	  writeWorking				:	out	std_logic; -- High when the RamCntrl is executing some write command, low when no writes 
+	  writeWorking				:	out	std_logic -- High when the RamCntrl is executing some write command, low when no writes 
 		
       -- DDR2 interface	
-      ddr2_addr            		: 	out   std_logic_vector(12 downto 0);
-      ddr2_ba              		: 	out   std_logic_vector(2 downto 0);
-      ddr2_ras_n           		: 	out   std_logic;
-      ddr2_cas_n           		: 	out   std_logic;
-      ddr2_we_n            		: 	out   std_logic;
-      ddr2_ck_p            		: 	out   std_logic_vector(0 downto 0);
-      ddr2_ck_n            		: 	out   std_logic_vector(0 downto 0);
-      ddr2_cke             		: 	out   std_logic_vector(0 downto 0);
-      ddr2_cs_n            		: 	out   std_logic_vector(0 downto 0);
-      ddr2_odt             		: 	out   std_logic_vector(0 downto 0);
-      ddr2_dq              		: 	inout std_logic_vector(15 downto 0);
-      ddr2_dm              		: 	out   std_logic_vector(1 downto 0);
-      ddr2_dqs_p           		: 	inout std_logic_vector(1 downto 0);
-      ddr2_dqs_n           		: 	inout std_logic_vector(1 downto 0)
+--      ddr2_addr            		: 	out   std_logic_vector(12 downto 0);
+--      ddr2_ba              		: 	out   std_logic_vector(2 downto 0);
+--      ddr2_ras_n           		: 	out   std_logic;
+--      ddr2_cas_n           		: 	out   std_logic;
+--      ddr2_we_n            		: 	out   std_logic;
+--      ddr2_ck_p            		: 	out   std_logic_vector(0 downto 0);
+--      ddr2_ck_n            		: 	out   std_logic_vector(0 downto 0);
+--      ddr2_cke             		: 	out   std_logic_vector(0 downto 0);
+--      ddr2_cs_n            		: 	out   std_logic_vector(0 downto 0);
+--      ddr2_odt             		: 	out   std_logic_vector(0 downto 0);
+--      ddr2_dq              		: 	inout std_logic_vector(15 downto 0);
+--      ddr2_dm              		: 	out   std_logic_vector(1 downto 0);
+--      ddr2_dqs_p           		: 	inout std_logic_vector(1 downto 0);
+--      ddr2_dqs_n           		: 	inout std_logic_vector(1 downto 0)
    );	
    
 -- Attributes for debug
@@ -123,7 +138,26 @@ entity RamCntrl is
 --attribute   dont_touch  of  RamCntrl  :   entity  is  "true";   
 end RamCntrl;
 
+use work.my_common.all;
+
 architecture syn of RamCntrl is
+
+-- Only for Test
+component MyDummyDDR2 is
+  Port ( 
+        rst_n           :   in  std_logic;
+        clk             :   in  std_logic;
+		addr			:	in	std_logic_vector(22 downto 0);
+		cen             :	in	std_logic; -- low to request a read
+        rd              :	in	std_logic; -- One cycle low to request a read
+        wr              :	in	std_logic; -- One cycle low to request a read
+		ack			    :	out	std_logic; -- One cycle high to notify the reception of a new byte
+		data_in         :   in std_logic_vector(15 downto 0);
+		data_out		:	out	std_logic_vector(127 downto 0)
+  );
+end component;
+--
+
 ------------------------------------------------------------------------
 -- Signal Declarations
 ------------------------------------------------------------------------
@@ -133,14 +167,14 @@ architecture syn of RamCntrl is
 	signal	mem_cen              		:	std_logic;
 	signal	mem_rdn, mem_wrn            :	std_logic;
 	signal	mem_addr             		:	std_logic_vector(25 downto 0);
-	signal	mem_mem_ack          		:	std_logic;
+	signal	mem_ack          		:	std_logic;
 	signal	mem_data_in					:	std_logic_vector(15 downto 0);
 	signal	mem_data_out_16B			:	std_logic_vector(127 downto 0);
 	
 	-- Fifos
 	signal	fifoRqtRdData_0								:	std_logic_vector(26  downto 0);
 	signal	fifoRqtRdData_1								:	std_logic_vector(32 downto 0);
-	signal	inCmdResponseRdBuffer_0						:	std_logic_vector(129 downto 0)
+	signal	inCmdResponseRdBuffer_0						:	std_logic_vector(129 downto 0);
 	signal	inCmdResponseRdBuffer_1						:	std_logic_vector(22 downto 0);
 
 	signal	rdRqtReadBuffer, emtyFifoRqtRd		 		:	std_logic_vector(1 downto 0);
@@ -150,50 +184,77 @@ architecture syn of RamCntrl is
 	signal	rdCmdWriteBuffer, emptyCmdWriteBuffer		:	std_logic;							
 
 begin
+-- Only for Test
 
+mem_ui_clk <=clk;
+--
 
 ui_clk_o <= mem_ui_clk;
 ----------------------------------------------------------------------------------
 -- RAM2DDR COMPONENT, INTERFACE
 ----------------------------------------------------------------------------------
+-- Only for Test
+    
+memOut_addr		<= mem_addr;	
+memOut_cen         <= mem_cen;    
+memOut_rd          <= mem_rdn;    
+memOut_wr          <= mem_wrn;    
+memOut_ack            <= mem_ack;    
+memOut_data_in     <= mem_data_in;    
+memOut_data_out        <= mem_data_out_16B;    
 
-RAM: Ram2Ddr 
-   port map(
-      -- Common
-      clk_200MHz_i         => clk_200MHz,
-      rstn_i               => rst_n,
-      ui_clk_o             => mem_ui_clk,
-      ui_clk_sync_rst_o    => open,
+    
+   ddr:MyDummyDDR2
+  port map( 
+        rst_n       => rst_n,    
+        clk         => mem_ui_clk,    
+		addr		=> mem_addr,	
+		cen         => mem_cen,    
+        rd          => mem_rdn,    
+        wr          => mem_wrn,    
+		ack			=> mem_ack,    
+		data_in     => mem_data_in,    
+		data_out	=> mem_data_out_16B	
+  );
+--
 
-      -- RAM interface
-      ram_a                => mem_addr, 		-- Addres 
-      ram_dq_i             => mem_data_in,  	-- Data to write
-      ram_dq_o			   => mem_data_out_16B, -- Data to read(16B) 
-      ram_cen              => mem_cen, 			-- To start a transaction, active low
-      ram_oen              => mem_rdn, 			-- Read from memory, active low
-      ram_wen              => mem_wrn, 			-- Write in memory, active low
-      ram_ack              => mem_ack,
+--RAM: Ram2Ddr 
+--   port map(
+--      -- Common
+--      clk_200MHz_i         => clk_200MHz,
+--      rstn_i               => rst_n,
+--      ui_clk_o             => mem_ui_clk,
+--      ui_clk_sync_rst_o    => open,
+
+--      -- RAM interface
+--      ram_a                => mem_addr, 		-- Addres 
+--      ram_dq_i             => mem_data_in,  	-- Data to write
+--      ram_dq_o			   => mem_data_out_16B, -- Data to read(16B) 
+--      ram_cen              => mem_cen, 			-- To start a transaction, active low
+--      ram_oen              => mem_rdn, 			-- Read from memory, active low
+--      ram_wen              => mem_wrn, 			-- Write in memory, active low
+--      ram_ack              => mem_ack,
       
-	  -- Debug
-	  leds				   => ledsDDR,
+--	  -- Debug
+--	  leds				   => ledsDDR,
 
 	  
-      -- DDR2 interface
-      ddr2_addr            => ddr2_addr,
-      ddr2_ba              => ddr2_ba,
-      ddr2_ras_n           => ddr2_ras_n,
-      ddr2_cas_n           => ddr2_cas_n,
-      ddr2_we_n            => ddr2_we_n,
-      ddr2_ck_p            => ddr2_ck_p,
-      ddr2_ck_n            => ddr2_ck_n,
-      ddr2_cke             => ddr2_cke,
-      ddr2_cs_n            => ddr2_cs_n,
-      ddr2_dm              => ddr2_dm,
-      ddr2_odt             => ddr2_odt,
-      ddr2_dq              => ddr2_dq,
-      ddr2_dqs_p           => ddr2_dqs_p,
-      ddr2_dqs_n           => ddr2_dqs_n
-   );
+--      -- DDR2 interface
+--      ddr2_addr            => ddr2_addr,
+--      ddr2_ba              => ddr2_ba,
+--      ddr2_ras_n           => ddr2_ras_n,
+--      ddr2_cas_n           => ddr2_cas_n,
+--      ddr2_we_n            => ddr2_we_n,
+--      ddr2_ck_p            => ddr2_ck_p,
+--      ddr2_ck_n            => ddr2_ck_n,
+--      ddr2_cke             => ddr2_cke,
+--      ddr2_cs_n            => ddr2_cs_n,
+--      ddr2_dm              => ddr2_dm,
+--      ddr2_odt             => ddr2_odt,
+--      ddr2_dq              => ddr2_dq,
+--      ddr2_dqs_p           => ddr2_dqs_p,
+--      ddr2_dqs_n           => ddr2_dqs_n
+--   );
 
 ----------------------------------------------------------------------------------
 -- FIFO COMPONENTS
@@ -262,7 +323,7 @@ Fifo_inCmdWriteBuffer: my_fifo
   generic map(WIDTH =>42, DEPTH =>4)
   port map(
     rst_n   => rst_n,
-    clk     => clk,
+    clk     => mem_ui_clk,
     wrE     => wrRqtWriteBuffer,
     dataIn  => inCmdWriteBuffer,
     rdE     => rdCmdWriteBuffer,
@@ -274,10 +335,10 @@ Fifo_inCmdWriteBuffer: my_fifo
 
 
 ram_access : 
-process (rst_n,mem_ui_clk) 
-	type states is (idle, readCmdWriteBuffer, readInCmdReadBuffer_0, reciveAckInCmdReadBuffer_0, 
-	readInCmdReadBuffer_1, reciveAckInCmdReadBuffer_1, reciveWriteAck );
-	variable states	:	states;
+process (rst_n, mem_ui_clk, mem_ack,rdWr, emptyCmdWriteBuffer, emtyFifoRqtRd, fifoRqtRdData_0, fifoRqtRdData_1) 
+	type states is (idleRdOrWr, readCmdWriteBuffer, reciveWriteAck, readInCmdReadBuffer_0, reciveAckInCmdReadBuffer_0, 
+	readInCmdReadBuffer_1, reciveAckInCmdReadBuffer_1);
+	variable state	:	states;
 	
 	-- turn=0 or turn=1 -> read commands from Keyboard
 	-- turn=2 -> read commands from Midi parser
@@ -291,20 +352,51 @@ process (rst_n,mem_ui_clk)
 	variable	OneReadFlag		:	std_logic;
 	
 begin
+    -- Only Test
+    statesOut <=(others=>'0');
+    if state=idleRdOrWr then
+        statesOut(0) <= '1';
+    end if;
+    if state=readCmdWriteBuffer then
+        statesOut(1) <= '1';
+    end if;
+    if state=reciveWriteAck then
+        statesOut(2) <= '1';
+    end if;
+    if state=readInCmdReadBuffer_0 then
+        statesOut(3) <= '1';
+    end if;
+    if state=reciveAckInCmdReadBuffer_0 then
+        statesOut(4) <= '1';
+    end if;
+    if state=readInCmdReadBuffer_1 then
+        statesOut(5) <= '1';
+    end if;
+    if state=reciveAckInCmdReadBuffer_1 then
+        statesOut(6) <= '1';
+    end if;
+    --
+
+
 
 	------------------
-	-- MOORE OUTPUT --
+	-- MOORE OUTPUTS --
 	------------------
 	mem_cen <='1';
-	if state/=idle then
+	if state/=idleRdOrWr then
 		mem_cen <='0';
 	end if;
-
+    
+    writeWorking <='0';
+    if state=readCmdWriteBuffer or state=reciveWriteAck then
+        writeWorking <='1';
+    end if;
+    
 	if rst_n = '0' then
 		mem_addr <=(others=>'0');
 		mem_data_in <=(others=>'0');
 		mem_rdn <='1';
-		mem_wdn <='1';
+		mem_wrn <='1';
 		rdCmdWriteBuffer <='0';
 		rdRqtReadBuffer <=(others=>'0');
 		wrResponseReadBuffer <=(others=>'0');
@@ -314,17 +406,17 @@ begin
 		flagAck :='0';
 		OneReadFlag := '0';
 		turn := 0;
-		state := idle;
+		state := idleRdOrWr;
 		
 	elsif rising_edge(mem_ui_clk) then
 		mem_rdn <='1';
-		mem_wdn <='1';
+		mem_wrn <='1';
 		rdCmdWriteBuffer <='0';
 		rdRqtReadBuffer <=(others=>'0');
 		wrResponseReadBuffer <=(others=>'0');
 
 		case state is
-			when => idle
+			when idleRdOrWr => 
 				-- Write ram
 				if rdWr='0' and emptyCmdWriteBuffer='0' then
 					state := readCmdWriteBuffer;
@@ -333,7 +425,7 @@ begin
 					if turn < 2 then
 						-- Priority of KeyboardCntrl component
 						if emtyFifoRqtRd(1)='1' then
-							turn := turn+1
+							turn := turn+1;
 							state := readInCmdReadBuffer_1;
 						else
 							turn := 2; -- Check buffer of Midi parser
@@ -347,7 +439,7 @@ begin
 			-----------------------------
 			-- States to perform write --
 			-----------------------------
-			when => readCmdWriteBuffer
+			when readCmdWriteBuffer => 
 				mem_addr <= CmdWrite(41 downto 16);
 				mem_data_in <= CmdWrite(15 downto 0);
 				-- Write order to mem
@@ -356,16 +448,16 @@ begin
 				rdCmdWriteBuffer <='1';
 				state := reciveWriteAck;
 				
-			when => reciveWriteAck
+			when reciveWriteAck => 
 				if mem_ack='1' then
-					state := idle;
+					state := idleRdOrWr;
 				end if;
 			
 			----------------------------
 			-- States to perform read --
 			----------------------------
 			-- READ IN CMD READ BUFFER 0
-			when => readInCmdReadBuffer_0
+			when readInCmdReadBuffer_0 => 
 				-- Read order to fifo, consume a mem command
 				rdRqtReadBuffer(0) <='1';
 				
@@ -373,7 +465,7 @@ begin
 				if OneReadFlag='1' and fifoRqtRdData_0(24 downto 2)=regLast128Addr then
 					-- Write command to fifo
 					wrResponseReadBuffer(0)<='1';
-					state := idle;
+					state := idleRdOrWr;
 					if regAux(1 downto 0)/="11" then
 						inCmdResponseRdBuffer_0 <= fifoRqtRdData_0(26 downto 25) & reg128bitsCache;
 					-- OneByDivisionValue
@@ -391,6 +483,7 @@ begin
 							when "11" =>
 								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(127 downto 96);
 						end case;
+					end if;
 				-- Order read
 				else
 					OneReadFlag := '1';
@@ -405,14 +498,14 @@ begin
 					state := reciveAckInCmdReadBuffer_0;
 				end if;
 				
-			when => reciveAckInCmdReadBuffer_0
+			when reciveAckInCmdReadBuffer_0 => 
 				if mem_ack='1' then
 					flagAck :='1';
 				end if;
 
 				-- Check if the buffer it's not full
 				if mem_ack='1' then
-					state := idle;
+					state := idleRdOrWr;
 					-- Write command to fifo
 					wrResponseReadBuffer(0)<='1'; 
 					reg128bitsCache := mem_data_out_16B;-- Update cache
@@ -437,17 +530,17 @@ begin
 				end if;-- mem_ack='1'
 				
 			-- READ IN CMD READ BUFFER 1
-			when => readInCmdReadBuffer_1
+			when readInCmdReadBuffer_1 => 
 				-- Read order to fifo, consume a mem command
 				rdRqtReadBuffer(1) <='1';
 				
 				-- QucikRead
-				if OneReadFlag='1' and fifoRqtRdData_0(25 downto 3)=regLast128Addr then
-					state := idle;
+				if OneReadFlag='1' and fifoRqtRdData_1(25 downto 3)=regLast128Addr then
+					state := idleRdOrWr;
 					-- Write command to fifo
 					wrResponseReadBuffer(1)<='1';
 					inCmdResponseRdBuffer_1(22 downto 16) <= fifoRqtRdData_1(32 downto 26);
-					case fifoRqtRdData_0(2 downto 0) is
+					case fifoRqtRdData_1(2 downto 0) is
 					   when "000" => 
 							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(15 downto 0);
 		   
@@ -488,14 +581,14 @@ begin
 				end if;
 
 			
-			when => reciveAckInCmdReadBuffer_1
+			when reciveAckInCmdReadBuffer_1 => 
 				if mem_ack='1' then
 					flagAck :='1';
 				end if;
 
 				-- Check if the buffer it's not full
 				if fullResponseRdBuffer(1)='0' and (mem_ack='1' or flagAck ='1') then
-					state := idle;
+					state := idleRdOrWr;
 					reg128bitsCache := mem_data_out_16B; -- Update cache
 					-- Write command to fifo
 					wrResponseReadBuffer(1)<='1';

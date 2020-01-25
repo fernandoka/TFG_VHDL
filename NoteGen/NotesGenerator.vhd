@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.7
+-- Revision 0.8
 -- Additional Comments:
 --		Not completly generic component, the pipelined sum and the NotesGenerators 
 --		have to be done by hand
@@ -76,17 +76,21 @@ architecture Behavioral of NotesGenerator is
 ----------------------------------------------------------------------------------     
     -- This generate more signals that the necessary ones
 	-- Trust in the syntesis tool to avoid the mapping of unnecesary signals
-	type    signalsPerLevel  is array(0 to 16/2**(i)-1) of std_logic_vector(15 downto 0); 
+	type    signalsPerLevel  is array(0 to (16/2**4)-1) of std_logic_vector(15 downto 0); 
 	type    samples  is array( 0 to log2(16)-1 ) of signalsPerLevel;
+	
+	type   addrGen is  array(0 to 15) of std_logic_vector(25 downto 0);
 
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
     -- For sum
-    signal  notesGen_samplesOut         :   samples;
+    signal  notesGen_samplesOut :   samples;
 	
-	signal fsmsCen						:	std_logic;
+	signal fsmsCen                                                :    std_logic;
+	signal memAckResponse, memAckSend, memSamplesSendRqt          :    std_logic_vector(15 downto 0);
 	
+	signal notesGen_addrOut    :   addrGen;
 begin
 
 ----------------------------------------------------------------------------------
@@ -152,7 +156,7 @@ cenForFsms: reducedOr
 ----------------------------------------------------------------------------------  
 
 fsmResponse:
-process(rst_n,clk,mem_ack)
+process(rst_n,clk,fsmsCen,mem_emptyBuffer)
 begin
     if rst_n='0' then
 		memAckResponse <=(others=>'0');
@@ -163,13 +167,12 @@ begin
 		mem_readResponseBuffer <='0';
 		
 		 if fsmsCen='1' and mem_emptyBuffer='0' then
-			memAckResponse(to_integer(mem_CmdReadResponse(19 downto 16))) <='1';
+			memAckResponse(to_integer( unsigned(mem_CmdReadResponse(19 downto 16)) )) <='1';
 			mem_readResponseBuffer <='1';
 		 end if;           
     end if;
 end process;
   
-end Behavioral;
 
  
 ----------------------------------------------------------------------------------
@@ -178,17 +181,20 @@ end Behavioral;
 ----------------------------------------------------------------------------------  
 
 fsmSend:
-process(rst_n,clk,mem_ack)
-    type states is ( checkGeneratorRqt, waitMemAck0);
+process(rst_n,clk,fsmsCen,memSamplesSendRqt,mem_fullBuffer)
+    type states is ( checkGeneratorRqt, waitMemAck0, waitMemAck1);
     
     variable state      :   states;
     variable turnCntr   :   unsigned(4 downto 0);
     variable cntr       :   unsigned(1 downto 0);
     variable regReadCmdRqt :   std_logic_vector(25+4 downto 0);
+    
+    variable addrPlusOne    :   unsigned(25 downto 0);
 begin
     
     mem_CmdReadRequest <= regReadCmdRqt;
-
+    addrPlusOne := unsigned(regReadCmdRqt(25 downto 0))+1;
+    
     if rst_n='0' then
        turnCntr := (others=>'0');
        state := checkGeneratorRqt;
@@ -201,6 +207,7 @@ begin
 		memAckSend <=(others=>'0'); -- Just one cycle
         
 		case state is
+			
 			-- Two Cmd per read request of a note generator
             when checkGeneratorRqt =>
                  if fsmsCen='1' and memSamplesSendRqt(to_integer(turnCntr))='1' then
@@ -221,7 +228,7 @@ begin
 			
 			when waitMemAck0 =>
                 if mem_fullBuffer='0' then		
-					regReadCmdRqt(25 downto 0) := regReadCmdRqt(25 downto 0)+1; -- Note Gen index + addr
+					regReadCmdRqt(25 downto 0) := std_logic_vector(addrPlusOne); -- Note Gen index + addr
 					-- Write command in the mem buffer
 					mem_writeReciveBuffer <= '1';
 					state := waitMemAck0;

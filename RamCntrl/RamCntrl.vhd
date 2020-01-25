@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.4
+-- Revision 0.5
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
 --		
@@ -56,7 +56,7 @@
 --		-- For SetupComponent and for BL_MidiFileLoader --
 --		Format of inCmdWriteBuffer :	cmd(15 downto 0) = 2 data bytes 
 --									 	
---										cmd(41 downto 16) = NoteGen index, the one which request a read
+--										cmd(41 downto 16) = Addr to write
 --
 --
 --
@@ -114,6 +114,7 @@ entity RamCntrl is
 	  inCmdWriteBuffer			:	in	std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
 	  wrRqtWriteBuffer			:	in	std_logic;
 	  fullCmdWriteBuffer		:	out	std_logic;
+	  emptyCmdWriteBufferOut    :	out	std_logic;
 	  writeWorking				:	out	std_logic -- High when the RamCntrl is executing some write command, low when no writes 
 		
       -- DDR2 interface	
@@ -208,7 +209,7 @@ memOut_data_out        <= mem_data_out_16B;
   port map( 
         rst_n       => rst_n,    
         clk         => mem_ui_clk,    
-		addr		=> mem_addr,	
+		addr		=> mem_addr(25 downto 3),	
 		cen         => mem_cen,    
         rd          => mem_rdn,    
         wr          => mem_wrn,    
@@ -319,6 +320,7 @@ Fifo_outCmdReadBuffer_1: my_fifo
   
   
  -- Buffer to manage the writes commands
+ emptyCmdWriteBufferOut <= emptyCmdWriteBuffer;
 Fifo_inCmdWriteBuffer: my_fifo
   generic map(WIDTH =>42, DEPTH =>4)
   port map(
@@ -380,12 +382,8 @@ begin
 
 
 	------------------
-	-- MOORE OUTPUTS --
+	-- MOORE OUTPUT --
 	------------------
-	mem_cen <='1';
-	if state/=idleRdOrWr then
-		mem_cen <='0';
-	end if;
     
     writeWorking <='0';
     if state=readCmdWriteBuffer or state=reciveWriteAck then
@@ -397,6 +395,8 @@ begin
 		mem_data_in <=(others=>'0');
 		mem_rdn <='1';
 		mem_wrn <='1';
+        mem_cen <='1';
+
 		rdCmdWriteBuffer <='0';
 		rdRqtReadBuffer <=(others=>'0');
 		wrResponseReadBuffer <=(others=>'0');
@@ -409,6 +409,7 @@ begin
 		state := idleRdOrWr;
 		
 	elsif rising_edge(mem_ui_clk) then
+		mem_cen <='1';
 		mem_rdn <='1';
 		mem_wrn <='1';
 		rdCmdWriteBuffer <='0';
@@ -424,7 +425,7 @@ begin
 				elsif rdWr='1' and (emtyFifoRqtRd(0)='0' or emtyFifoRqtRd(1)='0') then
 					if turn < 2 then
 						-- Priority of KeyboardCntrl component
-						if emtyFifoRqtRd(1)='1' then
+						if emtyFifoRqtRd(1)='0' then
 							turn := turn+1;
 							state := readInCmdReadBuffer_1;
 						else
@@ -432,9 +433,13 @@ begin
 						end if;
 					else
 						turn := 0;
-						state := readInCmdReadBuffer_0;
+						if emtyFifoRqtRd(0)='0' then
+						  state := readInCmdReadBuffer_0;
+						end if;
+						
 					end if;
-				end if;
+					
+				end if; -- if turn < 2
 				
 			-----------------------------
 			-- States to perform write --
@@ -443,6 +448,7 @@ begin
 				mem_addr <= CmdWrite(41 downto 16);
 				mem_data_in <= CmdWrite(15 downto 0);
 				-- Write order to mem
+                mem_cen <='0';
 				mem_wrn <='0';
 				-- Read order to fifo, consume a mem command
 				rdCmdWriteBuffer <='1';
@@ -482,6 +488,8 @@ begin
 								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(95 downto 64);
 							when "11" =>
 								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(127 downto 96);
+							when others =>
+							    inCmdResponseRdBuffer_0(31 downto 0) <=(others=>'0');
 						end case;
 					end if;
 				-- Order read
@@ -492,6 +500,7 @@ begin
 					mem_addr <= fifoRqtRdData_0(24 downto 0) & '0';
 					regAux(1 downto 0) := fifoRqtRdData_0(26 downto 25);
 					-- Read order to mem
+					mem_cen <='0';
 					mem_rdn <='0';
 					
 					flagAck := '0';-- Set flagAck value
@@ -516,7 +525,7 @@ begin
 						inCmdResponseRdBuffer_0<=(others=>'0');
 						inCmdResponseRdBuffer_0(129 downto 128) <= regAux(1 downto 0);
 						-- Decode addr
-						case mem_addr(1 downto 0) is
+						case mem_addr(2 downto 1) is
 							when "00" =>
 								inCmdResponseRdBuffer_0(31 downto 0) <= mem_data_out_16B(31 downto 0);
 							when "01" =>
@@ -525,6 +534,8 @@ begin
 								inCmdResponseRdBuffer_0(31 downto 0) <= mem_data_out_16B(95 downto 64);
 							when "11" =>
 								inCmdResponseRdBuffer_0(31 downto 0) <= mem_data_out_16B(127 downto 96);
+                            when others =>
+                                inCmdResponseRdBuffer_0(31 downto 0) <=(others=>'0');
 						end case;
 					end if;
 				end if;-- mem_ack='1'
@@ -563,7 +574,10 @@ begin
 							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(111 downto 96);
 							 
 					   when "111" => 
-							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(127 downto 112);						
+							 inCmdResponseRdBuffer_1(15 downto 0) <= reg128bitsCache(127 downto 112);
+							 
+                       when others =>
+                             inCmdResponseRdBuffer_1(15 downto 0) <=(others=>'0');
 					end case;
 					
 				-- Order read
@@ -574,6 +588,7 @@ begin
 					mem_addr <= fifoRqtRdData_1(25 downto 0);
 					regAux := fifoRqtRdData_1(32 downto 26); -- Save note gen index
 					-- Read order to mem
+					mem_cen <='0';
 					mem_rdn <='0';
 	
 					flagAck :='0'; -- Set flagAck value
@@ -616,7 +631,10 @@ begin
 							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(111 downto 96);
 							 
 					   when "111" => 
-							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(127 downto 112);						
+							 inCmdResponseRdBuffer_1(15 downto 0) <= mem_data_out_16B(127 downto 112);		
+							 
+                       when others =>
+                             inCmdResponseRdBuffer_1(15 downto 0) <=(others=>'0');							 				
 					end case;
 				end if;-- mem_ack='1'
 

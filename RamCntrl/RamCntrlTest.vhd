@@ -25,7 +25,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -84,6 +84,7 @@ component RamCntrl is
 	  inCmdWriteBuffer			:	in	std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
 	  wrRqtWriteBuffer			:	in	std_logic;
 	  fullCmdWriteBuffer		:	out	std_logic;
+      emptyCmdWriteBufferOut    :	out	std_logic;
 	  writeWorking				:	out	std_logic -- High when the RamCntrl is executing some write command, low when no writes 
 		
       -- DDR2 interface	
@@ -140,7 +141,7 @@ end component;
     -- Buffer and signals to manage the writes commands
     signal    inCmdWriteBuffer   :    std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
     signal    wrRqtWriteBuffer   :    std_logic;
-    signal    fullCmdWriteBuffer :    std_logic;
+    signal    fullCmdWriteBuffer, emptyCmdWriteBufferOut :    std_logic;
     signal    writeWorking       :    std_logic; -- High when the RamCntrl is executing some write command, low when no writes 
     
     
@@ -170,12 +171,65 @@ rstGen :
 dataReadRqtGen: 
 process
 begin
+    
+    rdWr <='0'; --Write mode
+    
+	  -- Buffers and signals to manage the read request commands
+    inCmdReadBuffer_0         <= (others=>'0');
+    wrRqtReadBuffer_0         <= '0';
+                                 
+    inCmdReadBuffer_1         <= (others=>'0');
+    wrRqtReadBuffer_1            <= '0';
+    
+    -- Buffers and signals to manage the read response commands
+    rdRqtReadBuffer_0         <= '0';
+                                
+    rdRqtReadBuffer_1            <= '0';
 
+    -- Buffer and signals to manage the writes commands
+    inCmdWriteBuffer            <= (others=>'0');
+    wrRqtWriteBuffer            <= '0';
+    
 	wait until (rst_n='1');
 	
 	wait for (clkPeriod*5);
 	
     
+    -- Send two writes CMD
+    inCmdWriteBuffer          <= std_logic_vector(to_unsigned(297,26))& X"f9ff";
+    wrRqtWriteBuffer          <= '1';
+    wait for (clkPeriod);
+    
+    inCmdWriteBuffer          <= std_logic_vector(to_unsigned(280,26))& X"fAff";
+    wait for (clkPeriod);
+    wrRqtWriteBuffer          <= '0';
+    
+    wait until emptyCmdWriteBufferOut='0'and writeWorking='0'; -- To be sure that all the writings are done
+    
+    rdWr <='1'; --Write mode
+    -- Send two reads CMD in inCmdReadBuffer_1
+    inCmdReadBuffer_1          <= "0000000" & std_logic_vector(to_unsigned(2383,26)); -- Get the last sample 
+    wrRqtReadBuffer_1          <='1';
+    wait for (clkPeriod);
+    
+    -- Testing Quick read feature
+    inCmdReadBuffer_1          <= "0000010" & std_logic_vector(to_unsigned(2382,26)); -- Get the penultimate sample 
+    wrRqtReadBuffer_1          <='1';
+    wait for (clkPeriod);
+    wrRqtReadBuffer_1          <='0';
+    
+    -- Recive response of the first CMD    
+    wait until emptyResponseRdBuffer_1='0';
+    rdRqtReadBuffer_1<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_1<='0';
+    
+    -- Recive response of the second CMD
+    wait until emptyResponseRdBuffer_1='0';
+    rdRqtReadBuffer_1<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_1<='0';
+
     
     wait;
 
@@ -227,6 +281,7 @@ Ram: RamCntrl
 	  inCmdWriteBuffer			=> inCmdWriteBuffer,-- For setup component and store midi file BL component
 	  wrRqtWriteBuffer			=> wrRqtWriteBuffer,
 	  fullCmdWriteBuffer		=> fullCmdWriteBuffer,
+      emptyCmdWriteBufferOut    => emptyCmdWriteBufferOut,
 	  writeWorking				=> writeWorking-- High when the RamCntrl is executing some write command, low when no writes 
 		
       -- DDR2 interface	

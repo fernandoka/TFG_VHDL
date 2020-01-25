@@ -51,7 +51,7 @@ end MyDummyDDR2;
 
 architecture Behavioral of MyDummyDDR2 is
 
-	type romType	is array (0 to 296) of std_logic_vector (127 downto 0);
+	type romType	is array (0 to 297) of std_logic_vector (127 downto 0);
 -- 1=>X"ff00081802040458ff00080700006b72",
 -- Papermoon.mid
 	constant romRd : romType :=(
@@ -129,7 +129,8 @@ architecture Behavioral of MyDummyDDR2 is
 284=>X"00502719003300002e00002747835033", 285=>X"19003300002e0000274783503300502e", 286=>X"00002e0000274783503300502e005027", 287=>X"b001503c005036005033005030190033", 
 288=>X"0036000033000030903d9c7f40010040", 289=>X"403700403200402e00402b4181003c00", 290=>X"00002e00002b903d9c7f40010040b001", 291=>X"00403600403300403041810037000032", 
 292=>X"33000030903d9c7f40010040b001403c", 293=>X"2600402200401f4181003c0000360000", 294=>X"001f903d9c7f40010040b001402b0040", 295=>X"ff010040b04181002b00002600002200", 
-296=>X"ff010040b04181002b0000260000002f"
+296=>X"ff010040b04181002b0000260000002f",--End of Papermoon.mid
+297=>X"f4ffeefff4fff1fff4fff5fff4fff9ff"-- 8Sound samples
 );
 
 begin
@@ -147,15 +148,17 @@ begin
 		
     elsif rising_edge(clk) then
 		ack <='0';
-		if unsigned(addr) < 297 then
-            if wr='0' then
-                ack <='1';
-                romWr := data_in;
-            elsif rd='0' then
-                ack <='1';
-                regVal := romRd(to_integer(unsigned(addr)));
+		if cen='0' and (wr='0' or rd='0') then
+            ack <='1'; --
+            if unsigned(addr) < 298 then
+                if wr='0' then
+                    romWr := data_in;
+                elsif rd='0' then
+                    regVal := romRd(to_integer(unsigned(addr)));
+                end if;
             end if;
-       end if;		
+            
+       end if;--cen='0'		
 	end if;
 end process;
   

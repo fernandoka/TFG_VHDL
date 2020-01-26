@@ -4,7 +4,7 @@
 -- 
 -- Create Date: 14.12.2019 20:22:30
 -- Design Name: 
--- Module Name: NotesGenerator - Behavioral
+-- Module Name: MidiParser.vhd - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -33,25 +33,11 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity NotesGenerator is
+entity MidiParser.vhd is
   Port ( 
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
-        notes_on        			:   in  std_logic_vector(15 downto 0);
-        working						:	out	std_logic_vector(15 downto 0);
-		
-		--Note params
-		startAddr_In             	: in std_logic_vector(25 downto 0);
-		sustainStartOffsetAddr_In	: in std_logic_vector(25 downto 0);
-		sustainEndOffsetAddr_In     : in std_logic_vector(25 downto 0);
-		maxSamples_In               : in std_logic_vector(25 downto 0);
-		stepVal_In                  : in std_logic_vector(63 downto 0);
-		sustainStepStart_In         : in std_logic_vector(63 downto 0);
-		sustainStepEnd_In           : in std_logic_vector(63 downto 0);
-		
-		--IIS side
-        sampleRqt       			:   in  std_logic;
-        sampleOut       			:   out std_logic_vector(15 downto 0);
+
         
         -- Mem side
 		mem_emptyBuffer				:	in	std_logic;
@@ -64,13 +50,13 @@ entity NotesGenerator is
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
---attribute   dont_touch  of  NotesGenerator  :   entity  is  "true";
+--attribute   dont_touch  of  MidiParser.vhd  :   entity  is  "true";
     
-end NotesGenerator;
+end MidiParser.vhd;
 
 use work.my_common.all;
 
-architecture Behavioral of NotesGenerator is
+architecture Behavioral of MidiParser.vhd is
 ----------------------------------------------------------------------------------
 -- TYPES DECLARATIONS
 ----------------------------------------------------------------------------------     
@@ -93,62 +79,7 @@ architecture Behavioral of NotesGenerator is
 	signal notesGen_addrOut    :   addrGen;
 begin
 
-----------------------------------------------------------------------------------
--- PIPELINED SUM
---      Manage the sums of all notes, is organized like a balanced tree
----------------------------------------------------------------------------------- 
-genTreeLevels:
-for i in 0 to log2(16) generate
-	genFixedSumsPerTreeLevel:
-	for j in 0 to (16/2**(i)-1) generate
-		sum: MyFiexedSum
-		generic map(WL=>16)
-		port map( rst_n =>rst_n, clk=>clk,a_in=>notesGen_samplesOut(i)(j),b_in=>notesGen_samplesOut(i)(j),c_out=>notesGen_samplesOut(i+1)(j));
-	end generate;
-end generate;
 
-sampleOut <= notesGen_samplesOut(log2(16))(0);
-
-----------------------------------------------------------------------------------
--- NOTES GENERATOR
---      Creation of the notes generators components
-----------------------------------------------------------------------------------
-
-genNotes:
-for i in 0 to 15 generate
-	NoteGen: UniversalNoteGen
-	  port map(
-		-- Host side
-		rst_n                   	=> rst_n,
-		clk                     	=> clk,
-		noteOnOff               	=> notes_on(i),
-		sampleRqt    				=> sampleRqt, -- IIS new sample Rqt
-		working						=> working(i),
-		sample_out              	=> notesGen_samplesOut(0)(i),
-
-		-- NoteParams               
-		startAddr_In				=> startAddr_In				,
-		sustainStartOffsetAddr_In	=> sustainStartOffsetAddr_In,
-		sustainEndOffsetAddr_In    	=> sustainEndOffsetAddr_In  ,
-		maxSamples_In				=> maxSamples_In			,
-		stepVal_In					=> stepVal_In				,
-		sustainStepStart_In			=> sustainStepStart_In		,
-		sustainStepEnd_In			=> sustainStepEnd_In		,
-
-		-- Mem side                 
-		samples_in                  => mem_CmdReadResponse(15 downto 0),    	
-		memAckSend                 	=> memAckSend(i),     	
-		memAckResponse		       	=> memAckResponse(i),      	
-		addr_out                   	=> notesGen_addrOut(i),     	
-	    memSamplesSendRqt  		   	=> memSamplesSendRqt(i)
-	  );
-
-end generate;
-
--- Internal cen signal for the FSMs, check if some note is on
-cenForFsms: reducedOr
-  generic map(WL=>16)
-  port map(a_in=>notes_on, reducedA_out=>fsmsCen);
 
 ----------------------------------------------------------------------------------
 -- MEM CMD READ RESPONSE ARBITRATOR
@@ -246,8 +177,6 @@ begin
                 end if;
 
         end case;
-        
-        
         
     end if;
 end process;

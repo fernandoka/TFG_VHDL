@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --					 		
 --
@@ -51,7 +51,7 @@ end MyDummyDDR2;
 
 architecture Behavioral of MyDummyDDR2 is
 
-	type romType	is array (0 to 297) of std_logic_vector (127 downto 0);
+	type romType	is array (0 to 298) of std_logic_vector (127 downto 0);
 -- 1=>X"ff00081802040458ff00080700006b72",
 -- Papermoon.mid
 	constant romRd : romType :=(
@@ -130,7 +130,8 @@ architecture Behavioral of MyDummyDDR2 is
 288=>X"0036000033000030903d9c7f40010040", 289=>X"403700403200402e00402b4181003c00", 290=>X"00002e00002b903d9c7f40010040b001", 291=>X"00403600403300403041810037000032", 
 292=>X"33000030903d9c7f40010040b001403c", 293=>X"2600402200401f4181003c0000360000", 294=>X"001f903d9c7f40010040b001402b0040", 295=>X"ff010040b04181002b00002600002200", 
 296=>X"ff010040b04181002b0000260000002f",--End of Papermoon.mid
-297=>X"f4ffeefff4fff1fff4fff5fff4fff9ff"-- 8Sound samples
+297=>X"f4ffeefff4fff1fff4fff5fff4fff9ff",-- 8Sound samples
+298=>X"2b00300039003e004100490049005000"
 );
 
 begin
@@ -150,7 +151,7 @@ begin
 		ack <='0';
 		if cen='0' and (wr='0' or rd='0') then
             ack <='1'; --
-            if unsigned(addr) < 298 then
+            if unsigned(addr) < 299 then
                 if wr='0' then
                     romWr := data_in;
                 elsif rd='0' then

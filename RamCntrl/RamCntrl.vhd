@@ -17,7 +17,7 @@
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
 --		
---		With Quick Read feature
+--		With Quick Read feature only in inCmdReadBuffer_1, use of a 128 bits cache
 --
 --		-- For Midi parser component --
 --		Format of inCmdReadBuffer_0	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -466,46 +466,14 @@ begin
 			when readInCmdReadBuffer_0 => 
 				-- Read order to fifo, consume a mem command
 				rdRqtReadBuffer(0) <='1';
-				
-				-- QucikRead
-				if OneReadFlag='1' and fifoRqtRdData_0(24 downto 2)=regLast128Addr then
-					-- Write command to fifo
-					wrResponseReadBuffer(0)<='1';
-					state := idleRdOrWr;
-					if regAux(1 downto 0)/="11" then
-						inCmdResponseRdBuffer_0 <= fifoRqtRdData_0(26 downto 25) & reg128bitsCache;
-					-- OneByDivisionValue
-					else
-						inCmdResponseRdBuffer_0 <=(others=>'0');
-						inCmdResponseRdBuffer_0(129 downto 128) <= fifoRqtRdData_0(26 downto 25);
-						-- Decode addr
-						case fifoRqtRdData_0(1 downto 0) is
-							when "00" =>
-								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(31 downto 0);
-							when "01" =>
-								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(63 downto 32);
-							when "10" =>
-								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(95 downto 64);
-							when "11" =>
-								inCmdResponseRdBuffer_0(31 downto 0) <= reg128bitsCache(127 downto 96);
-							when others =>
-							    inCmdResponseRdBuffer_0(31 downto 0) <=(others=>'0');
-						end case;
-					end if;
-				-- Order read
-				else
-					OneReadFlag := '1';
-					regLast128Addr := fifoRqtRdData_0(24 downto 2); -- Update last addr
-					
-					mem_addr <= fifoRqtRdData_0(24 downto 0) & '0';
-					regAux(1 downto 0) := fifoRqtRdData_0(26 downto 25);
-					-- Read order to mem
-					mem_cen <='0';
-					mem_rdn <='0';
-					
-					flagAck := '0';-- Set flagAck value
-					state := reciveAckInCmdReadBuffer_0;
-				end if;
+                mem_addr <= fifoRqtRdData_0(24 downto 0) & '0';
+                regAux(1 downto 0) := fifoRqtRdData_0(26 downto 25);
+                -- Read order to mem
+                mem_cen <='0';
+                mem_rdn <='0';
+                
+                flagAck := '0';-- Set flagAck value
+                state := reciveAckInCmdReadBuffer_0;
 				
 			when reciveAckInCmdReadBuffer_0 => 
 				if mem_ack='1' then
@@ -513,11 +481,10 @@ begin
 				end if;
 
 				-- Check if the buffer it's not full
-				if mem_ack='1' then
+				if fullResponseRdBuffer(0)='0' and (mem_ack='1' or flagAck ='1') then
 					state := idleRdOrWr;
 					-- Write command to fifo
 					wrResponseReadBuffer(0)<='1'; 
-					reg128bitsCache := mem_data_out_16B;-- Update cache
 					if regAux(1 downto 0)/="11" then
 						inCmdResponseRdBuffer_0 <= regAux(1 downto 0) & mem_data_out_16B;
 					-- OneByDivisionValue
@@ -545,7 +512,7 @@ begin
 				-- Read order to fifo, consume a mem command
 				rdRqtReadBuffer(1) <='1';
 				
-				-- QucikRead
+				-- QucikRead feature
 				if OneReadFlag='1' and fifoRqtRdData_1(25 downto 3)=regLast128Addr then
 					state := idleRdOrWr;
 					-- Write command to fifo

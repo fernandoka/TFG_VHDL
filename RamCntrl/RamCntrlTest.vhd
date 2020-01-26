@@ -194,8 +194,9 @@ begin
 	
 	wait for (clkPeriod*5);
 	
-    
-    -- Send two writes CMD
+    -------------------------
+    -- Send two writes CMD --
+    -------------------------
     inCmdWriteBuffer          <= std_logic_vector(to_unsigned(297,26))& X"f9ff";
     wrRqtWriteBuffer          <= '1';
     wait for (clkPeriod);
@@ -206,8 +207,11 @@ begin
     
     wait until emptyCmdWriteBufferOut='0'and writeWorking='0'; -- To be sure that all the writings are done
     
-    rdWr <='1'; --Write mode
-    -- Send two reads CMD in inCmdReadBuffer_1
+    rdWr <='1'; -- Read mode
+    
+    ---------------------------------------------
+    -- Send two reads CMD in inCmdReadBuffer_1 --
+    ---------------------------------------------
     inCmdReadBuffer_1          <= "0000000" & std_logic_vector(to_unsigned(2383,26)); -- Get the last sample 
     wrRqtReadBuffer_1          <='1';
     wait for (clkPeriod);
@@ -218,18 +222,105 @@ begin
     wait for (clkPeriod);
     wrRqtReadBuffer_1          <='0';
     
-    -- Recive response of the first CMD    
+    -- Recive response of the first CMD in inCmdReadBuffer_1
     wait until emptyResponseRdBuffer_1='0';
     rdRqtReadBuffer_1<='1';
     wait for (clkPeriod);
     rdRqtReadBuffer_1<='0';
     
-    -- Recive response of the second CMD
+    -- Recive response of the second CMD in inCmdReadBuffer_1
     wait until emptyResponseRdBuffer_1='0';
     rdRqtReadBuffer_1<='1';
     wait for (clkPeriod);
     rdRqtReadBuffer_1<='0';
 
+    ------------------------------------------
+    -- Three reads CMD in inCmdReadBuffer_0 --
+    ------------------------------------------
+    inCmdReadBuffer_0          <= "00" & std_logic_vector(to_unsigned(0,25));-- Addr per 16B
+    wrRqtReadBuffer_0          <='1';
+    wait for (clkPeriod);
+    
+    -- Testing CMD from OneDividedByDivisionProvider
+    inCmdReadBuffer_0          <= "11" & std_logic_vector(to_unsigned(3,25)); -- Addr per 4B
+    wrRqtReadBuffer_0          <='1';
+    wait for (clkPeriod);
+   
+    -- Testing CMD from OneDividedByDivisionProvider
+    inCmdReadBuffer_0          <= "11" & std_logic_vector(to_unsigned(4,25)); -- Addr per 4B
+    wrRqtReadBuffer_0          <='1';
+    wait for (clkPeriod);
+    wrRqtReadBuffer_0          <='0';
+
+    -- Recive response of the first CMD in inCmdReadBuffer_0
+    wait until emptyResponseRdBuffer_0='0';
+    rdRqtReadBuffer_0<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_0<='0';
+    
+    -- Recive response of the second CMD in inCmdReadBuffer_0
+    wait until emptyResponseRdBuffer_0='0';
+    rdRqtReadBuffer_0<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_0<='0';
+
+    -- Recive response of the third CMD in inCmdReadBuffer_0
+    wait until emptyResponseRdBuffer_0='0';
+    rdRqtReadBuffer_0<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_0<='0';
+    
+    --------------------------------------------------------------
+    -- Two reads CMD in inCmdReadBuffer_0 and inCmdReadBuffer_1 --
+    --------------------------------------------------------------
+    inCmdReadBuffer_0          <= "01" & std_logic_vector(to_unsigned(1,25));-- Addr per 16B
+    wrRqtReadBuffer_0          <='1';
+    inCmdReadBuffer_1          <= "0000011" & std_logic_vector(to_unsigned(2376,26)); -- Addr per 8B, Get the first, sample size of sample 16 bits
+    wrRqtReadBuffer_1          <='1';
+    wait for (clkPeriod);
+    
+    -- Testing CMD from OneDividedByDivisionProvider
+    inCmdReadBuffer_0          <= "11" & std_logic_vector(to_unsigned(1,25));-- Addr per 4B
+    wrRqtReadBuffer_0          <='1';
+    inCmdReadBuffer_1          <= "0000011" & std_logic_vector(to_unsigned(2377,26)); -- Addr per 8B, Get the second, sample size of sample 16 bits 
+    wrRqtReadBuffer_1          <='1';
+    wait for (clkPeriod);
+    wrRqtReadBuffer_0          <='0';
+    wrRqtReadBuffer_1          <='0';
+    
+    --Testing out buffers behaviour Waiting to fill the buffers
+    wait for (clkPeriod*20);
+
+    -- Recive first CMD of inCmdReadBuffer_1
+--    wait until emptyResponseRdBuffer_1='0';
+    rdRqtReadBuffer_1<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_1<='0';
+
+    --Testing out buffers behaviour Waiting to fill the buffers
+    wait for (clkPeriod*20);
+
+    
+    -- Recive second CMD of inCmdReadBuffer_1
+    rdRqtReadBuffer_1<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_1<='0';
+
+    --Testing out buffers behaviour Waiting to fill the buffers
+    wait for (clkPeriod*20);
+    
+    -- Recive first CMD of inCmdReadBuffer_0
+    rdRqtReadBuffer_0<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_0<='0';
+
+    --Testing out buffers behaviour Waiting to fill the buffers
+    wait for (clkPeriod*20);
+        
+    -- Recive second CMD of inCmdReadBuffer_0
+    rdRqtReadBuffer_0<='1';
+    wait for (clkPeriod);
+    rdRqtReadBuffer_0<='0';
     
     wait;
 

@@ -42,7 +42,7 @@ entity ByteProvider is
 		byteAck			:	out	std_logic; -- One cycle high to notify the reception of a new byte
 		nextByte        :   out	std_logic_vector(7 downto 0);
 		
-		-- Mem side
+		-- mem arbitrator side
 		mem_ack			:	in	std_logic;
 		mem_dataIn		:	in	std_logic_vector(127 downto 0);
 		

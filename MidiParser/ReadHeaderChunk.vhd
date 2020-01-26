@@ -34,25 +34,30 @@ use IEEE.NUMERIC_STD.ALL;
 entity ReadHeaderChunk is
   Generic(START_ADDR    :   in  natural);
   Port ( 
-        rst_n           :   in  std_logic;
-        clk             :   in  std_logic;
-		readRqt			:	in	std_logic; -- One cycle high to request a read
-		finishRead		:	out std_logic; -- One cycle high when the component end to read the header
-		headerOk		:	out std_logic; -- High, if the header follow our requirements
-		division		:	out std_logic_vector(15 downto 0);
-		track0AddrStart	:	out std_logic_vector(26 downto 0);
-		track1AddrStart	:	out std_logic_vector(26 downto 0);
+        rst_n           		:   in  std_logic;
+        clk             		:   in  std_logic;
+		readRqt					:	in	std_logic; -- One cycle high to request a read
+		finishRead				:	out std_logic; -- One cycle high when the component end to read the header
+		headerOk				:	out std_logic; -- High, if the header follow our requirements
+		
+		-- OneDividedByDivision_Provider side
+		oneDividedByDivisionRqt	:	out	std_logic;
+		division				:	out	std_logic_vector(15 downto 0);
+		
+		-- Start addreses for the Read Trunk Chunk components
+		track0AddrStart			:	out std_logic_vector(26 downto 0);
+		track1AddrStart			:	out std_logic_vector(26 downto 0);
 		
 		--Debug
-		regAuxOut       : out std_logic_vector(31 downto 0);
-		cntrOut            : out std_logic_vector(2 downto 0);
-		statesOut          : out std_logic_vector(7 downto 0);
+		regAuxOut       		: 	out std_logic_vector(31 downto 0);
+		cntrOut         		: 	out std_logic_vector(2 downto 0);
+		statesOut       		: 	out std_logic_vector(7 downto 0);
 		 
 		--Byte provider side
-		nextByte        :   in  std_logic_vector(7 downto 0);
-		byteAck			:	in	std_logic; -- One cycle high to notify the reception of a new byte
-		byteAddr        :   out std_logic_vector(26 downto 0);
-		byteRqt			:	out std_logic -- One cycle high to request a new byte
+		nextByte        		:   in  std_logic_vector(7 downto 0);
+		byteAck					:	in	std_logic; -- One cycle high to notify the reception of a new byte
+		byteAddr        		:   out std_logic_vector(26 downto 0);
+		byteRqt					:	out std_logic -- One cycle high to request a new byte
 
   );
 -- Attributes for debug
@@ -139,11 +144,13 @@ begin
 		headerOk <='0';
 		finishRead <='0';
 		byteRqt <='0';
+		oneDividedByDivisionRqt <='0';
 		
     elsif rising_edge(clk) then
 		finishRead <='0';
 		byteRqt <='0';
-		
+		oneDividedByDivisionRqt <='0';
+
 		case state is
 			when s0=>
 				if readRqt='1' then
@@ -259,17 +266,18 @@ begin
                     end if;
 				else
                     cntr :=(others=>'0');
-					-- Division value have to be in [50,500] interval
-					if regDivision(15)='1' or (regDivision > 500 or regDivision < 50) then
+					if unsigned(regDivision) == 0 then
 						finishRead <='1';
-						state := s0;
+                        state := s0;
 					else
+						oneDividedByDivisionRqt <='1'; -- Send read request to get OneDividedByDivision constant 
 						regTrack0AddrStart := std_logic_vector(regAddr);
 						-- Don't read the track chunk mark, 4 bytes
 						regAddr := regAddr+4;
 						byteRqt <='1';
 						state := s6;
 					end if;
+					
                 end if;
 		  
 		  when s6 =>

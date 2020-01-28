@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --		Mem addr refers to one sample.					 		
 --
@@ -34,20 +34,20 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity ByteProvider is
   Port ( 
-        rst_n           :   in  std_logic;
-        clk             :   in  std_logic;
-		addrInVal		:	in	std_logic_vector(26 downto 0); -- Byte addres
-		byteRqt			:	in	std_logic; -- One cycle high to request a new byte
+        rst_n           	:   in  std_logic;
+        clk             	:   in  std_logic;
+		addrInVal			:	in	std_logic_vector(26 downto 0); -- Byte addres
+		byteRqt				:	in	std_logic; -- One cycle high to request a new byte
+			
+		byteAck				:	out	std_logic; -- One cycle high to notify the reception of a new byte
+		nextByte        	:   out	std_logic_vector(7 downto 0);
 		
-		byteAck			:	out	std_logic; -- One cycle high to notify the reception of a new byte
-		nextByte        :   out	std_logic_vector(7 downto 0);
-		
-		-- mem arbitrator side
-		mem_ack			:	in	std_logic;
-		mem_dataIn		:	in	std_logic_vector(127 downto 0);
-		
-		mem_readRqt_n	:	out std_logic; -- Active low
-		mem_addr		:	out std_logic_vector(22 downto 0)
+		-- Mem arbitrator side
+		samples_in       	:	in	std_logic_vector(127 downto 0);
+		memAckSend       	:	in	std_logic;
+		memAckResponse   	:	in	std_logic;
+		addr_out         	:	out std_logic_vector(22 downto 0); 
+		memSamplesSendRqt	:	out std_logic
 		
   );
 -- Attributes for debug
@@ -68,7 +68,7 @@ process(rst_n,clk,byteRqt,mem_ack)
 	variable readFlag   :   std_logic;
 begin
     
-	mem_addr <= std_logic_vector(regAddr(26 downto 4));
+	addr_out <= std_logic_vector(regAddr(26 downto 4));
     
 	if rst_n='0' then
 		state := firstRead;
@@ -163,7 +163,7 @@ begin
 			
 			when mem_waitAck =>
 				if mem_ack='1' then
-					regData := mem_dataIn;
+					regData := samples_in;
 					state := serveBytes;
 				end if;
 

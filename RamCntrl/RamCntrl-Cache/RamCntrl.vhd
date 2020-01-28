@@ -466,9 +466,9 @@ begin
 						  state := readInCmdReadBuffer_0;
 						end if;
 						
-					end if;
+					end if;-- if turn < 2
 					
-				end if; -- if turn < 2
+				end if; 
 				
 			-----------------------------
 			-- States to perform write --

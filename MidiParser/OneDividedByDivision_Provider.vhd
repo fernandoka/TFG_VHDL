@@ -44,7 +44,7 @@ entity OneDividedByDivision_Provider is
 		--Debug
 		statesOut       		:	out std_logic_vector(2 downto 0);
 		 
-		-- mem arbitrator side
+		-- Mem arbitrator side
 		dataIn       			:	in	std_logic_vector(23 downto 0); -- Value of 1/division in Q4.20
 		memAckSend      		:   in 	std_logic;
 		memAckResponse			:	in  std_logic;

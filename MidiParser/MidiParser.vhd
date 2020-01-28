@@ -13,10 +13,31 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.8
+-- Revision 0.1
 -- Additional Comments:
---		Not completly generic component, the pipelined sum and the NotesGenerators 
---		have to be done by hand
+--		-- For Midi parser component --
+--		Format of mem_CmdReadRequest	:	cmd(24 downto 0) = 4bytes addr to read,  
+--									 	
+--										cmd(26 downto 25) = "00" -> cmd from byteProvider_0
+--									                   
+--								    	cmd(26 downto 25) = "01" -> cmd from byteProvider_1
+--					                                   
+--										cmd(26 downto 25) = "11" -> cmd from OneDividedByDivisionProvider
+--
+--
+--
+--		-- For Midi parser component --
+--		Format of mem_CmdReadResponse :	If requestComponent is byteProvider_0 or byteProvider_1
+--											cmd(127 downto 0) = bytes readed for 16 bytes addr, use first 23 bits of addr 
+--									 	else
+--											cmd(127 downto 32) = (others=>'0')
+--											cmd(31 downto 0) = bytes readed for 4 bytes addr, use first 25 bits of addr
+--						
+--									 	cmd(129 downto 128) = "00" -> cmd from byteProvider_0
+--										              
+--								     	cmd(129 downto 128) = "01" -> cmd from byteProvider_1
+--					                                  
+--										cmd(129 downto 128) = "11" -> cmd from OneDividedByDivisionProvider
 -- 
 ----------------------------------------------------------------------------------
 
@@ -38,12 +59,16 @@ entity MidiParser.vhd is
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
 
+
+		-- Debug
+		statesOut_ODBD				:	out std_logic_vector(2 downto 0);
+
         
         -- Mem side
 		mem_emptyBuffer				:	in	std_logic;
-        mem_CmdReadResponse    		:   in  std_logic_vector(15+4 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
+        mem_CmdReadResponse    		:   in  std_logic_vector(129 downto 0);
         mem_fullBuffer         		:   in  std_logic; 
-        mem_CmdReadRequest		    :   out std_logic_vector(25+4 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(15 downto 0) = requested sample
+        mem_CmdReadRequest		    :   out std_logic_vector(26 downto 0); 
 		mem_readResponseBuffer		:	out std_logic;
         mem_writeReciveBuffer     	:   out std_logic -- One cycle high to send a new CmdReadRqt
   
@@ -79,7 +104,73 @@ architecture Behavioral of MidiParser.vhd is
 	signal notesGen_addrOut    :   addrGen;
 begin
 
+----------------------------------------------------------------------------------
+-- COMPONENTS
+--		MidiController
+--      Byte Provider components
+--		OneDividedByDivision component
+--		Read Header Component
+--		Read Track Components
+----------------------------------------------------------------------------------  
 
+ByteProvider_0 : ByteProvider
+  Port map( 
+        rst_n => rst_n,
+        clk => clk,
+		addrInVal =>BP_addr(0),			
+        byteRqt =>BP_byteRqt(0),  
+        byteAck => BP_ack(0),            
+        nextByte =>BP_data(0),
+      
+        -- Mem side
+		samples_in       	=>	mem_CmdReadResponse(127 downto 0),
+        memAckSend       	=>	memAckSend(0),
+        memAckResponse   	=>	memAckResponse(0),
+        addr_out         	=>	byteP_addrOut(0)    
+		memSamplesSendRqt	=>	memSamplesSendRqt(0)
+
+	);
+
+
+ByteProvider_1 : ByteProvider
+  Port map( 
+        rst_n => rst_n,
+        clk => clk,
+		addrInVal =>BP_addr(1),			
+        byteRqt =>BP_byteRqt(1),  
+        byteAck => BP_ack(1),            
+        nextByte =>BP_data(1),
+      
+        -- Mem arbitrator side
+		samples_in       	=>	mem_CmdReadResponse(127 downto 0),
+        memAckSend       	=>	memAckSend(1),
+        memAckResponse   	=>	memAckResponse(1),
+        addr_out         	=>	byteP_addrOut(1)    
+		memSamplesSendRqt	=>	memSamplesSendRqt(1)
+
+  );
+
+my_ODBD_Provider : OneDividedByDivision_Provider
+  generic map(START_ADDR=>299*4) -- 32 bits Address of the first value of OneDividedByDivision constants stored in DDR memory 
+  port map( 
+        rst_n           		=> rst_n,
+        clk             		=> clk,
+		readRqt					=> ODBD_readRqt,
+		division				=> divisionVal,
+		readyValue				=> ODBD_readyVal,
+		OneDividedByDivision	=> ODBD_Val,
+		
+		--Debug
+		statesOut       		=> statesOut_ODBD,
+		 
+		-- Mem arbitrator side
+		dataIn       			=>	mem_CmdReadResponse(31 downto 0),
+		memAckSend      		=>	memAckSend(2),
+		memAckResponse			=>	memAckResponse(2),
+		addr_out        		=>	byteP_addrOut(2),    
+		memConstantSendRq		=>	memSamplesSendRqt(2)
+
+  );
 
 ----------------------------------------------------------------------------------
 -- MEM CMD READ RESPONSE ARBITRATOR

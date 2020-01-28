@@ -44,7 +44,7 @@ entity ByteProvider is
 		
 		-- Mem arbitrator side
 		samples_in       	:	in	std_logic_vector(127 downto 0);
-		memAckSend       	:	in	std_logic;
+		memAckSend       	:	in	std_logic; -- One cycle high
 		memAckResponse   	:	in	std_logic;
 		addr_out         	:	out std_logic_vector(22 downto 0); 
 		memSamplesSendRqt	:	out std_logic
@@ -61,11 +61,11 @@ begin
 
 fsm:
 process(rst_n,clk,byteRqt,mem_ack)
-    type states is (firstRead, serveBytes, mem_waitAck);	
+    type states is (firstRead, serveBytes, waitCmdAck, getData);	
 	variable state		:	states;
 	variable regAddr	:	unsigned(26 downto 0);	
 	variable regData	:	std_logic_vector(127 downto 0);
-	variable readFlag   :   std_logic;
+
 begin
     
 	addr_out <= std_logic_vector(regAddr(26 downto 4));
@@ -75,12 +75,10 @@ begin
 		regAddr :=(others=>'0');
 		regData := (others=>'0');
 		byteAck <='0';
-		mem_readRqt_n <= '1';
-		readFlag  :='0';
+		memSamplesSendRqt <= '0';
 		
     elsif rising_edge(clk) then
 		byteAck <='0';
-		mem_readRqt_n <= '1';
 		
 			 
 		case state is
@@ -89,21 +87,18 @@ begin
                 if byteRqt='1' then
                     regAddr := unsigned(addrInVal);
                     -- Prepare read for the next cycle
-                    mem_readRqt_n <= '0';
-                    readFlag  :='1';
-                    state := mem_waitAck;
+                    memSamplesSendRqt <= '1';
+                    state := waitCmdAck;
                 end if;
 			
 			when serveBytes=>
-				if byteRqt='1' or readFlag='1' then
+				if byteRqt='1' then
 					if regAddr(26 downto 4)/=unsigned(addrInVal(26 downto 4)) then
 						regAddr := unsigned(addrInVal);
 						-- Prepare read for the next cycle
-						mem_readRqt_n <= '0';
-						readFlag  :='1';
-						state := mem_waitAck;
+						memSamplesSendRqt <= '1';
+						state := waitCmdAck;
 					else
-					    readFlag  :='0';
 						byteAck <= '1';
 						case addrInVal(3 downto 0) is
 							when X"0"=>
@@ -161,8 +156,14 @@ begin
 					end if;
 				end if; --byteRqt='1'
 			
-			when mem_waitAck =>
-				if mem_ack='1' then
+			when waitCmdAck=>
+				if memAckSend='1' then
+					memSamplesSendRqt <= '0';
+					state := getData;
+				end if;
+			
+			when getData =>
+				if memAckResponse='1' then
 					regData := samples_in;
 					state := serveBytes;
 				end if;

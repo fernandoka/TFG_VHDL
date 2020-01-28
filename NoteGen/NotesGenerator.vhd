@@ -35,31 +35,31 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity NotesGenerator is
   Port ( 
-        rst_n           			:   in  std_logic;
-        clk             			:   in  std_logic;
-        notes_on        			:   in  std_logic_vector(15 downto 0);
-        working						:	out	std_logic_vector(15 downto 0);
-		
-		--Note params
-		startAddr_In             	: in std_logic_vector(25 downto 0);
-		sustainStartOffsetAddr_In	: in std_logic_vector(25 downto 0);
-		sustainEndOffsetAddr_In     : in std_logic_vector(25 downto 0);
-		maxSamples_In               : in std_logic_vector(25 downto 0);
-		stepVal_In                  : in std_logic_vector(63 downto 0);
-		sustainStepStart_In         : in std_logic_vector(63 downto 0);
-		sustainStepEnd_In           : in std_logic_vector(63 downto 0);
-		
-		--IIS side
-        sampleRqt       			:   in  std_logic;
-        sampleOut       			:   out std_logic_vector(15 downto 0);
+        rst_n           					:   in  std_logic;
+        clk             					:   in  std_logic;
+        notes_on        					:   in  std_logic_vector(15 downto 0);
+        working								:	out	std_logic_vector(15 downto 0);
+				
+		--Note params		
+		startAddr_In             			: in std_logic_vector(25 downto 0);
+		sustainStartOffsetAddr_In			: in std_logic_vector(25 downto 0);
+		sustainEndOffsetAddr_In     		: in std_logic_vector(25 downto 0);
+		maxSamples_In               		: in std_logic_vector(25 downto 0);
+		stepVal_In                  		: in std_logic_vector(63 downto 0);
+		sustainStepStart_In         		: in std_logic_vector(63 downto 0);
+		sustainStepEnd_In           		: in std_logic_vector(63 downto 0);
+				
+		--IIS side		
+        sampleRqt       					:   in  std_logic;
+        sampleOut       					:   out std_logic_vector(15 downto 0);
         
         -- Mem side
-		mem_emptyBuffer				:	in	std_logic;
-        mem_CmdReadResponse    		:   in  std_logic_vector(15+4 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
-        mem_fullBuffer         		:   in  std_logic; 
-        mem_CmdReadRequest		    :   out std_logic_vector(25+4 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(15 downto 0) = requested sample
-		mem_readResponseBuffer		:	out std_logic;
-        mem_writeReciveBuffer     	:   out std_logic -- One cycle high to send a new CmdReadRqt
+		mem_emptyResponseBuffer				:	in	std_logic;
+        mem_CmdReadResponse    				:   in  std_logic_vector(15+4 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
+        mem_fullReciveBuffer         		:   in  std_logic; 
+        mem_CmdReadRequest		    		:   out std_logic_vector(25+4 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(15 downto 0) = requested sample
+		mem_readResponseBuffer				:	out std_logic;
+        mem_writeReciveBuffer     			:   out std_logic -- One cycle high to send a new CmdReadRqt
   
   );
 -- Attributes for debug
@@ -156,7 +156,7 @@ cenForFsms: reducedOr
 ----------------------------------------------------------------------------------  
 
 fsmResponse:
-process(rst_n,clk,fsmsCen,mem_emptyBuffer)
+process(rst_n,clk,fsmsCen,mem_emptyResponseBuffer)
 begin
     if rst_n='0' then
 		memAckResponse <=(others=>'0');
@@ -166,7 +166,7 @@ begin
         memAckResponse <=(others=>'0');
 		mem_readResponseBuffer <='0';
 		
-		 if fsmsCen='1' and mem_emptyBuffer='0' then
+		 if fsmsCen='1' and mem_emptyResponseBuffer='0' then
 			memAckResponse(to_integer( unsigned(mem_CmdReadResponse(19 downto 16)) )) <='1';
 			mem_readResponseBuffer <='1';
 		 end if;           
@@ -181,13 +181,12 @@ end process;
 ----------------------------------------------------------------------------------  
 
 fsmSend:
-process(rst_n,clk,fsmsCen,memSamplesSendRqt,mem_fullBuffer)
-    type states is ( checkGeneratorRqt, waitMemAck0, waitMemAck1);
+process(rst_n,clk,fsmsCen,memSamplesSendRqt,mem_fullReciveBuffer)
+    type states is ( checkGeneratorRqt, waitMemAck0);
     
-    variable state      :   states;
-    variable turnCntr   :   unsigned(4 downto 0);
-    variable cntr       :   unsigned(1 downto 0);
-    variable regReadCmdRqt :   std_logic_vector(25+4 downto 0);
+    variable state      	:   states;
+    variable turnCntr   	:   unsigned(4 downto 0);
+    variable regReadCmdRqt 	:   std_logic_vector(25+4 downto 0);
     
     variable addrPlusOne    :   unsigned(25 downto 0);
 begin
@@ -210,8 +209,8 @@ begin
 			
 			-- Two Cmd per read request of a note generator
             when checkGeneratorRqt =>
-                 if fsmsCen='1' and memSamplesSendRqt(to_integer(turnCntr))='1' then
-                        regReadCmdRqt := std_logic_vector(turnCntr) & notesGen_addrOut(to_integer(turnCntr)); -- Note Gen index + addr
+                 if fsmsCen='1' and mem_fullReciveBuffer='0' and memSamplesSendRqt(to_integer(turnCntr))='1' then
+                        regReadCmdRqt := std_logic_vector(turnCntr) & notesGen_addrOut(to_integer(turnCntr)); -- Note Gen index + sample addr
                         -- Write command in the mem buffer
                         mem_writeReciveBuffer <= '1';
 						-- Send ack to note gen
@@ -227,24 +226,18 @@ begin
             
 			
 			when waitMemAck0 =>
-                if mem_fullBuffer='0' then		
-					regReadCmdRqt(25 downto 0) := std_logic_vector(addrPlusOne); -- Note Gen index + addr
+                if mem_fullReciveBuffer='0' then		
+					regReadCmdRqt(25 downto 0) := std_logic_vector(addrPlusOne); -- Note Gen index + sample addr
 					-- Write command in the mem buffer
 					mem_writeReciveBuffer <= '1';
-					state := waitMemAck0;
-				end if;
-			
-			
-            when waitMemAck1 =>
-                if mem_fullBuffer='0' then
 					if turnCntr=15 then -- Until max notes
                         turnCntr := (others=>'0');
                     else
                         turnCntr := turnCntr+1;
                     end if; 
-				   state := checkGeneratorRqt;                
-                end if;
-
+					state := checkGeneratorRqt;                
+				end if;
+			
         end case;
         
         

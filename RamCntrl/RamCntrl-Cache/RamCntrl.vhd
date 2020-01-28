@@ -76,13 +76,13 @@ entity RamCntrl is
       
       statesOut                 :   out std_logic_vector(9 downto 0);
       
-      memOut_addr		    :	 out	std_logic_vector(25 downto 0);
-      memOut_cen            :    out    std_logic;
-      memOut_rd             :    out    std_logic;
-      memOut_wr             :    out    std_logic;
-      memOut_ack            :    out    std_logic;
-      memOut_data_in        :    out    std_logic_vector(15 downto 0);
-      memOut_data_out       :    out    std_logic_vector(127 downto 0);
+      memOut_addr		    	:	 out	std_logic_vector(25 downto 0);
+      memOut_cen            	:    out    std_logic;
+      memOut_rd             	:    out    std_logic;
+      memOut_wr             	:    out    std_logic;
+      memOut_ack            	:    out    std_logic;
+      memOut_data_in        	:    out    std_logic_vector(15 downto 0);
+      memOut_data_out       	:    out    std_logic_vector(127 downto 0);
 
       --
       
@@ -112,7 +112,7 @@ entity RamCntrl is
 	  outCmdReadBuffer_1		:	out	std_logic_vector(22 downto 0);	-- Cmd response buffer for KeyboardCntrl component
 	  emptyResponseRdBuffer_1	:	out	std_logic;	  
 
-	  -- Buffer and signals to manage the writes commands
+	  -- Buffer and signals to manage the write commands
 	  inCmdWriteBuffer			:	in	std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
 	  wrRqtWriteBuffer			:	in	std_logic;
 	  fullCmdWriteBuffer		:	out	std_logic;

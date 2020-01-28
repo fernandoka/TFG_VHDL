@@ -58,11 +58,30 @@ entity MidiParser.vhd is
   Port ( 
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
-		ce							:	in	std_logic;
+		cen							:	in	std_logic;
+		readMidifileRqt				:	in	std_logic;
 		
-
+		fileOk						:	out	std_logic;
+		OnOff						:	out	std_logic;
+		notesOn						:	out	std_logic_vector(87 downto 0);
+		
 		-- Debug
 		statesOut_ODBD				:	out std_logic_vector(2 downto 0);
+		statesOut_MidiCntrl			:	out	std_logic_vector(4 downto 0);
+		
+		regAuxOut_0       			: 	out std_logic_vector(31 downto 0);
+		regAddrOut_0                : 	out std_logic_vector(26 downto 0);
+		statesOut_0                 : 	out std_logic_vector(8 downto 0);
+		runningStatusOut_0          : 	out std_logic_vector(7 downto 0);  
+		dataBytesOut_0              : 	out std_logic_vector(15 downto 0);
+		regWaitOut_0                : 	out std_logic_vector(17 downto 0);
+			
+		regAuxOut_1       			: 	out std_logic_vector(31 downto 0);
+		regAddrOut_1                : 	out std_logic_vector(26 downto 0);
+		statesOut_1                 : 	out std_logic_vector(8 downto 0);
+		runningStatusOut_1          : 	out std_logic_vector(7 downto 0);  
+		dataBytesOut_1              : 	out std_logic_vector(15 downto 0);
+		regWaitOut_1                : 	out std_logic_vector(17 downto 0);
 
         
         -- Mem side
@@ -89,12 +108,17 @@ architecture Behavioral of MidiParser.vhd is
 	type    byteAddr_t  is array(0 to 1) of std_logic_vector(26 downto 0); 
 	type    byteData_t  is array( 0 to 1 ) of std_logic_vector(7 downto 0);
 	type    memAddr_t  is array( 0 to 1 ) of std_logic_vector(22 downto 0);
-
+	type	trackAddrStart_t	is	array(0 to 1)	of	std_logic_vector(26 downto 0);
+	type	trackNotesOn_t	is	array(0 to 1)	of	std_logic_vector(87 downto 0);
+	
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
-    -- For ODBD
-    signal  ODBD_readRqt, ODBD_readyVal 	:   std_logic;
+    -- For Midi Controller component
+	signal	muxBP_0	:	std_logic;
+
+	-- For ODBD component
+    signal  ODBD_ReadRqt, ODBD_readyVal 	:   std_logic;
 	signal	divisionVal						:	std_logic_vector(15 downto 0); -- Input in ODBD component, used as output signal in Read Header Component
 	signal	ODBD_Val						:	std_logic_vector(23 downto 0);
 	signal	mem_ODBD_addr					:	std_logic_vector(24 downto 0);
@@ -103,6 +127,21 @@ architecture Behavioral of MidiParser.vhd is
 	signal	BP_addr				:	byteAddr_t;
 	signal	BP_data				:	byteData_t;
 	signal	BP_byteRqt, BP_ack	:	std_logic_vector(1 downto 0);
+	
+	-- For Read Header components¡
+	signal	readFinish, headerOKe, startHeaderRead		:	std_logic;
+	signal	finishTracksRead, tracksOK, readTracksRqt	:	std_logic_vector(1 downto 0);
+	signal	trackAddrStartVal							:	trackAddrStart_t;
+	
+	signal	BP_addr_ReadHeader							:	std_logic_vector(26 downto 0); 
+	signal	BP_data_ReadHeader							:	std_logic_vector(7 downto 0);
+	signal	BP_byteRqt_ReadHeader, BP_ack_ReadHeader	:	std_logic;
+	
+	-- For Read Tracks components
+	signal	notesOn										:	trackNotesOn_t;
+	signal	BP_addr_ReadTrack_0							:	std_logic_vector(26 downto 0); 
+	signal	BP_data_ReadTrack_0							:	std_logic_vector(7 downto 0);
+	signal	BP_byteRqt_ReadTrack_0, BP_ack_ReadTrack_0	:	std_logic;
 	
 	-- For manage the mem CMDs
 	signal	memAckSend, memAckResponse, memSamplesSendRqt	:	std_logic_vector(1 downto 0);
@@ -119,12 +158,39 @@ begin
 --		Read Track Components
 ----------------------------------------------------------------------------------  
 
--- MidiController
+-- Multiplexor for BP_0
+	BP_addr(0) <= BP_addr_ReadHeader when muxBP_0='0' else BP_addr_ReadTrack_0;
+	BP_data(0) <= BP_data_ReadHeader when muxBP_0='0' else BP_data_ReadTrack_0;
+	BP_byteRqt(0) <= BP_byteRqt_ReadHeader when muxBP_0='0' else BP_byteRqt_ReadTrack_0;
+	BP_ack(0) <= BP_ack_ReadHeader when muxBP_0='0' else BP_ack_ReadTrack_0;
 
+-- MidiController
+ my_MidiController : MidiController
+ port ( 
+        rst_n           	=> rst_n,	
+        clk             	=> clk,	
+		cen					=> cen,
+		readMidifileRqt		=> readMidifileRqt,	
+		finishHeaderRead	=> readFinish,	
+		headerOK			=> headerOKe,	
+		finishTracksRead	=> finishTracksRead,	
+		tracksOK			=> tracksOK,	
+		ODBD_ValReady		=> ODBD_readyVal,	
+								
+		readHeaderRqt		=> startHeaderRead,
+		muxBP_0				=> muxBP_0,
+		readTracksRqt		=> readTracksRqt,	
+		ODBD_ReadRqt		=> ODBD_ReadRqt,	
+		parseOnOff			=> OnOff,	
+								
+		--Debug                 
+		statesOut       	=> statesOut_MidiCntrl,	
+		
+  );
 
 -- Byte Provider components
-ByteProvider_0 : ByteProvider
-  Port map( 
+BP_0 : ByteProvider
+  port map( 
         rst_n => rst_n,
         clk => clk,
 		addrInVal =>BP_addr(0),			
@@ -142,8 +208,8 @@ ByteProvider_0 : ByteProvider
 	);
 
 
-ByteProvider_1 : ByteProvider
-  Port map( 
+BP_1 : ByteProvider
+  port map( 
         rst_n => rst_n,
         clk => clk,
 		addrInVal =>BP_addr(1),			
@@ -166,7 +232,7 @@ my_ODBD_Provider : OneDividedByDivision_Provider
   port map( 
         rst_n           		=> rst_n,
         clk             		=> clk,
-		readRqt					=> ODBD_readRqt,
+		readRqt					=> ODBD_ReadRqt,
 		division				=> divisionVal,
 		readyValue				=> ODBD_readyVal,
 		OneDividedByDivision	=> ODBD_Val,
@@ -186,35 +252,91 @@ my_ODBD_Provider : OneDividedByDivision_Provider
 -- Read Header Component
 my_ReadHeaderChunk : ReadHeaderChunk
   generic map(START_ADDR=>0)
-  Port map( 
-        rst_n => rst_n,
+  port map( 
+		rst_n => rst_n,
         clk => clk,
+		cen => cen,                     
 		readRqt => startHeaderRead,			
         finishRead => readFinish,  
         headerOk => headerOKe,
+		
+		-- OneDividedByDivision_Provider side
         division => divisionVal,
-        track0AddrStart =>track0AddrStartVal,
-        track1AddrStart => track1AddrStartVal,
-        
-        --Debug
+		
+		-- Start addreses for the Read Trunk Chunk components
+        track0AddrStart => trackAddrStartVal(0),
+        track1AddrStart => trackAddrStartVal(1),
+		
+		--Debug
         regAuxOut =>regAux,
         cntrOut =>cntrOut,
         statesOut =>statesOut,
-        
-        -- Byte provider side
-        nextByte =>BP_data(0),
-        byteAck =>BP_ack(0),
-        byteAddr =>BP_addr,
-        byteRqt =>BP_byteRqt
+		 
+		--Byte provider side
+        nextByte => BP_data_ReadHeader,
+        byteAck  => BP_ack_ReadHeader,
+        byteAddr => BP_addr_ReadHeader,
+        byteRqt  => BP_byteRqt_ReadHeader
+
+  );
+
+-- Read Track Components
+ReadTrackChunk_0 : ReadTrackChunk
+  port map( 
+        rst_n           		=> rst_n,	
+        clk             		=> clk,	
+        cen                 	=> cen,    
+		readRqt					=> readTracksRqt(1 downto 0),	
+		trackAddrStart			=> trackAddrStartVal(0),	
+		OneDividedByDivision	=> ODBD_Val,	
+		finishRead				=> finishTracksRead(0),	
+		trackOK					=> tracksOK(0),	
+		notesOn					=> notesOn(0),	
+								
+		--Debug		        	    
+		regAuxOut       		=> regAuxOut_0       ,	
+		regAddrOut          	=> regAddrOut_0     ,	
+		statesOut       		=> statesOut_0       ,	
+		runningStatusOut    	=> runningStatusOut_0,    
+		dataBytesOut        	=> dataBytesOut_0    ,    
+		regWaitOut          	=> regWaitOut_0      ,    
+								
+		--Byte provider side	    
+		nextByte        		=> BP_data_ReadTrack_0,
+		byteAck					=> BP_ack_ReadTrack_0,	
+		byteAddr        		=> BP_addr_ReadTrack_0,	
+		byteRqt					=> BP_byteRqt_ReadTrack_0	
+	
   );
 
 
-
-
-
-
-
-
+ReadTrackChunk_1 : ReadTrackChunk
+  port map( 
+        rst_n           		=> rst_n,	
+        clk             		=> clk,	
+        cen                 	=> cen,    
+		readRqt					=> readTracksRqt(3 downto 2),	
+		trackAddrStart			=> trackAddrStartVal(1),	
+		OneDividedByDivision	=> ODBD_Val,	
+		finishRead				=> finishTracksRead(1),	
+		trackOK					=> tracksOK(1),	
+		notesOn					=> notesOn(1),	
+								
+		--Debug		        	    
+		regAuxOut       		=> regAuxOut_1       ,	
+		regAddrOut          	=> regAddrOut_1     ,	
+		statesOut       		=> statesOut_1       ,	
+		runningStatusOut    	=> runningStatusOut_1,    
+		dataBytesOut        	=> dataBytesOut_1    ,    
+		regWaitOut          	=> regWaitOut_1      ,    
+								
+		--Byte provider side	    
+		nextByte        		=> BP_data(1),
+		byteAck					=> BP_ack(1),	
+		byteAddr        		=> BP_addr(1),	
+		byteRqt					=> BP_byteRqt(1)	
+	
+  );
 
 
 ----------------------------------------------------------------------------------
@@ -223,19 +345,21 @@ my_ReadHeaderChunk : ReadHeaderChunk
 ----------------------------------------------------------------------------------  
 
 fsmResponse:
-process(rst_n,clk,fsmsCen,mem_emptyBuffer)
+process(rst_n,clk,cen,mem_emptyBuffer)
 begin
-    if rst_n='0' then
+
+	-- Order a read in the same cycle
+	mem_readResponseBuffer <= cen and (not mem_emptyBuffer);
+    
+	
+	if rst_n='0' then
 		memAckResponse <=(others=>'0');
-		mem_readResponseBuffer <='0';
 		
     elsif rising_edge(clk) then
         memAckResponse <=(others=>'0');
-		mem_readResponseBuffer <='0';
 		
-		 if mem_emptyBuffer='0' then
-			mem_readResponseBuffer <='1';
-			
+		 if cen='1' and mem_emptyBuffer='0' then
+						
 			if mem_CmdReadResponse(129 downto 128))="11" then
 				memAckResponse(2) <='1';
 			else
@@ -255,7 +379,7 @@ end process;
 ----------------------------------------------------------------------------------  
 
 fsmSend:
-process(rst_n,clk,fsmsCen,memSamplesSendRqt,mem_fullBuffer)
+process(rst_n,clk,cen,memSamplesSendRqt)
     type states is ( checkGeneratorRqt);
     
     variable state      	:   states;
@@ -280,7 +404,7 @@ begin
 		case state is
 			
             when checkGeneratorRqt =>
-                 if ce='1' and memSamplesSendRqt(to_integer(turnCntr))='1' then
+                 if cen='1' and memSamplesSendRqt(to_integer(turnCntr))='1' then
                         -- Write command in the mem buffer
                         mem_writeReciveBuffer <= '1';
 						-- Send ack to note gen

@@ -13,8 +13,11 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.5
+-- Revision 0.1
 -- Additional Comments:
+--		This component manage the activation of the differents components for
+--		midi parser component
+--	
 --
 ----------------------------------------------------------------------------------
 
@@ -35,6 +38,7 @@ entity MidiController is
   Port ( 
         rst_n           		:   in  std_logic;
         clk             		:   in  std_logic;
+		cen                     :   in 	std_logic;
 		readMidifileRqt			:	in	std_logic; -- One cycle high to request a read
 		finishHeaderRead		:	in	std_logic; -- One cycle high to notify the end of a read
 		headerOK				:	in	std_logic; -- High when the header data it's okey
@@ -43,12 +47,13 @@ entity MidiController is
 		ODBD_ValReady			:	in	std_logic; -- High when the value of the last read it's ready
 		
 		readHeaderRqt			:	out	std_logic;
+		muxBP_0					:	out	std_logic; -- Decides if BP_0 serves bytes to Read Header(low) or Read Track 0(high)
 		readTracksRqt			:	out	std_logic_vector(3 downto 0); -- Per track->10 play mode 01 check mode
 		ODBD_ReadRqt			:	out	std_logic;
 		parseOnOff				:	out	std_logic; -- 1 Controller is On everything goes right, otherwise something went wrong
 		
 		--Debug
-		statesOut       		:	out std_logic_vector(2 downto 0)
+		statesOut       		:	out std_logic_vector(4 downto 0)
 		
   );
 -- Attributes for debug
@@ -62,11 +67,12 @@ begin
 
 fsm:
 process(rst_n, clk, readMidifileRqt, finishHeaderRead, headerOK, ODBD_ValReady)
-    type states is (s0, s1, s2);	
+    type states is (s0, s1, s2, s3, s4);	
 	variable state	:	states;
 	
-	variable	cntr	:	unsigned(1 downto 0);
-	
+	variable	cntr		:	unsigned(1 downto 0);
+	variable	finishFlag	:	std_logic_vector(1 downto 0);
+
 begin
 
 
@@ -88,62 +94,99 @@ begin
     if state=s2 then
         statesOut(2)<='1'; 
     end if;
+
+    if state=s3 then
+        statesOut(3)<='1'; 
+    end if;
+    
+    if state=s4 then
+        statesOut(4)<='1'; 
+    end if;
     --
     	
 	if rst_n='0' then
 		state := s0;
 		cntr :=(others=>'0');
-		readHeaderRqt =>'0';	
+		readHeaderRqt =>'0';
+		finishFlag =>(others=>'0');	
 		readTracksRqt =>(others=>'0');	
-		ODBD_ReadRqt =>'0';	
+		ODBD_ReadRqt =>'0';
+		muxBP_0 <='0';		
     
 	elsif rising_edge(clk) then
 		readHeaderRqt =>'0';	
 		readTracksRqt =>(others=>'0');	
 		ODBD_ReadRqt =>'0';
 		
-		case state is
-			when s0 =>
-				if readMidifileRqt='1' then
-					readHeaderRqt <='1';
-					state := s1;
-				end if;
-			
-			when s1 =>
-				if finishHeaderRead='1' then
-					if headerOK='1' then
-						ODBD_ReadRqt <='1';
-						state := s2;
-					else
-						state := s0;
-				end if;
+		if cen='0' then
+            if state/=s0 then
+				state := s0;
+			end if;
+		else
 
-			when s2 =>
-				if ODBD_ValReady='1' then
-					-- Send read rqt in check mode for the read track components
-					readTracksRqt <= "0101";
-					cntr := (others=>'0');
-					state := s3;
-				end if;
-			
-			-- Wait until the read track components finish the check read
-			when s3 =>
-				if finishTracksRead(0)='1' or  finishTracksRead(1)='1' then
-					if tracksOK(0)='1' or tracksOK(1)='1' then
-						if cntr=1 or (finishTracksRead(0)='1' and tracksOK(0)='1' and finishTracksRead(1)='1' and tracksOK(1)='1') then
-							state := s4;
+			case state is
+				when s0 =>
+					if readMidifileRqt='1' then
+						muxBP_0 <='0'; -- BP_0 serve bytes to Read Header
+						readHeaderRqt <='1';
+						finishFlag =>(others=>'0');	
+						state := s1;
+					end if;
+				
+				when s1 =>
+					if finishHeaderRead='1' then
+						if headerOK='1' then
+							ODBD_ReadRqt <='1';
+							state := s2;
 						else
-							cntr := cntr+1;
-						end if;							
-					else
+							state := s0;
+					end if;
+
+				when s2 =>
+					if ODBD_ValReady='1' then
+						muxBP_0 <='1'; -- BP_0 serve bytes to Read Track 0
+						-- Send read rqt in check mode for the read track components
+						readTracksRqt <= "0101";
+						cntr := (others=>'0');
+						state := s3;
+					end if;
+				
+				-- Wait until the read track components finish the check read
+				when s3 =>
+					if finishTracksRead(0)='1' or  finishTracksRead(1)='1' then
+						if tracksOK(0)='1' or tracksOK(1)='1' then
+							if cntr=1 or 
+							(finishTracksRead(0)='1' and tracksOK(0)='1' and 
+							finishTracksRead(1)='1' and tracksOK(1)='1') 
+							then
+								-- Send read rqt in play mode for the read track components
+								readTracksRqt <= "1010";
+								state := s4;
+							else
+								cntr := cntr+1;
+							end if;							
+						else
+							state := s0;
+						end if;-- tracksOK(0)='1' or tracksOK(1)='1'
+					end if;
+
+				when s4 =>
+					if finishTracksRead(0)='1' then
+						finishFlag(0) :='1';
+					end if;
+					
+					if finishTracksRead(1)='1' then
+						finishFlag(1) :='1';
+					end if;
+					
+					if finishFlag(0)='1' and  finishFlag(1)='1' then
 						state := s0;
 					end if;
-				end if;
-
-			
-		  end case;
-		
-    end if;
+				
+			  end case;
+			  
+		end if;-- cen='0'	
+    end if; -- rising_edge(clk)
 end process;
   
 end Behavioral;

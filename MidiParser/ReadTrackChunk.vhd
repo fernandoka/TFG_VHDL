@@ -312,10 +312,13 @@ begin
 
 
 
-        if cen='0' and fsm_state.state/=s0 then
-            cntr := (others=>'0');
-            fsm_state.state:=s0;
+        if cen='0' then
+            if fsm_state.state/=s0 then
+				cntr := (others=>'0');
+				fsm_state.state:=s0;
+			end if;
         else
+		
             case fsm_state.state is
                 when s0=>
                     if readRqt(0)='1' then	

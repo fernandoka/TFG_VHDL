@@ -158,13 +158,17 @@ cenForFsms: reducedOr
 fsmResponse:
 process(rst_n,clk,fsmsCen,mem_emptyResponseBuffer)
 begin
+	
+	-- Order a read in the same cycle
+	mem_readResponseBuffer <= fsmsCen and (not mem_emptyResponseBuffer);
+
     if rst_n='0' then
 		memAckResponse <=(others=>'0');
-		mem_readResponseBuffer <='0';
+		
 		
     elsif rising_edge(clk) then
         memAckResponse <=(others=>'0');
-		mem_readResponseBuffer <='0';
+		
 		
 		 if fsmsCen='1' and mem_emptyResponseBuffer='0' then
 			memAckResponse(to_integer( unsigned(mem_CmdReadResponse(19 downto 16)) )) <='1';

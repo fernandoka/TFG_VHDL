@@ -36,12 +36,12 @@ entity ReadHeaderChunk is
   Port ( 
         rst_n           		:   in  std_logic;
         clk             		:   in  std_logic;
+		cen                     :   in 	std_logic;
 		readRqt					:	in	std_logic; -- One cycle high to request a read
 		finishRead				:	out std_logic; -- One cycle high when the component end to read the header
 		headerOk				:	out std_logic; -- High, if the header follow our requirements
 		
 		-- OneDividedByDivision_Provider side
-		oneDividedByDivisionRqt	:	out	std_logic;
 		division				:	out	std_logic_vector(15 downto 0);
 		
 		-- Start addreses for the Read Trunk Chunk components
@@ -144,171 +144,176 @@ begin
 		headerOk <='0';
 		finishRead <='0';
 		byteRqt <='0';
-		oneDividedByDivisionRqt <='0';
 		
     elsif rising_edge(clk) then
 		finishRead <='0';
 		byteRqt <='0';
-		oneDividedByDivisionRqt <='0';
-
-		case state is
-			when s0=>
-				if readRqt='1' then
-					headerOk<='0'; -- By default the header dosen't follow our requirements
-					regAddr := to_unsigned(START_ADDR,27);
-					byteRqt <='1';
-					state := s1;
-				end if;
-			
-			when s1 =>
-                if cntr < 4 then 
-                    if byteAck='1' then
-						
-						if cntr < 3 then
-                          byteRqt <='1';
-                        end if;
-                        
-						regAux := regAux(23 downto 0) & nextByte;
-						regAddr := regAddr+1;
-						cntr := cntr+1;
-					end if;
-                else
-                    cntr :=(others=>'0');
-                    if regAux=HEADER_CHUNK_MARK then
-                        byteRqt <='1';
-                        state := s2;
-                    else
-                        finishRead <='1';
-                        state := s0;
-                    end if;
-                end if;
-                
-			when s2 =>
-                if cntr < 4 then 
-				    if byteAck='1' then
-						
-						if cntr < 3 then
-                          byteRqt <='1';
-                        end if;
-                    
-						regAux := regAux(23 downto 0) & nextByte;
-						regAddr := regAddr+1;
-						cntr := cntr+1;
-	                end if;
-                else
-                    cntr :=(others=>'0');
-                    if regAux=HEADER_LENGTH then
-                        byteRqt <='1';
-                        state := s3;
-                    else
-                        finishRead <='1';
-                        state := s0;
-                    end if;
-                end if;
-            
-
-			when s3 =>
-				if cntr < 2 then
-				    if byteAck='1' then
-				    
-						if cntr < 1 then
-                          byteRqt <='1';
-                        end if;
-                                    
-						regAux := regAux(23 downto 0) & nextByte;
-						regAddr := regAddr+1;
-						cntr := cntr+1;
-	                end if;
-                else
-                    cntr :=(others=>'0');
-                    if regAux(15 downto 0)=HEADER_FORMAT then
-                        byteRqt <='1';					
-                        state := s4;
-                    else
-                        finishRead <='1';
-                        state := s0;
-                    end if;
-                end if;
-            
-			when s4 =>
-    			if cntr < 2 then                             
-    				if byteAck='1' then
-						if cntr < 1 then
-                          byteRqt <='1';
-                        end if;
-
-						regAux := regAux(23 downto 0) & nextByte;
-						regAddr := regAddr+1;
-						cntr := cntr+1;
-					end if;
-	            else
-                    cntr :=(others=>'0');
-                    if regAux(15 downto 0)=HEADER_NTRKS then
-                        byteRqt <='1';
-                        state := s5;
-                    else
-                        finishRead <='1';
-                        state := s0;
-                    end if;
-                end if;
-            
-			when s5 =>
-    			if cntr < 2 then 
-                    if byteAck='1' then
-				
-					    if cntr < 1 then
-                            byteRqt <='1';
-                        end if;
-
-						regDivision := regDivision(7 downto 0) & nextByte;
-                        regAddr := regAddr+1;
-                        cntr := cntr+1;
-                    end if;
-				else
-                    cntr :=(others=>'0');
-					if unsigned(regDivision) == 0 then
-						finishRead <='1';
-                        state := s0;
-					else
-						oneDividedByDivisionRqt <='1'; -- Send read request to get OneDividedByDivision constant 
-						regTrack0AddrStart := std_logic_vector(regAddr);
-						-- Don't read the track chunk mark, 4 bytes
-						regAddr := regAddr+4;
-						byteRqt <='1';
-						state := s6;
-					end if;
-					
-                end if;
-		  
-		  when s6 =>
-			if cntr < 4 then 
-				if byteAck='1' then
-					
-					if cntr < 3 then
-					  byteRqt <='1';
-					end if;
-					
-					regAux := regAux(23 downto 0) & nextByte;
-					regAddr := regAddr+1;
-					cntr := cntr+1;
-				end if;
-			else
-				cntr :=(others=>'0');
-				regTrack1AddrStart := std_logic_vector(unsigned(regTrack0AddrStart) + unsigned(regAux) + 8);
-				state := s7;
-			end if;
-			
-		  when s7 =>
-			-- Check if the sum dosen't make overflow.
-			if regTrack1AddrStart(27)='0' then                    
-			 headerOk <='1';
-			end if;
-			finishRead <='1';
-			state := s0;
-		  
-		  end case;
 		
-    end if;
+		
+		if cen='0' then
+            if state/=s0 then
+				state := s0;
+			end if;
+		else
+		
+			case state is
+				when s0=>
+					if readRqt='1' then
+						headerOk<='0'; -- By default the header dosen't follow our requirements
+						regAddr := to_unsigned(START_ADDR,27);
+						byteRqt <='1';
+						state := s1;
+					end if;
+				
+				when s1 =>
+					if cntr < 4 then 
+						if byteAck='1' then
+							
+							if cntr < 3 then
+							  byteRqt <='1';
+							end if;
+							
+							regAux := regAux(23 downto 0) & nextByte;
+							regAddr := regAddr+1;
+							cntr := cntr+1;
+						end if;
+					else
+						cntr :=(others=>'0');
+						if regAux=HEADER_CHUNK_MARK then
+							byteRqt <='1';
+							state := s2;
+						else
+							finishRead <='1';
+							state := s0;
+						end if;
+					end if;
+					
+				when s2 =>
+					if cntr < 4 then 
+						if byteAck='1' then
+							
+							if cntr < 3 then
+							  byteRqt <='1';
+							end if;
+						
+							regAux := regAux(23 downto 0) & nextByte;
+							regAddr := regAddr+1;
+							cntr := cntr+1;
+						end if;
+					else
+						cntr :=(others=>'0');
+						if regAux=HEADER_LENGTH then
+							byteRqt <='1';
+							state := s3;
+						else
+							finishRead <='1';
+							state := s0;
+						end if;
+					end if;
+				
+
+				when s3 =>
+					if cntr < 2 then
+						if byteAck='1' then
+						
+							if cntr < 1 then
+							  byteRqt <='1';
+							end if;
+										
+							regAux := regAux(23 downto 0) & nextByte;
+							regAddr := regAddr+1;
+							cntr := cntr+1;
+						end if;
+					else
+						cntr :=(others=>'0');
+						if regAux(15 downto 0)=HEADER_FORMAT then
+							byteRqt <='1';					
+							state := s4;
+						else
+							finishRead <='1';
+							state := s0;
+						end if;
+					end if;
+				
+				when s4 =>
+					if cntr < 2 then                             
+						if byteAck='1' then
+							if cntr < 1 then
+							  byteRqt <='1';
+							end if;
+
+							regAux := regAux(23 downto 0) & nextByte;
+							regAddr := regAddr+1;
+							cntr := cntr+1;
+						end if;
+					else
+						cntr :=(others=>'0');
+						if regAux(15 downto 0)=HEADER_NTRKS then
+							byteRqt <='1';
+							state := s5;
+						else
+							finishRead <='1';
+							state := s0;
+						end if;
+					end if;
+				
+				when s5 =>
+					if cntr < 2 then 
+						if byteAck='1' then
+					
+							if cntr < 1 then
+								byteRqt <='1';
+							end if;
+
+							regDivision := regDivision(7 downto 0) & nextByte;
+							regAddr := regAddr+1;
+							cntr := cntr+1;
+						end if;
+					else
+						cntr :=(others=>'0');
+						if unsigned(regDivision) == 0 then
+							finishRead <='1';
+							state := s0;
+						else
+							regTrack0AddrStart := std_logic_vector(regAddr);
+							-- Don't read the track chunk mark, 4 bytes
+							regAddr := regAddr+4;
+							byteRqt <='1';
+							state := s6;
+						end if;
+						
+					end if;
+			  
+			  when s6 =>
+				if cntr < 4 then 
+					if byteAck='1' then
+						
+						if cntr < 3 then
+						  byteRqt <='1';
+						end if;
+						
+						regAux := regAux(23 downto 0) & nextByte;
+						regAddr := regAddr+1;
+						cntr := cntr+1;
+					end if;
+				else
+					cntr :=(others=>'0');
+					regTrack1AddrStart := std_logic_vector(unsigned(regTrack0AddrStart) + unsigned(regAux) + 8);
+					state := s7;
+				end if;
+				
+			  when s7 =>
+				-- Check if the sum dosen't make overflow.
+				if regTrack1AddrStart(27)='0' then                    
+				 headerOk <='1';
+				end if;
+				finishRead <='1';
+				state := s0;
+			  
+			end case;
+			  
+		end if;-- cen='0'	
+    end if;-- rising_edge(clk)
 end process;
   
 end Behavioral;

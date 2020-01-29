@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 --		Mem addr refers to one sample.					 		
 --
@@ -60,7 +60,7 @@ architecture Behavioral of ByteProvider is
 begin
 
 fsm:
-process(rst_n,clk,byteRqt,mem_ack)
+process(rst_n,clk,byteRqt,memAckSend,memAckResponse)
     type states is (firstRead, serveBytes, waitCmdAck, getData);	
 	variable state		:	states;
 	variable regAddr	:	unsigned(26 downto 0);	

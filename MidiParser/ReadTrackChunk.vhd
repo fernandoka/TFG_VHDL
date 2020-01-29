@@ -312,13 +312,10 @@ begin
 
 
 
-        if cen='0' then
-            if fsm_state.state/=s0 then
-				cntr := (others=>'0');
-				fsm_state.state:=s0;
-			end if;
+        if cen='0' and fsm_state.state/=s0 then
+            cntr := (others=>'0');
+            fsm_state.state:=s0;
         else
-		
             case fsm_state.state is
                 when s0=>
                     if readRqt(0)='1' then	
@@ -366,7 +363,7 @@ begin
                         end if;
                     end if;
     
-                -- Save nº bytes of track
+                -- Save nÂº bytes of track
                 when s2 =>
                     if cntr < 4 then 
                         if byteAck='1' then
@@ -492,7 +489,7 @@ begin
               
                 when skipVarLengthBytes =>
                     if varLengthRdy='1' then
-                        -- Nº of bytes starting by the las address readed by VarLength component.
+                        -- NÂº of bytes starting by the las address readed by VarLength component.
                         regAddr := unsigned(varLengthByteAddr) + unsigned(resVarLength(26 downto 0)) + 1;  
                         readVarLengthRqt <='1';
                         fsm_state.state := s3;

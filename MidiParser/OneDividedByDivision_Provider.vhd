@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.5
+-- Revision 0.2
 -- Additional Comments:
 --
 ----------------------------------------------------------------------------------
@@ -62,16 +62,18 @@ architecture Behavioral of OneDividedByDivision_Provider is
 begin
 
 fsm:
-process(rst_n,clk,readRqt,byteAck)
+process(rst_n,clk,readRqt,memAckSend,memAckResponse)
     type states is (s0, s1, s2);	
 	variable state	:	states;
 	
+	variable   constantIndex   :   unsigned(24 downto 0);
 begin
 
-    --Debug
-    regAuxOut <=regAux;
-    cntrOut <=std_logic_vector(cntr);
+
+    constantIndex :=(others=>'0');
+    constantIndex(15 downto 0) := unsigned(division);
     
+    --Debug
     statesOut <=(others=>'0');
     if state=s0 then
         statesOut(0)<='1'; 
@@ -89,7 +91,6 @@ begin
     	
 	if rst_n='0' then
 		state := s0;
-		cntr := (others=>'0');
 		addr_out <=(others=>'0');
 		OneDividedByDivision <=(others=>'0');
 		memConstantSendRq <='0';
@@ -100,7 +101,7 @@ begin
 		case state is
 			when s0=>
 				if readRqt='1' then
-					addr_out <= to_unsigned(START_ADDR,25) + ('0' & X"00" & division) - 1;
+					addr_out <= std_logic_vector(to_unsigned(START_ADDR,25) + constantIndex - 1);
 					memConstantSendRq <='1';
 					readyValue <='0';
 					state := s1;

@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --		-- For Midi parser component --
 --		Format of mem_CmdReadRequest	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -54,7 +54,7 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity MidiParser.vhd is
+entity MidiParser is
   Port ( 
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
@@ -67,7 +67,12 @@ entity MidiParser.vhd is
 		
 		-- Debug
 		statesOut_ODBD				:	out std_logic_vector(2 downto 0);
+		
 		statesOut_MidiCntrl			:	out	std_logic_vector(4 downto 0);
+		
+		regAuxHeader                :   out   std_logic_vector(31 downto 0);
+		cntrOutHeader               :   out   std_logic_vector(2 downto 0);
+		statesOutHeader             :   out   std_logic_vector(7 downto 0);
 		
 		regAuxOut_0       			: 	out std_logic_vector(31 downto 0);
 		regAddrOut_0                : 	out std_logic_vector(26 downto 0);
@@ -95,13 +100,13 @@ entity MidiParser.vhd is
   );
 -- Attributes for debug
 --attribute   dont_touch    :   string;
---attribute   dont_touch  of  MidiParser.vhd  :   entity  is  "true";
+--attribute   dont_touch  of  MidiParser  :   entity  is  "true";
     
-end MidiParser.vhd;
+end MidiParser;
 
 use work.my_common.all;
 
-architecture Behavioral of MidiParser.vhd is
+architecture Behavioral of MidiParser is
 ----------------------------------------------------------------------------------
 -- TYPES DECLARATIONS
 ----------------------------------------------------------------------------------     
@@ -128,9 +133,10 @@ architecture Behavioral of MidiParser.vhd is
 	signal	BP_data				:	byteData_t;
 	signal	BP_byteRqt, BP_ack	:	std_logic_vector(1 downto 0);
 	
-	-- For Read Header components¡
+	-- For Read Header componentsÂ¡
 	signal	readFinish, headerOKe, startHeaderRead		:	std_logic;
-	signal	finishTracksRead, tracksOK, readTracksRqt	:	std_logic_vector(1 downto 0);
+	signal	finishTracksRead, tracksOK	                :	std_logic_vector(1 downto 0);
+	signal  readTracksRqt                               :   std_logic_vector(3 downto 0);
 	signal	trackAddrStartVal							:	trackAddrStart_t;
 	
 	signal	BP_addr_ReadHeader							:	std_logic_vector(26 downto 0); 
@@ -138,13 +144,13 @@ architecture Behavioral of MidiParser.vhd is
 	signal	BP_byteRqt_ReadHeader, BP_ack_ReadHeader	:	std_logic;
 	
 	-- For Read Tracks components
-	signal	notesOn										:	trackNotesOn_t;
+	signal	notesOnPerTrack								:	trackNotesOn_t;
 	signal	BP_addr_ReadTrack_0							:	std_logic_vector(26 downto 0); 
 	signal	BP_data_ReadTrack_0							:	std_logic_vector(7 downto 0);
 	signal	BP_byteRqt_ReadTrack_0, BP_ack_ReadTrack_0	:	std_logic;
 	
 	-- For manage the mem CMDs
-	signal	memAckSend, memAckResponse, memSamplesSendRqt	:	std_logic_vector(1 downto 0);
+	signal	memAckSend, memAckResponse, memSamplesSendRqt	:	std_logic_vector(2 downto 0);
 	signal	mem_byteP_addrOut								:	memAddr_t;
 	
 begin
@@ -166,7 +172,7 @@ begin
 
 -- MidiController
  my_MidiController : MidiController
- port ( 
+ port map( 
         rst_n           	=> rst_n,	
         clk             	=> clk,	
 		cen					=> cen,
@@ -184,7 +190,7 @@ begin
 		parseOnOff			=> OnOff,	
 								
 		--Debug                 
-		statesOut       	=> statesOut_MidiCntrl,	
+		statesOut       	=> statesOut_MidiCntrl	
 		
   );
 
@@ -202,7 +208,7 @@ BP_0 : ByteProvider
 		samples_in       	=>	mem_CmdReadResponse(127 downto 0),
         memAckSend       	=>	memAckSend(0),
         memAckResponse   	=>	memAckResponse(0),
-        addr_out         	=>	mem_byteP_addrOut(0)    
+        addr_out         	=>	mem_byteP_addrOut(0),    
 		memSamplesSendRqt	=>	memSamplesSendRqt(0)
 
 	);
@@ -221,7 +227,7 @@ BP_1 : ByteProvider
 		samples_in       	=>	mem_CmdReadResponse(127 downto 0),
         memAckSend       	=>	memAckSend(1),
         memAckResponse   	=>	memAckResponse(1),
-        addr_out         	=>	mem_byteP_addrOut(1)    
+        addr_out         	=>	mem_byteP_addrOut(1),    
 		memSamplesSendRqt	=>	memSamplesSendRqt(1)
 
   );
@@ -241,7 +247,7 @@ my_ODBD_Provider : OneDividedByDivision_Provider
 		statesOut       		=> statesOut_ODBD,
 		 
 		-- Mem arbitrator side
-		dataIn       			=>	mem_CmdReadResponse(31 downto 0),
+		dataIn       			=>	mem_CmdReadResponse(23 downto 0),
 		memAckSend      		=>	memAckSend(2),
 		memAckResponse			=>	memAckResponse(2),
 		addr_out        		=>	mem_ODBD_addr,    
@@ -268,9 +274,9 @@ my_ReadHeaderChunk : ReadHeaderChunk
         track1AddrStart => trackAddrStartVal(1),
 		
 		--Debug
-        regAuxOut =>regAux,
-        cntrOut =>cntrOut,
-        statesOut =>statesOut,
+        regAuxOut => regAuxHeader,
+        cntrOut => cntrOutHeader,
+        statesOut => statesOutHeader,
 		 
 		--Byte provider side
         nextByte => BP_data_ReadHeader,
@@ -279,6 +285,9 @@ my_ReadHeaderChunk : ReadHeaderChunk
         byteRqt  => BP_byteRqt_ReadHeader
 
   );
+
+-- To get all the notes
+notesOn <= notesOnPerTrack(0) or notesOnPerTrack(1);
 
 -- Read Track Components
 ReadTrackChunk_0 : ReadTrackChunk
@@ -291,7 +300,7 @@ ReadTrackChunk_0 : ReadTrackChunk
 		OneDividedByDivision	=> ODBD_Val,	
 		finishRead				=> finishTracksRead(0),	
 		trackOK					=> tracksOK(0),	
-		notesOn					=> notesOn(0),	
+		notesOn					=> notesOnPerTrack(0),	
 								
 		--Debug		        	    
 		regAuxOut       		=> regAuxOut_0       ,	
@@ -320,7 +329,7 @@ ReadTrackChunk_1 : ReadTrackChunk
 		OneDividedByDivision	=> ODBD_Val,	
 		finishRead				=> finishTracksRead(1),	
 		trackOK					=> tracksOK(1),	
-		notesOn					=> notesOn(1),	
+		notesOn					=> notesOnPerTrack(1),	
 								
 		--Debug		        	    
 		regAuxOut       		=> regAuxOut_1       ,	
@@ -360,7 +369,7 @@ begin
 		
 		 if cen='1' and mem_emptyBuffer='0' then
 						
-			if mem_CmdReadResponse(129 downto 128))="11" then
+			if mem_CmdReadResponse(129 downto 128)="11" then
 				memAckResponse(2) <='1';
 			else
 				memAckResponse(to_integer( unsigned(mem_CmdReadResponse(129 downto 128)) )) <='1';
@@ -409,11 +418,10 @@ begin
                         mem_writeReciveBuffer <= '1';
 						-- Send ack to note gen
                         memAckSend(to_integer(turnCntr)) <='1';
-						state := waitMemAck0;
 						
 						-- Build cmd
 						regReadCmdRqt := std_logic_vector(turnCntr) & mem_byteP_addrOut(to_integer(turnCntr)) & "00"; -- provider index + provider addr
-						if turn=2 then
+						if turnCntr=2 then
 							regReadCmdRqt := "11" & mem_ODBD_addr; -- ODBD index + ODBD addr
                         end if;
 						

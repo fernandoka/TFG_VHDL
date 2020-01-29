@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.1
+-- Revision 0.2
 -- Additional Comments:
 --		This component manage the activation of the differents components for
 --		midi parser component
@@ -107,16 +107,16 @@ begin
 	if rst_n='0' then
 		state := s0;
 		cntr :=(others=>'0');
-		readHeaderRqt =>'0';
-		finishFlag =>(others=>'0');	
-		readTracksRqt =>(others=>'0');	
-		ODBD_ReadRqt =>'0';
+		readHeaderRqt <='0';
+		finishFlag :=(others=>'0');	
+		readTracksRqt <=(others=>'0');	
+		ODBD_ReadRqt <='0';
 		muxBP_0 <='0';		
     
 	elsif rising_edge(clk) then
-		readHeaderRqt =>'0';	
-		readTracksRqt =>(others=>'0');	
-		ODBD_ReadRqt =>'0';
+		readHeaderRqt <='0';	
+		readTracksRqt <=(others=>'0');	
+		ODBD_ReadRqt <='0';
 		
 		if cen='0' then
             if state/=s0 then
@@ -129,7 +129,7 @@ begin
 					if readMidifileRqt='1' then
 						muxBP_0 <='0'; -- BP_0 serve bytes to Read Header
 						readHeaderRqt <='1';
-						finishFlag =>(others=>'0');	
+						finishFlag :=(others=>'0');	
 						state := s1;
 					end if;
 				
@@ -140,6 +140,7 @@ begin
 							state := s2;
 						else
 							state := s0;
+						end if;
 					end if;
 
 				when s2 =>

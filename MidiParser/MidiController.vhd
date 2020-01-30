@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 --		This component manage the activation of the differents components for
 --		midi parser component
@@ -49,7 +49,6 @@ entity MidiController is
 		readHeaderRqt			:	out	std_logic;
 		muxBP_0					:	out	std_logic; -- Decides if BP_0 serves bytes to Read Header(low) or Read Track 0(high)
 		readTracksRqt			:	out	std_logic_vector(3 downto 0); -- Per track->10 play mode 01 check mode
-		ODBD_ReadRqt			:	out	std_logic;
 		parseOnOff				:	out	std_logic; -- 1 Controller is On everything goes right, otherwise something went wrong
 		
 		--Debug
@@ -110,15 +109,13 @@ begin
 		readHeaderRqt <='0';
 		finishFlag :=(others=>'0');	
 		readTracksRqt <=(others=>'0');	
-		ODBD_ReadRqt <='0';
 		muxBP_0 <='0';		
     
 	elsif rising_edge(clk) then
 		readHeaderRqt <='0';	
 		readTracksRqt <=(others=>'0');	
-		ODBD_ReadRqt <='0';
 		
-		if cen='0' then
+		if cen='1' then
             if state/=s0 then
 				state := s0;
 			end if;
@@ -136,7 +133,6 @@ begin
 				when s1 =>
 					if finishHeaderRead='1' then
 						if headerOK='1' then
-							ODBD_ReadRqt <='1';
 							state := s2;
 						else
 							state := s0;

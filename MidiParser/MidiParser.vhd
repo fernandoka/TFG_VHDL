@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 --		-- For Midi parser component --
 --		Format of mem_CmdReadRequest	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -164,11 +164,15 @@ begin
 --		Read Track Components
 ----------------------------------------------------------------------------------  
 
--- Multiplexor for BP_0
-	BP_addr(0) <= BP_addr_ReadHeader when muxBP_0='0' else BP_addr_ReadTrack_0;
-	BP_data(0) <= BP_data_ReadHeader when muxBP_0='0' else BP_data_ReadTrack_0;
+-- Multiplexors for BP_0
+	BP_addr(0) <= BP_addr_ReadHeader when muxBP_0='0' else BP_addr_ReadTrack_0;	
 	BP_byteRqt(0) <= BP_byteRqt_ReadHeader when muxBP_0='0' else BP_byteRqt_ReadTrack_0;
-	BP_ack(0) <= BP_ack_ReadHeader when muxBP_0='0' else BP_ack_ReadTrack_0;
+	
+	BP_data_ReadHeader <= BP_data(0) when muxBP_0='0' else (others=>'0');
+    BP_ack_ReadHeader <= BP_ack(0) when muxBP_0='0' else '0';
+    
+	BP_data_ReadTrack_0 <= BP_data(0) when muxBP_0='1' else (others=>'0');
+    BP_ack_ReadTrack_0 <= BP_ack(0) when muxBP_0='1' else '0';
 
 -- MidiController
  my_MidiController : MidiController
@@ -186,7 +190,6 @@ begin
 		readHeaderRqt		=> startHeaderRead,
 		muxBP_0				=> muxBP_0,
 		readTracksRqt		=> readTracksRqt,	
-		ODBD_ReadRqt		=> ODBD_ReadRqt,	
 		parseOnOff			=> OnOff,	
 								
 		--Debug                 
@@ -248,7 +251,7 @@ my_ODBD_Provider : OneDividedByDivision_Provider
 		 
 		-- Mem arbitrator side
 		dataIn       			=>	mem_CmdReadResponse(23 downto 0),
-		memAckSend      		=>	memAckSend(2),
+		memAckSend      		=>	memAckSend(2),		
 		memAckResponse			=>	memAckResponse(2),
 		addr_out        		=>	mem_ODBD_addr,    
 		memConstantSendRq		=>	memSamplesSendRqt(2)
@@ -267,6 +270,7 @@ my_ReadHeaderChunk : ReadHeaderChunk
         headerOk => headerOKe,
 		
 		-- OneDividedByDivision_Provider side
+		ODBD_ReadRqt => ODBD_ReadRqt,
         division => divisionVal,
 		
 		-- Start addreses for the Read Trunk Chunk components
@@ -288,6 +292,8 @@ my_ReadHeaderChunk : ReadHeaderChunk
 
 -- To get all the notes
 notesOn <= notesOnPerTrack(0) or notesOnPerTrack(1);
+-- Check if both tracks are Ok
+fileOk <= tracksOK(0) or tracksOK(1);
 
 -- Read Track Components
 ReadTrackChunk_0 : ReadTrackChunk
@@ -356,28 +362,22 @@ ReadTrackChunk_1 : ReadTrackChunk
 fsmResponse:
 process(rst_n,clk,cen,mem_emptyBuffer)
 begin
-
-	-- Order a read in the same cycle
-	mem_readResponseBuffer <= cen and (not mem_emptyBuffer);
+    -- Everything in one cycle
     
-	
-	if rst_n='0' then
-		memAckResponse <=(others=>'0');
-		
-    elsif rising_edge(clk) then
-        memAckResponse <=(others=>'0');
-		
-		 if cen='1' and mem_emptyBuffer='0' then
-						
-			if mem_CmdReadResponse(129 downto 128)="11" then
-				memAckResponse(2) <='1';
-			else
-				memAckResponse(to_integer( unsigned(mem_CmdReadResponse(129 downto 128)) )) <='1';
-			end if;
-			
-		 end if;
-		 
+    -- Read order to response buffer
+    mem_readResponseBuffer <= '0';
+    if cen='0' and mem_emptyBuffer='0' then
+        mem_readResponseBuffer <= '1';
     end if;
+
+    if cen='0' and mem_emptyBuffer='0' then        
+        if mem_CmdReadResponse(129 downto 128)="11" then
+            memAckResponse(2) <='1';
+        else
+            memAckResponse(to_integer( unsigned(mem_CmdReadResponse(129 downto 128)) )) <='1';
+        end if;    
+    end if;
+
 end process;
   
 
@@ -388,55 +388,46 @@ end process;
 ----------------------------------------------------------------------------------  
 
 fsmSend:
-process(rst_n,clk,cen,memSamplesSendRqt)
-    type states is ( checkGeneratorRqt);
-    
-    variable state      	:   states;
+process(rst_n,clk,cen,memSamplesSendRqt)    
     variable turnCntr   	:   unsigned(1 downto 0);
     variable regReadCmdRqt 	:   std_logic_vector(26 downto 0);
     
 begin
     
     mem_CmdReadRequest <= regReadCmdRqt;
-    
+  
     if rst_n='0' then
        turnCntr := (others=>'0');
-       state := checkGeneratorRqt;
        regReadCmdRqt := (others=>'0');
        mem_writeReciveBuffer <= '0';
-       memAckSend <=(others=>'0');
-	   
+       memAckSend <=(others=>'0'); 
+               
     elsif rising_edge(clk) then
         mem_writeReciveBuffer <= '0'; -- Just one cycle
-		memAckSend <=(others=>'0'); -- Just one cycle
-        
-		case state is
-			
-            when checkGeneratorRqt =>
-                 if cen='1' and memSamplesSendRqt(to_integer(turnCntr))='1' then
-                        -- Write command in the mem buffer
-                        mem_writeReciveBuffer <= '1';
-						-- Send ack to note gen
-                        memAckSend(to_integer(turnCntr)) <='1';
-						
-						-- Build cmd
-						regReadCmdRqt := std_logic_vector(turnCntr) & mem_byteP_addrOut(to_integer(turnCntr)) & "00"; -- provider index + provider addr
-						if turnCntr=2 then
-							regReadCmdRqt := "11" & mem_ODBD_addr; -- ODBD index + ODBD addr
-                        end if;
-						
-                 else
-                    if turnCntr=2 then -- Until max providers
-                        turnCntr := (others=>'0');
-                    else
-                        turnCntr := turnCntr+1;
-                    end if;     
-                 end if;   
+        memAckSend <=(others=>'0'); -- Just one cycle
+                
+        if cen='0' and memSamplesSendRqt(to_integer(turnCntr))='1' then
+            -- Write command in the mem buffer
+            mem_writeReciveBuffer <= '1';
+            -- Send Ack to provider
+            memAckSend(to_integer(turnCntr)) <='1';
+            -- Build cmd
+            if turnCntr=2 then
+                regReadCmdRqt := "11" & mem_ODBD_addr; -- ODBD index + ODBD addr
+            else
+                regReadCmdRqt := std_logic_vector(turnCntr) & mem_byteP_addrOut(to_integer(turnCntr)) & "00"; -- provider index + provider addr
+            end if;
             
+        end if;
+    
+        if turnCntr=2 then -- Until max providers
+            turnCntr := (others=>'0');
+        else
+            turnCntr := turnCntr+1;
+        end if;             
 
-        end case;
         
-    end if;
+    end if;--rst_n/rising_edge
 end process;
   
 end Behavioral;

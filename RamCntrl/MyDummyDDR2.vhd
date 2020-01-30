@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.3
+-- Revision 0.4
 -- Additional Comments:
 --					 		
 --
@@ -180,7 +180,7 @@ begin
 		ack <='0';
 		if cen='0' and (wr='0' or rd='0') then
             ack <='1'; --
-            if unsigned(addr) < MAX_ROWS then
+            if unsigned(addr) <= MAX_ROWS then
                 if wr='0' then
                     romWr := data_in;
                 elsif rd='0' then

@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.3
+-- Revision 0.4
 -- Additional Comments:
 --		Mem addr refers to one sample.					 		
 --
@@ -44,7 +44,7 @@ entity ByteProvider is
 		
 		-- Mem arbitrator side
 		samples_in       	:	in	std_logic_vector(127 downto 0);
-		memAckSend       	:	in	std_logic; -- One cycle high
+        memAckSend       	:	in	std_logic; -- One cycle high
 		memAckResponse   	:	in	std_logic;
 		addr_out         	:	out std_logic_vector(22 downto 0); 
 		memSamplesSendRqt	:	out std_logic
@@ -60,26 +60,29 @@ architecture Behavioral of ByteProvider is
 begin
 
 fsm:
-process(rst_n,clk,byteRqt,memAckSend,memAckResponse)
+process(rst_n,clk,byteRqt,memAckResponse)
     type states is (firstRead, serveBytes, waitCmdAck, getData);	
-	variable state		:	states;
-	variable regAddr	:	unsigned(26 downto 0);	
-	variable regData	:	std_logic_vector(127 downto 0);
+	variable   state		:	states;
+	
+	variable   regAddr     :   unsigned(26 downto 0);	
+	variable   regData     :   std_logic_vector(127 downto 0);
+	variable   readFlag    :   std_logic;
 
 begin
     
 	addr_out <= std_logic_vector(regAddr(26 downto 4));
     
 	if rst_n='0' then
-		state := firstRead;
+		state :=firstRead;
 		regAddr :=(others=>'0');
-		regData := (others=>'0');
+		regData :=(others=>'0');
+		readFlag :='0';
 		byteAck <='0';
 		memSamplesSendRqt <= '0';
 		
     elsif rising_edge(clk) then
 		byteAck <='0';
-		
+
 			 
 		case state is
 		
@@ -88,18 +91,21 @@ begin
                     regAddr := unsigned(addrInVal);
                     -- Prepare read for the next cycle
                     memSamplesSendRqt <= '1';
+                    readFlag :='1';
                     state := waitCmdAck;
                 end if;
 			
 			when serveBytes=>
-				if byteRqt='1' then
+				if readFlag='1' or byteRqt='1' then
 					if regAddr(26 downto 4)/=unsigned(addrInVal(26 downto 4)) then
 						regAddr := unsigned(addrInVal);
 						-- Prepare read for the next cycle
 						memSamplesSendRqt <= '1';
+						readFlag :='1';
 						state := waitCmdAck;
 					else
 						byteAck <= '1';
+						readFlag :='0';
 						case addrInVal(3 downto 0) is
 							when X"0"=>
 								nextByte <= regData(7 downto 0);
@@ -156,11 +162,12 @@ begin
 					end if;
 				end if; --byteRqt='1'
 			
-			when waitCmdAck=>
-				if memAckSend='1' then
-					memSamplesSendRqt <= '0';
-					state := getData;
-				end if;
+            when waitCmdAck=>
+                if memAckSend='1' then
+                    memSamplesSendRqt <= '0';
+                    state := getData;
+                end if;
+    
 			
 			when getData =>
 				if memAckResponse='1' then

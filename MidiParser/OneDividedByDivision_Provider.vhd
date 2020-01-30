@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 --
 ----------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ entity OneDividedByDivision_Provider is
 		 
 		-- Mem arbitrator side
 		dataIn       			:	in	std_logic_vector(23 downto 0); -- Value of 1/division in Q4.20
-		memAckSend      		:   in 	std_logic;
+        memAckSend      		:   in 	std_logic;
 		memAckResponse			:	in  std_logic;
 		addr_out        		:   out std_logic_vector(24 downto 0); 
 		memConstantSendRq		:   out std_logic
@@ -62,13 +62,16 @@ architecture Behavioral of OneDividedByDivision_Provider is
 begin
 
 fsm:
-process(rst_n,clk,readRqt,memAckSend,memAckResponse)
+process(rst_n,clk,readRqt,memAckResponse)
     type states is (s0, s1, s2);	
 	variable state	:	states;
 	
 	variable   constantIndex   :   unsigned(24 downto 0);
+	variable   regAddr         :   unsigned(24 downto 0);
 begin
 
+
+    addr_out <= std_logic_vector(regAddr);
 
     constantIndex :=(others=>'0');
     constantIndex(15 downto 0) := unsigned(division);
@@ -82,11 +85,10 @@ begin
     if state=s1 then
         statesOut(1)<='1'; 
     end if;
-
+    
     if state=s2 then
         statesOut(2)<='1'; 
     end if;
-
     --
     	
 	if rst_n='0' then
@@ -97,29 +99,28 @@ begin
 		readyValue <='0';
     
 	elsif rising_edge(clk) then
-		
+
 		case state is
 			when s0=>
 				if readRqt='1' then
-					addr_out <= std_logic_vector(to_unsigned(START_ADDR,25) + constantIndex - 1);
+					regAddr := to_unsigned(START_ADDR,25) + constantIndex - 1;
 					memConstantSendRq <='1';
 					readyValue <='0';
 					state := s1;
 				end if;
 			
 			when s1 =>
-				if memAckSend='1' then
-					memConstantSendRq <='0';
-					state := s2;
-				end if;
-		  
-			when s2 =>
-				if memAckResponse='1' then 
-					OneDividedByDivision <= dataIn;
-					readyValue <='1';
-					state := s0;
-				end if;
-				
+                    if memAckSend='1' then
+                        memConstantSendRq <='0';
+                        state := s2;
+                    end if;
+              
+                when s2 =>
+                    if memAckResponse='1' then 
+                        OneDividedByDivision <= dataIn;
+                        readyValue <='1';
+                        state := s0;
+                    end if;
 		  end case;
 		
     end if;

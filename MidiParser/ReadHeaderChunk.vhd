@@ -13,8 +13,11 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.5
+-- Revision 0.6
 -- Additional Comments:
+--      Send rqt to ODBD provider. MidiController will wait until the response of
+--      ODBD provider
+--
 --
 ----------------------------------------------------------------------------------
 
@@ -42,6 +45,7 @@ entity ReadHeaderChunk is
 		headerOk				:	out std_logic; -- High, if the header follow our requirements
 		
 		-- OneDividedByDivision_Provider side
+        ODBD_ReadRqt			:	out	std_logic;
 		division				:	out	std_logic_vector(15 downto 0);
 		
 		-- Start addreses for the Read Trunk Chunk components
@@ -144,13 +148,15 @@ begin
 		headerOk <='0';
 		finishRead <='0';
 		byteRqt <='0';
-		
+        ODBD_ReadRqt <='0';
+
     elsif rising_edge(clk) then
 		finishRead <='0';
 		byteRqt <='0';
+        ODBD_ReadRqt <='0';
+
 		
-		
-		if cen='0' then
+		if cen='1' then
             if state/=s0 then
 				state := s0;
 			end if;
@@ -271,11 +277,13 @@ begin
 						end if;
 					else
 						cntr :=(others=>'0');
-						if unsigned(regDivision) == 0 then
+						if unsigned(regDivision)=0 then
 							finishRead <='1';
 							state := s0;
 						else
 							regTrack0AddrStart := std_logic_vector(regAddr);
+							-- ODBD rqt
+                            ODBD_ReadRqt <='1';
 							-- Don't read the track chunk mark, 4 bytes
 							regAddr := regAddr+4;
 							byteRqt <='1';

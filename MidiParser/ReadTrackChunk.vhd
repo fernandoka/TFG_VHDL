@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 1.0
+-- Revision 1.1
 -- Additional Comments:
 --    Notes: In play mode, infinite loop are not checked !!           
 --
@@ -311,10 +311,11 @@ begin
         end if;
 
 
-
-        if cen='0' and fsm_state.state/=s0 then
-            cntr := (others=>'0');
-            fsm_state.state:=s0;
+        if cen='1' then
+            if fsm_state.state/=s0 then
+                cntr := (others=>'0');
+                fsm_state.state:=s0;
+            end if;
         else
             case fsm_state.state is
                 when s0=>
@@ -363,7 +364,7 @@ begin
                         end if;
                     end if;
     
-                -- Save nÂº bytes of track
+                -- Save nÃ‚Âº bytes of track
                 when s2 =>
                     if cntr < 4 then 
                         if byteAck='1' then
@@ -489,7 +490,7 @@ begin
               
                 when skipVarLengthBytes =>
                     if varLengthRdy='1' then
-                        -- NÂº of bytes starting by the las address readed by VarLength component.
+                        -- NÃ‚Âº of bytes starting by the las address readed by VarLength component.
                         regAddr := unsigned(varLengthByteAddr) + unsigned(resVarLength(26 downto 0)) + 1;  
                         readVarLengthRqt <='1';
                         fsm_state.state := s3;

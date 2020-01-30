@@ -43,7 +43,7 @@ architecture Behavioral of FullMidiParserTest_NoCMD is
     constant clkPeriod : time := 13.333333333333333333333333333333333333333333333333333333333 ns;   -- Periodo del reloj (75 MHz)
 
 
-    -- Señales 
+    -- SeÃ±ales 
     signal	clk     : std_logic := '1';      
     signal	rst_n   : std_logic := '0';
 
@@ -55,24 +55,24 @@ architecture Behavioral of FullMidiParserTest_NoCMD is
     signal  wrRqtReadBuffer_0     	:	std_logic; 
     signal  fullCmdReadBuffer_0		:	std_logic;
     
-    signal  inCmdReadBuffer_1     	:	std_logic_vector(32 downto 0); -- For KeyboardCntrl component
-    signal  wrRqtReadBuffer_1       :    std_logic;
-    signal  fullCmdReadBuffer_1     :    std_logic;
+--    signal  inCmdReadBuffer_1     	:	std_logic_vector(32 downto 0); -- For KeyboardCntrl component
+--    signal  wrRqtReadBuffer_1       :    std_logic;
+--    signal  fullCmdReadBuffer_1     :    std_logic;
 
     -- Buffers and signals to manage the read response commands
     signal	rdRqtReadBuffer_0		:	std_logic;
     signal	outCmdReadBuffer_0		:	std_logic_vector(129 downto 0); -- Cmd response buffer for Midi parser component
     signal	emptyResponseRdBuffer_0	:	std_logic;
 
-    signal	rdRqtReadBuffer_1		:	std_logic;
-    signal	outCmdReadBuffer_1		:	std_logic_vector(22 downto 0);	-- Cmd response buffer for KeyboardCntrl component
-    signal	emptyResponseRdBuffer_1	:	std_logic;	 
+--    signal	rdRqtReadBuffer_1		:	std_logic;
+--    signal	outCmdReadBuffer_1		:	std_logic_vector(22 downto 0);	-- Cmd response buffer for KeyboardCntrl component
+--    signal	emptyResponseRdBuffer_1	:	std_logic;	 
     
-    -- Buffer and signals to manage the writes commands
-    signal    inCmdWriteBuffer   :    std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
-    signal    wrRqtWriteBuffer   :    std_logic;
-    signal    fullCmdWriteBuffer, emptyCmdWriteBufferOut :    std_logic;
-    signal    writeWorking       :    std_logic; -- High when the RamCntrl is executing some write command, low when no writes 
+--    -- Buffer and signals to manage the writes commands
+--    signal    inCmdWriteBuffer   :    std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
+--    signal    wrRqtWriteBuffer   :    std_logic;
+--    signal    fullCmdWriteBuffer, emptyCmdWriteBufferOut :    std_logic;
+--    signal    writeWorking       :    std_logic; -- High when the RamCntrl is executing some write command, low when no writes 
     
     -- Midi parser
     signal  cen, readMidifileRqt, fileOk, OnOff     :   std_logic;
@@ -128,29 +128,35 @@ process
 begin
     
     rdWr <='0'; --Write mode
-    
+    cen <='1';
+	readMidifileRqt <='0';
 	-- Buffers and signals to manage the read request commands
-    inCmdReadBuffer_1         <= (others=>'0');
-    wrRqtReadBuffer_1            <= '0';
+--    inCmdReadBuffer_1         <= (others=>'0');
+--    wrRqtReadBuffer_1            <= '0';
     
-    -- Buffers and signals to manage the read response commands     
-    rdRqtReadBuffer_1            <= '0';
+--    -- Buffers and signals to manage the read response commands     
+--    rdRqtReadBuffer_1            <= '0';
 
-    -- Buffer and signals to manage the writes commands
-    inCmdWriteBuffer            <= (others=>'0');
-    wrRqtWriteBuffer            <= '0';
+--    -- Buffer and signals to manage the writes commands
+--    inCmdWriteBuffer            <= (others=>'0');
+--    wrRqtWriteBuffer            <= '0';
     
-	wait until (rst_n='1');
-	
+	wait until (rst_n='1' and clk='1');
+    rdWr <='1'; -- Read mode
+    cen <='0';
+    
 	wait for (clkPeriod*5);
 	
-
-    
+	readMidifileRqt <='1';
+    wait for (clkPeriod);
+	readMidifileRqt <='0';
+	    
     wait;
 
 end process;
 
 Ram: RamCntrl
+   generic map(CACHE_SIZE => 2)
    port map(                    
          -- Only for Test       
         clk   					=> clk,
@@ -179,25 +185,25 @@ Ram: RamCntrl
 	  wrRqtReadBuffer_0     	=> wrRqtReadBuffer_0, 
 	  fullCmdReadBuffer_0		=> fullCmdReadBuffer_0, 
 								 
-	  inCmdReadBuffer_1     	=> inCmdReadBuffer_1, -- For KeyboardCntrl component
-      wrRqtReadBuffer_1			=> wrRqtReadBuffer_1, 
-	  fullCmdReadBuffer_1		=> fullCmdReadBuffer_1, 
-	  
-	  -- Buffers and signals to manage the read response commands
-	  rdRqtReadBuffer_0			=> rdRqtReadBuffer_0,
-	  outCmdReadBuffer_0		=> outCmdReadBuffer_0,-- Cmd response buffer for Midi parser component
-	  emptyResponseRdBuffer_0	=> emptyResponseRdBuffer_0,
-								
-	  rdRqtReadBuffer_1			=> rdRqtReadBuffer_1,
-	  outCmdReadBuffer_1		=> outCmdReadBuffer_1,-- Cmd response buffer for KeyboardCntrl component
-	  emptyResponseRdBuffer_1	=> emptyResponseRdBuffer_1,
+	  inCmdReadBuffer_1     	=> (others=>'0'), --inCmdReadBuffer_1, -- For KeyboardCntrl component
+      wrRqtReadBuffer_1         => '0', --wrRqtReadBuffer_1, 
+      fullCmdReadBuffer_1       => open, --fullCmdReadBuffer_1, 
+      
+      -- Buffers and signals to manage the read response commands
+      rdRqtReadBuffer_0            => rdRqtReadBuffer_0,
+      outCmdReadBuffer_0           => outCmdReadBuffer_0,-- Cmd response buffer for Midi parser component
+      emptyResponseRdBuffer_0      => emptyResponseRdBuffer_0,
+                                
+      rdRqtReadBuffer_1            => '0', --rdRqtReadBuffer_1,
+      outCmdReadBuffer_1           => open, --outCmdReadBuffer_1,-- Cmd response buffer for KeyboardCntrl component
+      emptyResponseRdBuffer_1      => open, --emptyResponseRdBuffer_1,
 
-	  -- Buffer and signals to manage the writes commands
-	  inCmdWriteBuffer			=> inCmdWriteBuffer,-- For setup component and store midi file BL component
-	  wrRqtWriteBuffer			=> wrRqtWriteBuffer,
-	  fullCmdWriteBuffer		=> fullCmdWriteBuffer,
-      emptyCmdWriteBufferOut    => emptyCmdWriteBufferOut,
-	  writeWorking				=> writeWorking-- High when the RamCntrl is executing some write command, low when no writes 
+      -- Buffer and signals to manage the writes commands
+      inCmdWriteBuffer            => (others=>'0'), --inCmdWriteBuffer,-- For setup component and store midi file BL component
+      wrRqtWriteBuffer            => '0', --wrRqtWriteBuffer,
+      fullCmdWriteBuffer          => open, --fullCmdWriteBuffer,
+      emptyCmdWriteBufferOut      => open, --emptyCmdWriteBufferOut,
+      writeWorking                => open --writeWorking-- High when the RamCntrl is executing some write command, low when no writes 
 		
       -- DDR2 interface	
 --      ddr2_addr            		=>,

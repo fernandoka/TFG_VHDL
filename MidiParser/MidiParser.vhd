@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.3
+-- Revision 0.4
 -- Additional Comments:
 --		-- For Midi parser component --
 --		Format of mem_CmdReadRequest	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -133,7 +133,7 @@ architecture Behavioral of MidiParser is
 	signal	BP_data				:	byteData_t;
 	signal	BP_byteRqt, BP_ack	:	std_logic_vector(1 downto 0);
 	
-	-- For Read Header componentsÂ¡
+	-- For Read Header componentsÃ‚Â¡
 	signal	readFinish, headerOKe, startHeaderRead		:	std_logic;
 	signal	finishTracksRead, tracksOK	                :	std_logic_vector(1 downto 0);
 	signal  readTracksRqt                               :   std_logic_vector(3 downto 0);
@@ -293,7 +293,7 @@ my_ReadHeaderChunk : ReadHeaderChunk
 -- To get all the notes
 notesOn <= notesOnPerTrack(0) or notesOnPerTrack(1);
 -- Check if both tracks are Ok
-fileOk <= tracksOK(0) or tracksOK(1);
+fileOk <= headerOKe or tracksOK(0) or tracksOK(1);
 
 -- Read Track Components
 ReadTrackChunk_0 : ReadTrackChunk
@@ -369,7 +369,8 @@ begin
     if cen='0' and mem_emptyBuffer='0' then
         mem_readResponseBuffer <= '1';
     end if;
-
+    
+    memAckResponse <=(others=>'0');
     if cen='0' and mem_emptyBuffer='0' then        
         if mem_CmdReadResponse(129 downto 128)="11" then
             memAckResponse(2) <='1';

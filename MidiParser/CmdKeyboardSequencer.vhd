@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 --		Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -60,28 +60,12 @@ entity CmdKeyboardSequencer is
 -- Attributes for debug
 --attribute   dont_touch    :   string;
 --attribute   dont_touch  of  CmdKeyboardSequencer  :   entity  is  "true";
-    
 end CmdKeyboardSequencer;
 
---use work.my_common.all;
+use work.my_common.all;
 
 architecture Behavioral of CmdKeyboardSequencer is
-  component my_fifo is
-  generic (
-    WIDTH : natural;   -- anchura de la palabra de fifo
-    DEPTH : natural    -- numero de palabras en fifo
-  );
-  port (
-    rst_n   : in  std_logic;   -- reset as?ncrono del sistema (a baja)
-    clk     : in  std_logic;   -- reloj del sistema
-    wrE     : in  std_logic;   -- se activa durante 1 ciclo para escribir un dato en la fifo
-    dataIn  : in  std_logic_vector(WIDTH-1 downto 0);   -- dato a escribir
-    rdE     : in  std_logic;   -- se activa durante 1 ciclo para leer un dato de la fifo
-    dataOut : out std_logic_vector(WIDTH-1 downto 0);   -- dato a leer
-    full    : out std_logic;   -- indicador de fifo llena
-    empty   : out std_logic    -- indicador de fifo vacia
-  );
-end component;
+
 ----------------------------------------------------------------------------------
 -- SIGNALS FOR FIFO
 ---------------------------------------------------------------------------------- 
@@ -98,7 +82,7 @@ begin
 ---------------------------------------------------------------------------------- 
 
 FifoInterface: my_fifo
-  generic map(WIDTH =>4, DEPTH =>4)
+  generic map(WIDTH =>10, DEPTH =>4)
   port map(
     rst_n   => rst_n,
     clk     => clk,
@@ -124,8 +108,13 @@ begin
     ------------------
 	-- MEALY OUTPUT --
 	------------------
-	wrFifo <=(state=s0 and sendCmdRqt(0)='1') or 
-			(state=s1 and sendCmdRqt(1)='1');
+	wrFifo <='0';
+    if internalCe='1' and fullFifo='0' then
+        if (state=s0 and sendCmdRqt(0)='1') or 
+            (state=s1 and sendCmdRqt(1)='1') then
+            wrFifo <='1';
+        end if;
+    end if;
 
     ------------------
 	-- MOORE OUTPUT --

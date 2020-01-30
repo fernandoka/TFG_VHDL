@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.4
+-- Revision 0.5
 -- Additional Comments:
 --		-- For Midi parser component --
 --		Format of mem_CmdReadRequest	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -58,17 +58,24 @@ entity MidiParser is
   Port ( 
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
+
+        -- Host
 		cen							:	in	std_logic;
 		readMidifileRqt				:	in	std_logic;
-		
 		fileOk						:	out	std_logic;
 		OnOff						:	out	std_logic;
-		notesOn						:	out	std_logic_vector(87 downto 0);
+        
+        -- Keyboard side
+		keyboard_ack	            :	in	std_logic; -- Request of a new command
+        emtyCmdSeqBuffer            :   out std_logic;    
+        cmdKeyboard                 :   out std_logic_vector(9 downto 0);
 		
 		-- Debug
 		statesOut_ODBD				:	out std_logic_vector(2 downto 0);
 		
 		statesOut_MidiCntrl			:	out	std_logic_vector(4 downto 0);
+		
+        statesOut_CmdSequencer      :	out	std_logic_vector(1 downto 0);
 		
 		regAuxHeader                :   out   std_logic_vector(31 downto 0);
 		cntrOutHeader               :   out   std_logic_vector(2 downto 0);
@@ -114,8 +121,8 @@ architecture Behavioral of MidiParser is
 	type    byteData_t  is array( 0 to 1 ) of std_logic_vector(7 downto 0);
 	type    memAddr_t  is array( 0 to 1 ) of std_logic_vector(22 downto 0);
 	type	trackAddrStart_t	is	array(0 to 1)	of	std_logic_vector(26 downto 0);
-	type	trackNotesOn_t	is	array(0 to 1)	of	std_logic_vector(87 downto 0);
-	
+	type	tracksCmd_t	is	array(0 to 1)	of	std_logic_vector(9 downto 0);
+        
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
@@ -133,7 +140,7 @@ architecture Behavioral of MidiParser is
 	signal	BP_data				:	byteData_t;
 	signal	BP_byteRqt, BP_ack	:	std_logic_vector(1 downto 0);
 	
-	-- For Read Header componentsÃ‚Â¡
+	-- For Read Header components
 	signal	readFinish, headerOKe, startHeaderRead		:	std_logic;
 	signal	finishTracksRead, tracksOK	                :	std_logic_vector(1 downto 0);
 	signal  readTracksRqt                               :   std_logic_vector(3 downto 0);
@@ -144,10 +151,13 @@ architecture Behavioral of MidiParser is
 	signal	BP_byteRqt_ReadHeader, BP_ack_ReadHeader	:	std_logic;
 	
 	-- For Read Tracks components
-	signal	notesOnPerTrack								:	trackNotesOn_t;
 	signal	BP_addr_ReadTrack_0							:	std_logic_vector(26 downto 0); 
 	signal	BP_data_ReadTrack_0							:	std_logic_vector(7 downto 0);
 	signal	BP_byteRqt_ReadTrack_0, BP_ack_ReadTrack_0	:	std_logic;
+	signal  trackCmd                                    :   tracksCmd_t;
+	
+	signal  wrCmdRqt                                    :  std_logic_vector(1 downto 0);
+	signal  sequencerAck                                :  std_logic_vector(1 downto 0);
 	
 	-- For manage the mem CMDs
 	signal	memAckSend, memAckResponse, memSamplesSendRqt	:	std_logic_vector(2 downto 0);
@@ -161,6 +171,7 @@ begin
 --      Byte Provider components
 --		OneDividedByDivision component
 --		Read Header Component
+--      Cmd Keyboard Sequencer
 --		Read Track Components
 ----------------------------------------------------------------------------------  
 
@@ -258,6 +269,10 @@ my_ODBD_Provider : OneDividedByDivision_Provider
 
   );
 
+
+-- Check if tracks and header are Ok
+fileOk <= headerOKe or tracksOK(0) or tracksOK(1);
+
 -- Read Header Component
 my_ReadHeaderChunk : ReadHeaderChunk
   generic map(START_ADDR=>0)
@@ -290,10 +305,28 @@ my_ReadHeaderChunk : ReadHeaderChunk
 
   );
 
--- To get all the notes
-notesOn <= notesOnPerTrack(0) or notesOnPerTrack(1);
--- Check if both tracks are Ok
-fileOk <= headerOKe or tracksOK(0) or tracksOK(1);
+
+
+-- Cmd Keyboard Sequencer 
+CmdSequencer: CmdKeyboardSequencer
+port map( 
+    rst_n                 => rst_n,           
+    clk                   => clk,
+    
+    -- Read Tracks Side   
+    cmdTrack_0            => trackCmd(0),
+    cmdTrack_1            => trackCmd(1),
+    sendCmdRqt            => wrCmdRqt,
+    seq_ack               => sequencerAck,
+    
+    -- Debug
+    statesOut             => statesOut_CmdSequencer,
+    
+    --Keyboard side       
+    keyboard_ack          => keyboard_ack,
+    emtyCmdBuffer         => emtyCmdSeqBuffer,
+    cmdKeyboard           => cmdKeyboard
+);
 
 -- Read Track Components
 ReadTrackChunk_0 : ReadTrackChunk
@@ -306,8 +339,12 @@ ReadTrackChunk_0 : ReadTrackChunk
 		OneDividedByDivision	=> ODBD_Val,	
 		finishRead				=> finishTracksRead(0),	
 		trackOK					=> tracksOK(0),	
-		notesOn					=> notesOnPerTrack(0),	
-								
+		
+        -- CMD Keyboard interface
+        sequencerAck            => sequencerAck(0),
+        wrCmdRqt                => wrCmdRqt(0),
+        cmd                     => trackCmd(0),
+            						
 		--Debug		        	    
 		regAuxOut       		=> regAuxOut_0       ,	
 		regAddrOut          	=> regAddrOut_0     ,	
@@ -335,8 +372,12 @@ ReadTrackChunk_1 : ReadTrackChunk
 		OneDividedByDivision	=> ODBD_Val,	
 		finishRead				=> finishTracksRead(1),	
 		trackOK					=> tracksOK(1),	
-		notesOn					=> notesOnPerTrack(1),	
-								
+
+        -- CMD Keyboard interface
+        sequencerAck            => sequencerAck(1),
+        wrCmdRqt                => wrCmdRqt(1),
+        cmd                     => trackCmd(1),
+        
 		--Debug		        	    
 		regAuxOut       		=> regAuxOut_1       ,	
 		regAddrOut          	=> regAddrOut_1     ,	

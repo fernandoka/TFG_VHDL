@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 1.1
+-- Revision 1.2
 -- Additional Comments:
 --    Notes: In play mode, infinite loop are not checked !!           
 --
@@ -23,6 +23,11 @@
 --                  
 --		if readRqt(0) read will be done in check mode, and no waiting time no commands to the keyboard will be send.
 --		if readRqt(1) read will be done in play mode,  commands to the keyboard will be send and waiting time will be enable.
+--
+--		Command format: cmd(7 downto 0) = note code
+--					 	cmd(9) = when high, note on	
+--						cmd(8) = when high, note off
+--						Null command when -> cmd(9 downto 0) = (others=>'0')
 ----------------------------------------------------------------------------------
 
 
@@ -48,7 +53,11 @@ entity ReadTrackChunk is
 		OneDividedByDivision	:	in 	std_logic_vector(23 downto 0); -- Q4.20
 		finishRead				:	out std_logic; -- One cycle high to notify the end of track reached
 		trackOK					:	out	std_logic; -- High track data is ok, low track data is not ok			
-		notesOn					:	out std_logic_vector(87 downto 0);
+		
+		-- CMD Keyboard interface
+        sequencerAck            :   in std_logic;
+		wrCmdRqt                :   out std_logic;
+		cmd					    :	out std_logic_vector(9 downto 0);
 				
 		--Debug		
 		regAuxOut       		: out std_logic_vector(31 downto 0);
@@ -155,7 +164,7 @@ msDivisor: MilisecondDivisor
 fsm:
 process(rst_n,clk,readRqt,byteAck,varLengthRdy)
     type modes is (check, play);
-	type states is (s0, s1, s2, s3, s4, s5, s6, skipVarLengthBytes, resolveMetaEvent, readEventData, manageSetTempoCmd);	
+	type states is (s0, s1, s2, s3, s4, s5, s6, skipVarLengthBytes, resolveMetaEvent, readEventData, waitSequencerAck, manageSetTempoCmd);	
 	type fsm_states is record
 		state   :   states;
         mode   	:   modes;
@@ -163,7 +172,6 @@ process(rst_n,clk,readRqt,byteAck,varLengthRdy)
 	variable fsm_state	    :	fsm_states;
 	
 	variable regAddr        :	unsigned(26 downto 0);
-	variable regNotesOn     :	std_logic_vector(87 downto 0);
 	variable regWait	    :	unsigned(17 downto 0); -- aprox 4 mins of max waiting time
 	
 	variable mulAux0        : unsigned(47 downto 0);
@@ -186,7 +194,6 @@ process(rst_n,clk,readRqt,byteAck,varLengthRdy)
 	variable cntr           :   unsigned(2 downto 0);
 begin
 	
-	notesOn <= regNotesOn;
 	fsmAddr <= std_logic_vector(regAddr);
 		
 	-------------------
@@ -276,12 +283,12 @@ begin
 		regWait := (others=>'0');
 		runningStatus := (others=>'0');
 		regAux := (others=>'0');
-		regNotesOn := (others=>'0');
 		regAddr := (others=>'0');
 		dataBytes := (others=>'0');
 		cntr := (others=>'0');
 		regTempo  := (others=>'0');
 		fsm_state := (s0,check);
+        wrCmdRqt <='0';
 		finishRead <='0';
 		trackOK<='0';
 		fsmByteRqt <='0';
@@ -364,7 +371,7 @@ begin
                         end if;
                     end if;
     
-                -- Save nÃ‚Âº bytes of track
+                -- Save nÃƒâ€šÃ‚Âº bytes of track
                 when s2 =>
                     if cntr < 4 then 
                         if byteAck='1' then
@@ -490,7 +497,7 @@ begin
               
                 when skipVarLengthBytes =>
                     if varLengthRdy='1' then
-                        -- NÃ‚Âº of bytes starting by the las address readed by VarLength component.
+                        -- NÃƒâ€šÃ‚Âº of bytes starting by the las address readed by VarLength component.
                         regAddr := unsigned(varLengthByteAddr) + unsigned(resVarLength(26 downto 0)) + 1;  
                         readVarLengthRqt <='1';
                         fsm_state.state := s3;
@@ -511,19 +518,31 @@ begin
                             
                         end if;
                     else
-                        -- Only send command when in play mode
-                        if fsm_state.mode=play and unsigned(dataBytes(15 downto 8)) >=21 and unsigned(dataBytes(15 downto 8)) <= 108 then
-                            if runningStatus=MTRK_EVENT_NOTE_OFF or (runningStatus=MTRK_EVENT_NOTE_ON and dataBytes(7 downto 0)=X"00") then
-                                regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='0'; -- Note off
-                            else
-                                regNotesOn(to_integer(unsigned(dataBytes(15 downto 8))-21)) :='1'; -- Note on
-                            end if;
-                        end if;
-                        
                         cntr :=(others=>'0');
-                        readVarLengthRqt <='1';
-                        fsm_state.state := s3;
+                        -- Only send command in play mode
+                        if fsm_state.mode=play and unsigned(dataBytes(15 downto 8)) >=21 and unsigned(dataBytes(15 downto 8)) <= 108 then
+                            wrCmdRqt <='1';
+                            cmd(7 downto 0) <=dataBytes(15 downto 8); 
+                            if runningStatus=MTRK_EVENT_NOTE_OFF or (runningStatus=MTRK_EVENT_NOTE_ON and dataBytes(7 downto 0)=X"00") then
+                               cmd(9 downto 8) <= "01";-- Note off
+                            else
+                               cmd(9 downto 8) <= "10";-- Note on
+                            end if;
+                            fsm_state.state := waitSequencerAck;                        
+                        else
+                            readVarLengthRqt <='1';
+                            fsm_state.state := s3;                    
+                        end if;
                     end if;
+                    
+                    
+               when waitSequencerAck =>
+                  if sequencerAck='1' then
+                    wrCmdRqt <='0';
+                    readVarLengthRqt <='1';
+                    fsm_state.state := s3;
+                  end if;
+                          
               
                 when manageSetTempoCmd =>
                         if fsm_state.mode=check then

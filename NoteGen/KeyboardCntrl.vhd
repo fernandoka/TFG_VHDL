@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.4
+-- Revision 0.5
 -- Additional Comments:
 --		Keyboard Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -46,7 +46,7 @@ entity KeyboardCntrl is
         rst_n           			:   in  std_logic;
         clk             			:   in  std_logic;
         cen             			:   in  std_logic;
-		emtyCmdKeyboardBuffer		:	in std_logic;	
+		emtyCmdSeqBuffer		    :	in std_logic;	
 		cmdKeyboard					:	in std_logic_vector(9 downto 0);
 		keyboard_ack				:	out	std_logic;
 			
@@ -78,7 +78,6 @@ entity KeyboardCntrl is
 -- Attributes for debug
 --attribute   dont_touch    :   string;
 --attribute   dont_touch  of  KeyboardCntrl  :   entity  is  "true";
-    
 end KeyboardCntrl;
 
 use work.my_common.all;
@@ -1262,7 +1261,7 @@ workingNotesGen <=(others=>'0');
 ----------------------------------------------------------------------------------  
 
 fsm:
-process(rst_n,clk,cen,emtyCmdKeyboardBuffer,cmdKeyboard,workingNotesGen)
+process(rst_n,clk,cen,emtyCmdSeqBuffer,cmdKeyboard,workingNotesGen)
 	type states is ( reciveCmd, waitTurnOff);
 	type noteState_t is record
 		currentNote   :   std_logic_vector(7 downto 0);
@@ -1338,7 +1337,7 @@ begin
 		
 		case state is
             when reciveCmd =>
-				if cen='1' and emtyCmdKeyboardBuffer='0' then			
+				if cen='0' and emtyCmdSeqBuffer='0' then			
 					
 					-- Note On
 					-- Turn on a new generator if there is some generator not working (foundAviable(15)='1')

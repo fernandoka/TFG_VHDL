@@ -271,7 +271,7 @@ my_ODBD_Provider : OneDividedByDivision_Provider
 
 
 -- Check if tracks and header are Ok
-fileOk <= headerOKe or tracksOK(0) or tracksOK(1);
+fileOk <= headerOKe and tracksOK(0) and tracksOK(1);
 
 -- Read Header Component
 my_ReadHeaderChunk : ReadHeaderChunk

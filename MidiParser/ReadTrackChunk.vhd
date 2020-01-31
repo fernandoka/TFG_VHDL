@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 1.2
+-- Revision 1.3
 -- Additional Comments:
 --    Notes: In play mode, infinite loop are not checked !!           
 --
@@ -321,6 +321,7 @@ begin
         if cen='1' then
             if fsm_state.state/=s0 then
                 cntr := (others=>'0');
+                trackOK<='0';
                 fsm_state.state:=s0;
             end if;
         else

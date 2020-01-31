@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.2
+-- Revision 0.3
 -- Additional Comments:
 -- 
 ----------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ architecture Behavioral of FullMidiParserTest_CMD is
     constant clkPeriod : time := 13.333333333333333333333333333333333333333333333333333333333 ns;   -- Periodo del reloj (75 MHz)
 
 
-    -- Señales 
+    -- SeÃ±ales 
     signal	clk     : std_logic := '1';      
     signal	rst_n   : std_logic := '0';
 
@@ -145,16 +145,6 @@ begin
     rdWr <='0'; --Write mode
     cen <='1';
 	readMidifileRqt <='0';
-	-- Buffers and signals to manage the read request commands
---    inCmdReadBuffer_1         <= (others=>'0');
---    wrRqtReadBuffer_1            <= '0';
-    
---    -- Buffers and signals to manage the read response commands     
---    rdRqtReadBuffer_1            <= '0';
-
---    -- Buffer and signals to manage the writes commands
---    inCmdWriteBuffer            <= (others=>'0');
---    wrRqtWriteBuffer            <= '0';
     
 	wait until (rst_n='1' and clk='1');
     rdWr <='1'; -- Read mode
@@ -162,9 +152,41 @@ begin
     
 	wait for (clkPeriod*5);
 	
+	-- Start a read
 	readMidifileRqt <='1';
     wait for (clkPeriod);
 	readMidifileRqt <='0';
+	
+	wait for (clkPeriod*1000);
+    
+    -- Interrupt a check read
+	cen <='1';
+	wait for (clkPeriod);
+	cen <='0';
+
+	wait for (clkPeriod*2000);
+
+    -- Start a new read
+	readMidifileRqt <='1';
+    wait for (clkPeriod);
+	readMidifileRqt <='0';
+    
+    -- wait 
+    wait for (50ms);
+	wait for (clkPeriod*1000);
+    
+    -- Interrupt a play read
+    cen <='1';
+    wait for (clkPeriod);
+    cen <='0';
+
+    wait for (clkPeriod*5);
+
+    -- Start a new read
+    readMidifileRqt <='1';
+    wait for (clkPeriod);
+    readMidifileRqt <='0';
+    
 	    
     wait;
 

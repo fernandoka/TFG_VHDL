@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.5
+-- Revision 0.6
 -- Additional Comments:
 --		Keyboard Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -508,6 +508,7 @@ architecture Behavioral of KeyboardCntrl is
 	
 	-- Signals for notesGen component
 	signal	workingNotesGen				:	std_logic_vector(15 downto 0);
+	signal  orResult                    :   std_logic;
 	-- Commented signal for the test
 --	signal	notesOnOff					:	std_logic_vector(15 downto 0);
 	
@@ -1222,6 +1223,12 @@ begin
 workingNotesGen <=(others=>'0'); 
 --
 
+my_or:reducedOr
+  generic map(WL=>16)
+  port map(a_in =>workingNotesGen, reducedA_out =>orResult);
+
+
+
 --notesGen: NotesGenerator 
 --  port map( 
 --        rst_n           			=> rst_n,
@@ -1262,7 +1269,7 @@ workingNotesGen <=(others=>'0');
 
 fsm:
 process(rst_n,clk,cen,emtyCmdSeqBuffer,cmdKeyboard,workingNotesGen)
-	type states is ( reciveCmd, waitTurnOff);
+	type states is (keyboardRst, reciveCmd, waitTurnOff);
 	type noteState_t is record
 		currentNote   :   std_logic_vector(7 downto 0);
         OnOff   	  :   std_logic; -- High On, low Off
@@ -1280,11 +1287,11 @@ process(rst_n,clk,cen,emtyCmdSeqBuffer,cmdKeyboard,workingNotesGen)
 	variable noteIndexOn	:   checkNotes_t;
 	
 begin
-	
+	-- OutPut info
 	for i in 0 to 15 loop
 	   notesOnOff(i) <= keyboardState(i).OnOff;
 	end loop;
-	
+		
 	--------------------------------------------------------------------------
 	-- "Combinationals Searchs" of note index to slect which note turn on/off --
 	--------------------------------------------------------------------------
@@ -1335,48 +1342,62 @@ begin
     elsif rising_edge(clk) then
 		keyboard_ack <='0';
 		
-		case state is
-            when reciveCmd =>
-				if cen='0' and emtyCmdSeqBuffer='0' then			
-					
-					-- Note On
-					-- Turn on a new generator if there is some generator not working (foundAviable(15)='1')
-					-- and if the note requested to turn on is not already on (foundCode='0')
-					if cmdKeyboard(9 downto 8)="10" and foundAviable(15)='1' and foundCode(15)='0' then
-                        -- Note params setup
-                        regStartAddr                  <= std_logic_vector(startAddrROM);
-                        regSustainStartOffsetAddr    <= std_logic_vector(sustainStartOffsetAddrROM);
-                        regSustainEndOffsetAddr      <= std_logic_vector(sustainEndOffsetAddrROM);
-                        regMaxSamples                <= std_logic_vector(maxSamplesROM);
-                        regStepVal                   <= std_logic_vector(stepValROM);
-                        regSustainStepStart          <= std_logic_vector(sustainStepStartROM);
-                        regSustainStepEnd            <= std_logic_vector(sustainStepEndROM);
-
-						keyboardState(to_integer(noteIndexOn(15))) := (cmdKeyboard(7 downto 0),'1');
-						keyboard_ack <='1';
-
-					-- Note Off
-					-- Turn off a note if there is some generator working with that note code
-					elsif cmdKeyboard(9 downto 8)="01" and foundCode(15)='1' then
-						keyboardState(to_integer(noteIndexOff(15))) := (X"00",'0');
-						state := waitTurnOff;
-					
-					-- This if the command has no effect on the keyboard state,
-					-- it's needed to keep consuming commands from the buffer
-					-- Example (turn on/off a note that is already on/off)
-					else
-					   keyboard_ack <='1';
-					end if;
-				end if;
-			
-			-- Wait until the end of the release phase
-			when waitTurnOff =>
-				if workingNotesGen(to_integer(noteIndexOff(15)))='0' then
-					keyboard_ack <='1';
-					state := reciveCmd;
-				end if;
-		end case;
-    end if;
+		if cen='1' then
+		    if state/=keyboardRst then 
+        		keyboardState :=(others=>(X"00",'0'));
+                state := keyboardRst;
+            end if;
+        else
+            case state is
+               --Wait until all notes gen are off
+               when keyboardRst =>
+                    if orResult='0' then
+                        state := reciveCmd;
+                    end if;
+                
+                
+                when reciveCmd =>
+                    if emtyCmdSeqBuffer='0' then			
+                        -- Note On
+                        -- Turn on a new generator if there is some generator not working (foundAviable(15)='1')
+                        -- and if the note requested to turn on is not already on (foundCode='0')
+                        if cmdKeyboard(9 downto 8)="10" and foundAviable(15)='1' and foundCode(15)='0' then
+                            -- Note params setup
+                            regStartAddr                  <= std_logic_vector(startAddrROM);
+                            regSustainStartOffsetAddr    <= std_logic_vector(sustainStartOffsetAddrROM);
+                            regSustainEndOffsetAddr      <= std_logic_vector(sustainEndOffsetAddrROM);
+                            regMaxSamples                <= std_logic_vector(maxSamplesROM);
+                            regStepVal                   <= std_logic_vector(stepValROM);
+                            regSustainStepStart          <= std_logic_vector(sustainStepStartROM);
+                            regSustainStepEnd            <= std_logic_vector(sustainStepEndROM);
+    
+                            keyboardState(to_integer(noteIndexOn(15))) := (cmdKeyboard(7 downto 0),'1');
+                            keyboard_ack <='1';
+    
+                        -- Note Off
+                        -- Turn off a note if there is some generator working with that note code
+                        elsif cmdKeyboard(9 downto 8)="01" and foundCode(15)='1' then
+                            keyboardState(to_integer(noteIndexOff(15))) := (X"00",'0');
+                            state := waitTurnOff;
+                        
+                        -- This if the command has no effect on the keyboard state,
+                        -- it's needed to keep consuming commands from the buffer
+                        -- Example (turn on/off a note that is already on/off)
+                        else
+                           keyboard_ack <='1';
+                        end if;
+                    end if;
+                
+                -- Wait until the end of the release phase
+                when waitTurnOff =>
+                    if workingNotesGen(to_integer(noteIndexOff(15)))='0' then
+                        keyboard_ack <='1';
+                        state := reciveCmd;
+                    end if;
+            end case;
+       end if; --cen='1'
+       
+    end if;--rst_n/rising_edge
 end process;
   
 end Behavioral;

@@ -166,29 +166,50 @@ architecture Behavioral of MyDummyDDR2 is
 begin
 
 process(rst_n,clk,rd,wr,addr)
+	type states is (s0, s1);
+	variable   state   :   states;
+	
 	variable regVal	:	std_logic_vector(127 downto 0);
 	variable romWr : std_logic_vector (15 downto 0);	
+    variable temp   :   natural range 0 to 5;
 begin
     
 	data_out <= regVal;
 	
     if rst_n='0' then
 		regVal :=(others=>'0');
+		temp := 5;
 		ack <='0';
 		
     elsif rising_edge(clk) then
 		ack <='0';
-		if cen='0' and (wr='0' or rd='0') then
-            ack <='1'; --
-            if unsigned(addr) <= MAX_ROWS then
-                if wr='0' then
-                    romWr := data_in;
-                elsif rd='0' then
-                    regVal := romRd(to_integer(unsigned(addr)));
+
+
+        case state is
+            when s0 =>
+                if cen='0' and (wr='0' or rd='0') then
+                    state := s1;
+                    temp := 5;
+                    if unsigned(addr) <= MAX_ROWS then
+                        if wr='0' then
+                            romWr := data_in;
+                        elsif rd='0' then
+                            regVal := romRd(to_integer(unsigned(addr)));
+                        end if;
+                    end if;
                 end if;
-            end if;
             
-       end if;--cen='0'		
+            -- wait some cycles until mem response, to simulate real behaviour
+            when s1=>    
+                if temp=0 then  
+                    ack <='1';
+                    state := s0;
+                else
+                    temp :=temp-1;
+                end if;
+            
+        end case;
+              	
 	end if;
 end process;
   

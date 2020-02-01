@@ -3,7 +3,7 @@
 -- 	Fernando Candelario Herrero
 --
 -- Revision: 
--- Revision 0.2
+-- Revision 0.4
 -- Additional Comments: 
 --		These signals follow a Q32.32 fix format:	stepVal_In					
 --      											sustainStepStart_In	
@@ -52,8 +52,8 @@ entity UniversalNoteGen is
     memSamplesSendRqt           :   out std_logic
   );
 -- Attributes for debug
-attribute   dont_touch    :   string;
-attribute   dont_touch  of  UniversalNoteGen  :   entity  is  "true";  
+--attribute   dont_touch    :   string;
+--attribute   dont_touch  of  UniversalNoteGen  :   entity  is  "true";  
 end UniversalNoteGen;
 
 use work.my_common.all;
@@ -99,7 +99,7 @@ Interpolate:
 	
 
 	filterRegisters :
-  process (rst_n, clk,memAck,noteOnOff,sampleRqt)
+  process (rst_n, clk, memAckSend, memAckResponse, noteOnOff, sampleRqt)
       type states is (idle, waitCmdAck ,getSample1, getSample2, interpolate, calculateNextAddr); 
       variable state: states;
       variable releaseFlag      :   std_logic;
@@ -171,7 +171,8 @@ Interpolate:
 
 				when waitCmdAck=>
 					if memAckSend='1' then
-					   memSamplesSendRqt <= '0';
+                       memSamplesSendRqt <= '0';
+                       state := getSample1;
 					end if;
             
                 -- Recive samples

@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.6
+-- Revision 0.7
 -- Additional Comments:
 --		Keyboard Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -55,22 +55,22 @@ entity KeyboardCntrl is
         sampleOut       			:   out std_logic_vector(15 downto 0);
        
        --Debug
-       regStartAddr               : out	   std_logic_vector(25 downto 0);  
-       regSustainStartOffsetAddr  : out    std_logic_vector(25 downto 0);
-       regSustainEndOffsetAddr    : out    std_logic_vector(25 downto 0);
-       regMaxSamples              : out    std_logic_vector(25 downto 0);
-       regStepVal                 : out    std_logic_vector(63 downto 0);
-       regSustainStepStart        : out    std_logic_vector(63 downto 0);
-       regSustainStepEnd          : out    std_logic_vector(63 downto 0);
-       notesOnOff				  :	out    std_logic_vector(15 downto 0);
+       regStartAddrOut               : out	   std_logic_vector(25 downto 0);  
+       regSustainStartOffsetAddrOut  : out    std_logic_vector(25 downto 0);
+       regSustainEndOffsetAddrOut    : out    std_logic_vector(25 downto 0);
+       regMaxSamplesOut              : out    std_logic_vector(25 downto 0);
+       regStepValOut                 : out    std_logic_vector(63 downto 0);
+       regSustainStepStartOut        : out    std_logic_vector(63 downto 0);
+       regSustainStepEndOut          : out    std_logic_vector(63 downto 0);
+       notesOnOffOut                 : out    std_logic_vector(15 downto 0);
        --
        
         		
         -- Mem side
 		mem_emptyBuffer				:	in	std_logic;
-        mem_CmdReadResponse    		:   in  std_logic_vector(15+4 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
+        mem_CmdReadResponse    		:   in  std_logic_vector(15+7 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
         mem_fullBuffer         		:   in  std_logic; 
-        mem_CmdReadRequest		    :   out std_logic_vector(25+4 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(25 downto 0) = sample addr
+        mem_CmdReadRequest		    :   out std_logic_vector(25+7 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(25 downto 0) = sample addr
 		mem_readResponseBuffer		:	out std_logic;
         mem_writeReciveBuffer     	:   out std_logic -- One cycle high to send a new CmdReadRqt
   
@@ -510,16 +510,16 @@ architecture Behavioral of KeyboardCntrl is
 	signal	workingNotesGen				:	std_logic_vector(15 downto 0);
 	signal  orResult                    :   std_logic;
 	-- Commented signal for the test
---	signal	notesOnOff					:	std_logic_vector(15 downto 0);
+	signal	notesOnOff					:	std_logic_vector(15 downto 0);
 	
 	-- Registers
---	signal	regStartAddr                :	std_logic_vector(25 downto 0);
---	signal	regSustainStartOffsetAddr   :	std_logic_vector(25 downto 0);
---	signal	regSustainEndOffsetAddr     :	std_logic_vector(25 downto 0);
---	signal	regMaxSamples               :	std_logic_vector(25 downto 0);
---	signal	regStepVal                  :	std_logic_vector(63 downto 0);
---	signal	regSustainStepStart         :	std_logic_vector(63 downto 0);
---	signal	regSustainStepEnd           :	std_logic_vector(63 downto 0);
+	signal	regStartAddr                :	std_logic_vector(25 downto 0);
+	signal	regSustainStartOffsetAddr   :	std_logic_vector(25 downto 0);
+	signal	regSustainEndOffsetAddr     :	std_logic_vector(25 downto 0);
+	signal	regMaxSamples               :	std_logic_vector(25 downto 0);
+	signal	regStepVal                  :	std_logic_vector(63 downto 0);
+	signal	regSustainStepStart         :	std_logic_vector(63 downto 0);
+	signal	regSustainStepEnd           :	std_logic_vector(63 downto 0);
 	
 	-- State of the NoteGenerators
 	signal regKeyboardState	:	std_logic_vector(31 downto 0);
@@ -1219,45 +1219,52 @@ begin
 ----------------------------------------------------------------------------------
 								-- ROMs End --
 ----------------------------------------------------------------------------------  
+
+
 --Debug
-workingNotesGen <=(others=>'0'); 
+    regStartAddrOut               <= regStartAddr             ;  
+    regSustainStartOffsetAddrOut  <= regSustainStartOffsetAddr;
+    regSustainEndOffsetAddrOut    <= regSustainEndOffsetAddr  ;
+    regMaxSamplesOut              <= regMaxSamples            ;
+    regStepValOut                 <= regStepVal               ;
+    regSustainStepStartOut        <= regSustainStepStart      ;
+    regSustainStepEndOut          <= regSustainStepEnd        ;
+    notesOnOffOut                 <= notesOnOff;
 --
 
 my_or:reducedOr
   generic map(WL=>16)
   port map(a_in =>workingNotesGen, reducedA_out =>orResult);
 
+my_gen: NotesGenerator 
+  port map( 
+        rst_n           			=> rst_n,
+        clk             			=> clk,
+        notes_on        			=> notesOnOff,
+        working					    => workingNotesGen,
 
+		--Note params               
+		startAddr_In             	=> regStartAddr             ,
+		sustainStartOffsetAddr_In	=> regSustainStartOffsetAddr,
+		sustainEndOffsetAddr_In     => regSustainEndOffsetAddr  ,
+		maxSamples_In               => regMaxSamples            ,
+		stepVal_In                  => regStepVal               ,
+		sustainStepStart_In         => regSustainStepStart      ,
+		sustainStepEnd_In           => regSustainStepEnd        ,
 
---notesGen: NotesGenerator 
---  port map( 
---        rst_n           			=> rst_n,
---        clk             			=> clk,
---        notes_on        			=> notesOnOff,
---        working					=> workingNotesGen,
+		--IIS side                  
+        sampleRqt       			=> sampleRqt,
+        sampleOut       			=> sampleOut,
 
---		--Note params               
---		startAddr_In             	=> regStartAddr             ,
---		sustainStartOffsetAddr_In	=> regSustainStartOffsetAddr,
---		sustainEndOffsetAddr_In     => regSustainEndOffsetAddr  ,
---		maxSamples_In               => regMaxSamples            ,
---		stepVal_In                  => regStepVal               ,
---		sustainStepStart_In         => regSustainStepStart      ,
---		sustainStepEnd_In           => regSustainStepEnd        ,
-
---		--IIS side                  
---        sampleRqt       			=> sampleRqt,
---        sampleOut       			=> sampleOut,
-
---        -- Mem side                 
---		mem_emptyBuffer				=> mem_emptyBuffer		 ,
---        mem_CmdReadResponse    		=> mem_CmdReadResponse   ,
---        mem_fullBuffer         		=> mem_fullBuffer        ,
---        mem_CmdReadRequest		    => mem_CmdReadRequest	 ,
---		mem_readResponseBuffer		=> mem_readResponseBuffer,
---        mem_writeReciveBuffer     	=> mem_writeReciveBuffer 
+        -- Mem side                 
+		mem_emptyResponseBuffer		=> mem_emptyBuffer		 ,
+        mem_CmdReadResponse    		=> mem_CmdReadResponse   ,
+        mem_fullReciveBuffer     	=> mem_fullBuffer        ,
+        mem_CmdReadRequest		    => mem_CmdReadRequest	 ,
+		mem_readResponseBuffer		=> mem_readResponseBuffer,
+        mem_writeReciveBuffer     	=> mem_writeReciveBuffer 
   
---  );
+  );
 
 
 
@@ -1363,7 +1370,7 @@ begin
                         -- and if the note requested to turn on is not already on (foundCode='0')
                         if cmdKeyboard(9 downto 8)="10" and foundAviable(15)='1' and foundCode(15)='0' then
                             -- Note params setup
-                            regStartAddr                  <= std_logic_vector(startAddrROM);
+                            regStartAddr                 <= std_logic_vector(startAddrROM);
                             regSustainStartOffsetAddr    <= std_logic_vector(sustainStartOffsetAddrROM);
                             regSustainEndOffsetAddr      <= std_logic_vector(sustainEndOffsetAddrROM);
                             regMaxSamples                <= std_logic_vector(maxSamplesROM);
@@ -1377,7 +1384,7 @@ begin
                         -- Note Off
                         -- Turn off a note if there is some generator working with that note code
                         elsif cmdKeyboard(9 downto 8)="01" and foundCode(15)='1' then
-                            keyboardState(to_integer(noteIndexOff(15))) := (X"00",'0');
+                            keyboardState(to_integer(noteIndexOff(15))).OnOff := '0';
                             state := waitTurnOff;
                         
                         -- This if the command has no effect on the keyboard state,
@@ -1392,6 +1399,7 @@ begin
                 when waitTurnOff =>
                     if workingNotesGen(to_integer(noteIndexOff(15)))='0' then
                         keyboard_ack <='1';
+                        keyboardState(to_integer(noteIndexOff(15))).currentNote := X"00";
                         state := reciveCmd;
                     end if;
             end case;

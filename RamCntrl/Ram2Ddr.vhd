@@ -295,7 +295,6 @@ begin
   begin
     if mem_ui_rst = '1' then
       state <= idle;
-      OneReadFlag <= '0';
       
     elsif rising_edge(mem_ui_clk) then
       case state is

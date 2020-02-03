@@ -13,12 +13,12 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.8
+-- Revision 1.1
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
 --		
---		With Quick Read feature only in inCmdReadBuffer_1, use of a cache
---      Maybe setup-time problem because the cost of the search in the cache
+--      Quick read feature, use of a cache
+--
 --
 --		-- For Midi parser component --
 --		Format of inCmdReadBuffer_0	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -70,13 +70,13 @@ use ieee.std_logic_1164.all;
 use IEEE.NUMERIC_STD.ALL;
 
 entity RamCntrl is
-   Generic(CACHE_SIZE   :   in  natural); -- Number of rows of the cache
+   Generic(CAHCE_ROWS   :   in  natural);
    Port (
       -- Common
       clk_200MHz_i				:	in    std_logic; -- 200 MHz system clock
       rst_n      				:	in    std_logic; -- active low system reset
       ui_clk_o    				:	out   std_logic;
-      ledsDDR                   :   out   std_logic_vector(5 downto 0);
+
       -- Ram Cntrl Interface
 	  rdWr						:	in	std_logic; -- RamCntrl mode, high read low write
 
@@ -183,10 +183,6 @@ RAM: Ram2Ddr
       ram_wen              => mem_wrn, 			-- Write in memory, active low
       ram_ack              => mem_ack,
       
-	  -- Debug
-	  leds				   => ledsDDR,
-
-	  
       -- DDR2 interface
       ddr2_addr            => ddr2_addr,
       ddr2_ba              => ddr2_ba,
@@ -289,22 +285,20 @@ process (rst_n, mem_ui_clk, mem_ack,rdWr, emptyCmdWriteBuffer, emtyFifoRqtRd, fi
 	readInCmdReadBuffer_1, reciveAckInCmdReadBuffer_1);
 	variable state	:	states;
 	
-	-- Quick read feature, use of a cache memory
-    constant numCacheRows : natural := CACHE_SIZE-1;
+    -- Quick read feature, use of a cache memory
+    constant INDEX_CACHE_ROWS : natural := CAHCE_ROWS-1;
     type cacheRow_t is record
         addr    :   std_logic_vector(22 downto 0);
-        data    :   std_logic_vector(127 downto 0);
-        
+        data    :   std_logic_vector(127 downto 0);    
     end record;
-    type cacheMem is array (0 to numCacheRows) of cacheRow_t;
-	type index_t   is  array(0 to numCacheRows) of unsigned(4 downto 0);
-	
-    -- Quick read feature, use of a cache memory
-    variable	OneReadFlag		:	std_logic;
-	variable    foundRow        :   std_logic_vector(numCacheRows downto 0);
-	variable    rowNextIndex    :   unsigned(4 downto 0);
-	variable    rowIndex        :   index_t;
-	variable    rowsCache       :   cacheMem;
+    type cacheMem is array (0 to INDEX_CACHE_ROWS) of cacheRow_t;
+    type index_t   is  array(0 to INDEX_CACHE_ROWS) of unsigned(4 downto 0);
+    
+	variable    foundRow        :   std_logic_vector(INDEX_CACHE_ROWS downto 0);
+    variable    rowNextIndex    :   unsigned(4 downto 0);
+    variable    rowIndex        :   index_t;
+    variable    rowsCache       :   cacheMem;
+	variable    OneReadFlag     :   std_logic;
 	
 	-- turn=0 or turn=1 -> read commands from Keyboard
 	-- turn=2 -> read commands from Midi parser
@@ -313,7 +307,7 @@ process (rst_n, mem_ui_clk, mem_ack,rdWr, emptyCmdWriteBuffer, emtyFifoRqtRd, fi
 	variable	flagAck			:	std_logic; -- Used to wait until the correspondant outputbuffer is not full
 	
 begin
-	---------------------------------------------------
+    ---------------------------------------------------
     -- "Combinational Search" of row index --
     -- to select which row of the cache will be used --
     ---------------------------------------------------
@@ -322,10 +316,10 @@ begin
     if OneReadFlag='1' and rowsCache(0).addr=fifoRqtRdData_1(25 downto 3) then
         foundRow(0) :='1';
     end if;
-    for i in 1 to numCacheRows loop
+    for i in 1 to INDEX_CACHE_ROWS loop
         foundRow(i) := foundRow(i-1);
         rowIndex(i) := rowIndex(i-1);
-        if OneReadFlag='1' and rowsCache(i).addr=fifoRqtRdData_1(25 downto 3) then
+        if OneReadFlag='1' and foundRow(i-1)='0' and rowsCache(i).addr=fifoRqtRdData_1(25 downto 3) then
             rowIndex(i) := to_unsigned(i,5);
             foundRow(i) := '1';
         end if;
@@ -334,7 +328,6 @@ begin
 	------------------
 	-- MOORE OUTPUT --
 	------------------
-    
     writeWorking <='0';
     if state=readCmdWriteBuffer or state=reciveWriteAck then
         writeWorking <='1';
@@ -349,12 +342,12 @@ begin
 		rdCmdWriteBuffer <='0';
 		rdRqtReadBuffer <=(others=>'0');
 		wrResponseReadBuffer <=(others=>'0');
-        rowNextIndex := (others=>'0');
-		rowsCache :=(others=>( (others=>'0'), (others=>'0')));
 		regAux := (others=>'0');
 		flagAck :='0';
-		OneReadFlag := '0';
 		turn := (others=>'0');
+		OneReadFlag :='0';
+		rowNextIndex :=(others=>'0');
+		rowsCache := (others=>((others=>'0'),(others=>'0')));
 		state := idleRdOrWr;
 		
 	elsif rising_edge(mem_ui_clk) then
@@ -438,7 +431,7 @@ begin
 						inCmdResponseRdBuffer_0 <= regAux(1 downto 0) & mem_data_out_16B;
 					-- OneByDivisionValue
 					else
-						inCmdResponseRdBuffer_0<=(others=>'0');
+					   inCmdResponseRdBuffer_0(127 downto 32) <=(others=>'0');
 						inCmdResponseRdBuffer_0(129 downto 128) <= regAux(1 downto 0);
 						-- Decode addr
 						case mem_addr(2 downto 1) is
@@ -458,61 +451,64 @@ begin
 				
 			-- READ IN CMD READ BUFFER 1
 			when readInCmdReadBuffer_1 => 
-				-- Read order to fifo, consume a mem command
-				rdRqtReadBuffer(1) <='1';
-				
-				-- QucikRead feature, use of cache
-				if foundRow(numCacheRows)='1' then
-					if fullResponseRdBuffer(1)='0' then
-                        state := idleRdOrWr;
+                --Quick read feature
+				if OneReadFlag='1' and foundRow(INDEX_CACHE_ROWS)='1' then
+				    if fullResponseRdBuffer(1)='0' then
+				        -- Read order to fifo, consume a mem command
+                        rdRqtReadBuffer(1) <='1';
                         -- Write command to fifo
-                        wrResponseReadBuffer(1)<='1';
-                        inCmdResponseRdBuffer_1(22 downto 16) <= fifoRqtRdData_1(32 downto 26); -- Note gen index
-                        case fifoRqtRdData_1(2 downto 0) is
+                        wrResponseReadBuffer(1)<='1';    
+                        state := idleRdOrWr;
+                        inCmdResponseRdBuffer_1(22 downto 16) <= fifoRqtRdData_1(32 downto 26); -- Save note gen index
+    					case fifoRqtRdData_1(2  downto 0) is
                            when "000" => 
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(15 downto 0);
-                                 
-                           when "001" =>                              
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(31 downto 16);
-                                         
-                           when "010" =>                              
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(47 downto 32);
-                                         
-                           when "011" =>                              
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(63 downto 48);
-                                         
-                           when "100" =>                              
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(79 downto 64);
-                                         
-                           when "101" =>                              
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(95 downto 80);
-                                     
-                           when "110" =>                              
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(111 downto 96);
-                                         
-                           when "111" =>                                                         
-                              inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(numCacheRows))).data(127 downto 112);
-                                     
-                           when others =>
-                                 inCmdResponseRdBuffer_1(15 downto 0) <=(others=>'0');
-                        end case;
-                   end if;-- fullResponseRdBuffer(1)='0'
-                   					
-				-- Order read
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(15 downto 0);
+                              
+                            when "001" =>                              
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(31 downto 16);
+                                          
+                            when "010" =>                              
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(47 downto 32);
+                                          
+                            when "011" =>                              
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(63 downto 48);
+                                          
+                            when "100" =>                              
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(79 downto 64);
+                                          
+                            when "101" =>                              
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(95 downto 80);
+                                      
+                            when "110" =>                              
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(111 downto 96);
+                                          
+                            when "111" =>                                                         
+                               inCmdResponseRdBuffer_1(15 downto 0) <= rowsCache(to_integer(rowIndex(INDEX_CACHE_ROWS))).data(127 downto 112);
+                                      
+                            when others =>
+                                  inCmdResponseRdBuffer_1(15 downto 0) <=(others=>'0');
+                         end case;
+				    end if;-- fullResponseRdBuffer(1)='0'
+				
+				
+				-- Order read to ddr
 				else
-					OneReadFlag := '1';
+                    -- Read order to fifo, consume a mem command
+                    rdRqtReadBuffer(1) <='1';	
+                    -- Order read                
+                    mem_addr <= fifoRqtRdData_1(25 downto 0);
+                    regAux := fifoRqtRdData_1(32 downto 26); -- Save note gen index
+                    -- Read order to mem
+                    mem_cen <='0';
+                    mem_rdn <='0';
+                    
+                    -- Update data for Quick read feature
+                    OneReadFlag :='1';
 					rowsCache(to_integer(rowNextIndex)).addr := fifoRqtRdData_1(25 downto 3); -- Update last addr
-					
-					mem_addr <= fifoRqtRdData_1(25 downto 0);
-					regAux := fifoRqtRdData_1(32 downto 26); -- Save note gen index
-					-- Read order to mem
-					mem_cen <='0';
-					mem_rdn <='0';
-	
-					flagAck :='0'; -- Set flagAck value
-					state := reciveAckInCmdReadBuffer_1;				
-				end if;
-
+                    
+                    flagAck :='0'; -- Set flagAck value
+                    state := reciveAckInCmdReadBuffer_1;				
+                end if;
 			
 			when reciveAckInCmdReadBuffer_1 => 
 				if mem_ack='1' then
@@ -523,10 +519,10 @@ begin
 				if fullResponseRdBuffer(1)='0' and (mem_ack='1' or flagAck ='1') then
 					state := idleRdOrWr;
 					
-					-- Cache
-					rowsCache(to_integer(rowNextIndex)).data := mem_data_out_16B; -- Update cache data
+                    -- Update data for Quick read feature
+                    rowsCache(to_integer(rowNextIndex)).data := mem_data_out_16B;
                     -- Update the index of the next row of cache to write, FIFO polity
-                    if rowNextIndex < numCacheRows then
+                    if rowNextIndex < INDEX_CACHE_ROWS then
                         rowNextIndex := rowNextIndex+1;
                     else
                         rowNextIndex := (others=>'0');

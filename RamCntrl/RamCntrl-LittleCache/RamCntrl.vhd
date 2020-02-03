@@ -13,10 +13,12 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.9
+-- Revision 1.0
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
 --		
+--      Quick read feature, saves the last readed data only for for buffer 1 reads
+--
 --
 --		-- For Midi parser component --
 --		Format of inCmdReadBuffer_0	:	cmd(24 downto 0) = 4bytes addr to read,  
@@ -282,6 +284,11 @@ process (rst_n, mem_ui_clk, mem_ack,rdWr, emptyCmdWriteBuffer, emtyFifoRqtRd, fi
 	readInCmdReadBuffer_1, reciveAckInCmdReadBuffer_1);
 	variable state	:	states;
 	
+    -- Quick read feature
+	variable   regLastAddr :   std_logic_vector(22 downto 0);
+	variable   regCache    :   std_logic_vector(127 downto 0);
+	variable   OneReadFlag :   std_logic;
+	
 	-- turn=0 or turn=1 -> read commands from Keyboard
 	-- turn=2 -> read commands from Midi parser
 	variable	turn			:	unsigned(1 downto 0);
@@ -311,6 +318,9 @@ begin
 		regAux := (others=>'0');
 		flagAck :='0';
 		turn := (others=>'0');
+		OneReadFlag :='0';
+		regCache :=(others=>'0');
+		regLastAddr :=(others=>'0');
 		state := idleRdOrWr;
 		
 	elsif rising_edge(mem_ui_clk) then
@@ -414,18 +424,64 @@ begin
 				
 			-- READ IN CMD READ BUFFER 1
 			when readInCmdReadBuffer_1 => 
-				-- Read order to fifo, consume a mem command
-				rdRqtReadBuffer(1) <='1';	
-				-- Order read                
-                mem_addr <= fifoRqtRdData_1(25 downto 0);
-                regAux := fifoRqtRdData_1(32 downto 26); -- Save note gen index
-                -- Read order to mem
-                mem_cen <='0';
-                mem_rdn <='0';
-
-                flagAck :='0'; -- Set flagAck value
-                state := reciveAckInCmdReadBuffer_1;				
-
+                --Quick read feature
+				if OneReadFlag='1' and regLastAddr=fifoRqtRdData_1(25 downto 3) then
+				    if fullResponseRdBuffer(1)='0' then
+				        -- Read order to fifo, consume a mem command
+                        rdRqtReadBuffer(1) <='1';
+                        -- Write command to fifo
+                        wrResponseReadBuffer(1)<='1';    
+                        state := idleRdOrWr;
+                        inCmdResponseRdBuffer_1(22 downto 16) <= fifoRqtRdData_1(32 downto 26); -- Save note gen index
+    					case fifoRqtRdData_1(2  downto 0) is
+                           when "000" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(15 downto 0);
+               
+                           when "001" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(31 downto 16);
+                                 
+                           when "010" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(47 downto 32);
+               
+                           when "011" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(63 downto 48);
+               
+                           when "100" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(79 downto 64);
+                                 
+                           when "101" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(95 downto 80);
+                                 
+                           when "110" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(111 downto 96);
+                                 
+                           when "111" => 
+                                 inCmdResponseRdBuffer_1(15 downto 0) <= regCache(127 downto 112);        
+                                 
+                           when others =>
+                                 inCmdResponseRdBuffer_1(15 downto 0) <=(others=>'0');                                             
+                        end case;
+				    end if;-- fullResponseRdBuffer(1)='0'
+				
+				
+				-- Order read to ddr
+				else
+                    -- Read order to fifo, consume a mem command
+                    rdRqtReadBuffer(1) <='1';	
+                    -- Order read                
+                    mem_addr <= fifoRqtRdData_1(25 downto 0);
+                    regAux := fifoRqtRdData_1(32 downto 26); -- Save note gen index
+                    -- Read order to mem
+                    mem_cen <='0';
+                    mem_rdn <='0';
+                    
+                    -- Update data for Quick read feature
+                    OneReadFlag :='1';
+                    regLastAddr := fifoRqtRdData_1(25 downto 3);
+                    
+                    flagAck :='0'; -- Set flagAck value
+                    state := reciveAckInCmdReadBuffer_1;				
+                end if;
 			
 			when reciveAckInCmdReadBuffer_1 => 
 				if mem_ack='1' then
@@ -435,6 +491,9 @@ begin
 				-- Check if the buffer it's not full
 				if fullResponseRdBuffer(1)='0' and (mem_ack='1' or flagAck ='1') then
 					state := idleRdOrWr;
+					
+					-- Update data for Quick read feature
+					regCache :=mem_data_out_16B;
 					
 					-- Write command to fifo
 					wrResponseReadBuffer(1)<='1';

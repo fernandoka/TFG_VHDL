@@ -398,7 +398,7 @@ begin
 						inCmdResponseRdBuffer_0 <= regAux(1 downto 0) & mem_data_out_16B;
 					-- OneByDivisionValue
 					else
-						inCmdResponseRdBuffer_0<=(others=>'0');
+					   inCmdResponseRdBuffer_0(127 downto 32) <=(others=>'0');
 						inCmdResponseRdBuffer_0(129 downto 128) <= regAux(1 downto 0);
 						-- Decode addr
 						case mem_addr(2 downto 1) is

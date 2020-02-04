@@ -41,9 +41,6 @@ entity Ram2Ddr is
       ram_oen              : in    std_logic;
       ram_wen              : in    std_logic;
       ram_ack              : out   std_logic;
-      
-	  -- Debug
-      leds                 : out std_logic_vector(5 downto 0);
 	  
       -- DDR2 interface
       ddr2_addr            : out   std_logic_vector(12 downto 0);
@@ -218,35 +215,6 @@ begin
     ui_clk               => mem_ui_clk,
     ui_clk_sync_rst      =>mem_ui_rst,
     init_calib_complete  => calib_complete);
-
-
-
----------------------------------------------------------------------
-  -- Debug
-  ---------------------------------------------------------------------
-     
-     LEDS_GEN: process(state)
-     begin
-     
-          leds <=(others=>'0');
-                    
-          if state = idle then
-              leds(0) <= '1';
-          end if;
-          
-          if state = send_data then
-            leds(1) <= '1';
-          end if;
-                    
-          if state = set_cmd then
-              leds(2) <= '1';
-          end if;
-          
-          if state = wait_ack then
-              leds(3) <= '1';
-          end if;
-
-     end process LEDS_GEN;
 
 
 ------------------------------------------------------------------------

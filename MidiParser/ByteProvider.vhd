@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.4
+-- Revision 0.5
 -- Additional Comments:
 --		Mem addr refers to one sample.					 		
 --
@@ -42,8 +42,11 @@ entity ByteProvider is
 		byteAck				:	out	std_logic; -- One cycle high to notify the reception of a new byte
 		nextByte        	:   out	std_logic_vector(7 downto 0);
 		
+		--Debug
+		status            :   out std_logic_vector(3 downto 0);
+		
 		-- Mem arbitrator side
-		samples_in       	:	in	std_logic_vector(127 downto 0);
+		dataIn     	        :	in	std_logic_vector(127 downto 0);
         memAckSend       	:	in	std_logic; -- One cycle high
 		memAckResponse   	:	in	std_logic;
 		addr_out         	:	out std_logic_vector(22 downto 0); 
@@ -51,8 +54,8 @@ entity ByteProvider is
 		
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  ByteProvider  :   entity  is  "true"; 
+attribute   dont_touch    :   string;
+attribute   dont_touch  of  ByteProvider  :   entity  is  "true"; 
 end ByteProvider;
 
 architecture Behavioral of ByteProvider is
@@ -69,6 +72,26 @@ process(rst_n,clk,byteRqt,memAckResponse)
 	variable   readFlag    :   std_logic;
 
 begin
+--Debug
+    status<=(others=>'0');
+    if state=firstRead then
+        status(0)<='1';
+    end if;
+    
+    if state=serveBytes then
+        status(1)<='1';
+    end if;
+    
+    if state=waitCmdAck then
+        status(2)<='1';
+    end if;
+    
+    if state=getData then
+        status(3)<='1';
+    end if;
+--
+    
+    
     
 	addr_out <= std_logic_vector(regAddr(26 downto 4));
     
@@ -171,7 +194,7 @@ begin
 			
 			when getData =>
 				if memAckResponse='1' then
-					regData := samples_in;
+					regData := dataIn;
 					state := serveBytes;
 				end if;
 

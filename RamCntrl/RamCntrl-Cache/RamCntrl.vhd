@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 1.1
+-- Revision 1.3
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
 --		
@@ -102,8 +102,7 @@ entity RamCntrl is
 	  inCmdWriteBuffer			:	in	std_logic_vector(41 downto 0); -- For setup component and store midi file BL component
 	  wrRqtWriteBuffer			:	in	std_logic;
 	  fullCmdWriteBuffer		:	out	std_logic;
-	  emptyCmdWriteBufferOut    :	out	std_logic;
-	  writeWorking				:	out	std_logic; -- High when the RamCntrl is executing some write command, low when no writes 
+      writeWorking            	:	out	std_logic;
 		
       -- DDR2 interface	
       ddr2_addr            		: 	out   std_logic_vector(12 downto 0);
@@ -152,7 +151,7 @@ architecture syn of RamCntrl is
 	signal	inCmdResponseRdBuffer_0						:	std_logic_vector(129 downto 0);
 	signal	inCmdResponseRdBuffer_1						:	std_logic_vector(22 downto 0);
 
-	signal	rdRqtReadBuffer, emtyFifoRqtRd		 		:	std_logic_vector(1 downto 0);
+	signal	rdRqtReadBuffer, emptyFifoRqtRd		 		:	std_logic_vector(1 downto 0);
 	signal	wrResponseReadBuffer, fullResponseRdBuffer	:	std_logic_vector(1 downto 0);
 	
 	signal	CmdWrite									:	std_logic_vector(41 downto 0);
@@ -215,7 +214,7 @@ Fifo_inCmdReadBuffer_0: my_fifo
     rdE     => rdRqtReadBuffer(0),
     dataOut => fifoRqtRdData_0,
     full    => fullCmdReadBuffer_0,
-    empty   => emtyFifoRqtRd(0)
+    empty   => emptyFifoRqtRd(0)
   );
 
 
@@ -229,7 +228,7 @@ Fifo_inCmdReadBuffer_1: my_fifo
     rdE     => rdRqtReadBuffer(1),
     dataOut => fifoRqtRdData_1,
     full    => fullCmdReadBuffer_1,
-    empty   => emtyFifoRqtRd(1)
+    empty   => emptyFifoRqtRd(1)
   );
   
   
@@ -263,7 +262,6 @@ Fifo_outCmdReadBuffer_1: my_fifo
   
   
  -- Buffer to manage the writes commands
- emptyCmdWriteBufferOut <= emptyCmdWriteBuffer;
 Fifo_inCmdWriteBuffer: my_fifo
   generic map(WIDTH =>42, DEPTH =>4)
   port map(
@@ -280,7 +278,7 @@ Fifo_inCmdWriteBuffer: my_fifo
 
 
 ram_access : 
-process (rst_n, mem_ui_clk, mem_ack,rdWr, emptyCmdWriteBuffer, emtyFifoRqtRd, fifoRqtRdData_0, fifoRqtRdData_1) 
+process (rst_n, mem_ui_clk, mem_ack,rdWr, emptyCmdWriteBuffer, emptyFifoRqtRd, fifoRqtRdData_0, fifoRqtRdData_1) 
 	type states is (idleRdOrWr, readCmdWriteBuffer, reciveWriteAck, readInCmdReadBuffer_0, reciveAckInCmdReadBuffer_0, 
 	readInCmdReadBuffer_1, reciveAckInCmdReadBuffer_1);
 	variable state	:	states;
@@ -325,14 +323,7 @@ begin
         end if;
     end loop;
     
-	------------------
-	-- MOORE OUTPUT --
-	------------------
-    writeWorking <='0';
-    if state=readCmdWriteBuffer or state=reciveWriteAck then
-        writeWorking <='1';
-    end if;
-    
+	
 	if rst_n = '0' then
 		mem_addr <=(others=>'0');
 		mem_data_in <=(others=>'0');
@@ -342,6 +333,7 @@ begin
 		rdCmdWriteBuffer <='0';
 		rdRqtReadBuffer <=(others=>'0');
 		wrResponseReadBuffer <=(others=>'0');
+        writeWorking<='0';
 		regAux := (others=>'0');
 		flagAck :='0';
 		turn := (others=>'0');
@@ -361,13 +353,15 @@ begin
 		case state is
 			when idleRdOrWr => 
 				-- Write ram
+				writeWorking<='0';
 				if rdWr='0' and emptyCmdWriteBuffer='0' then
+				    writeWorking<='1';
 					state := readCmdWriteBuffer;
 				-- Read ram
-				elsif rdWr='1' and (emtyFifoRqtRd(0)='0' or emtyFifoRqtRd(1)='0') then
+				elsif rdWr='1' and (emptyFifoRqtRd(0)='0' or emptyFifoRqtRd(1)='0') then
 					if turn < 2 then
 						-- Priority of KeyboardCntrl component
-						if emtyFifoRqtRd(1)='0' then
+						if emptyFifoRqtRd(1)='0' then
 							turn := turn+1;
 							state := readInCmdReadBuffer_1;
 						else
@@ -375,7 +369,7 @@ begin
 						end if;
 					else
 						turn := (others=>'0');
-						if emtyFifoRqtRd(0)='0' then
+						if emptyFifoRqtRd(0)='0' then
 						  state := readInCmdReadBuffer_0;
 						end if;
 						

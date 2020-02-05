@@ -58,8 +58,8 @@ entity CmdKeyboardSequencer is
 		
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  CmdKeyboardSequencer  :   entity  is  "true";
+attribute   dont_touch    :   string;
+attribute   dont_touch  of  CmdKeyboardSequencer  :   entity  is  "true";
 end CmdKeyboardSequencer;
 
 use work.my_common.all;

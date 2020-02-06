@@ -74,24 +74,24 @@ process(rst_n,clk,sendCmdRqt,keyboard_ack)
 	variable state	:	states;
 	
 	variable internalCe   :   std_logic;
-	variable turn         :   natural range 0 to 1;
+	variable turn         :   boolean;
 begin
     
     internalCe := sendCmdRqt(0) or sendCmdRqt(1);
 	
 	-- Debug
 	statesOut <=(others=>'0');
-	if turn=0 then
+	if turn then
 		statesOut(0) <='1';
 	end if;
 
-	if turn=1 then
+	if not turn then
 		statesOut(1) <='1';
 	end if;
 	--
 	
     if rst_n='0' then
-		turn :=1;
+		turn :=true;
         aviableCmd<='0';
         cmdKeyboard<=(others=>'0');
         seq_ack <=(others=>'0');
@@ -103,33 +103,27 @@ begin
 		case state is
 		  when s0=>
             if internalCe='1' then
-                if sendCmdRqt(turn)='1' then
+                if turn and sendCmdRqt(0)='1' then
                     aviableCmd<='1';
                     state :=s1;
-                    if turn=0 then
-                        cmdKeyboard <=cmdIn_0;
-                    elsif turn=1 then
-                        cmdKeyboard <=cmdIn_1;
-                    end if;
+                    cmdKeyboard <=cmdIn_0;        
+                elsif not turn and sendCmdRqt(1)='1' then
+                    aviableCmd<='1';
+                    state :=s1;
+                    cmdKeyboard <=cmdIn_1;
                 else
-                    if turn=0 then
-                        turn :=1;
-                    else
-                        turn :=0;
-                    end if;
-                end if;
-                
-            end if;			
-	      
+                    turn := not turn;             
+                end if;			
+	        end if;
+	         
 	      when s1=>
             if keyboard_ack='1' then
-              if turn=0 then
+              if turn then
                 seq_ack(0) <='1';
-                turn :=1;
               else
                 seq_ack(1) <='1';
-                turn :=0;
               end if;
+              turn := not turn;
               state :=s0;
             end if;
 

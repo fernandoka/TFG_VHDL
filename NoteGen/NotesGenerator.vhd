@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.9
+-- Revision 1.0
 -- Additional Comments:
 --		Not completly generic component, the pipelined sum and the NotesGenerators 
 --		have to be done by hand
@@ -63,8 +63,8 @@ entity NotesGenerator is
   
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  NotesGenerator  :   entity  is  "true";
+    attribute   dont_touch    :   string;
+    attribute   dont_touch  of  NotesGenerator  :   entity  is  "true";
 end NotesGenerator;
 
 use work.my_common.all;
@@ -156,14 +156,14 @@ cenForFsms: reducedOr
 ----------------------------------------------------------------------------------  
 
 fsmResponse:
-process(fsmsCe,mem_emptyResponseBuffer)
+process(mem_emptyResponseBuffer,mem_CmdReadResponse)
 begin
     -- Everything in one cycle
 
     mem_readResponseBuffer <= '0';
     memAckResponse <=(others=>'0');
-    if fsmsCe='1' and mem_emptyResponseBuffer='0' then
-        memAckResponse(to_integer( unsigned(mem_CmdReadResponse(19 downto 16)) )) <='1';
+    if mem_emptyResponseBuffer='0' then
+        memAckResponse(to_integer( unsigned(mem_CmdReadResponse(22 downto 16)) )) <='1';
         -- Read order to response buffer
         mem_readResponseBuffer <='1';
     end if; 
@@ -178,7 +178,7 @@ end process;
 ----------------------------------------------------------------------------------  
 
 fsmSend:
-process(rst_n,clk,fsmsCe,memSamplesSendRqt,mem_fullReciveBuffer)
+process(rst_n,clk,memSamplesSendRqt,mem_fullReciveBuffer)
     type states is ( checkGeneratorRqt, waitMemAck0);
     
     variable state      	:   states;
@@ -186,6 +186,7 @@ process(rst_n,clk,fsmsCe,memSamplesSendRqt,mem_fullReciveBuffer)
     variable regReadCmdRqt 	:   std_logic_vector(25+7 downto 0);
     
     variable addrPlusOne    :   unsigned(25 downto 0);
+    variable flag           :   std_logic;
 begin
     
     mem_CmdReadRequest <= regReadCmdRqt;
@@ -195,6 +196,7 @@ begin
        turnCntr := (others=>'0');
        state := checkGeneratorRqt;
        regReadCmdRqt := (others=>'0');
+       flag :='0';
        mem_writeReciveBuffer <= '0';
        memAckSend <=(others=>'0');
 	   
@@ -206,38 +208,50 @@ begin
 			
 			-- Two Cmd per read request of a note generator
             when checkGeneratorRqt =>
-                 if fsmsCe='1' and mem_fullReciveBuffer='0' then
-                    if memSamplesSendRqt(to_integer(turnCntr))='1' then
-                        regReadCmdRqt := std_logic_vector(turnCntr) & notesGen_addrOut(to_integer(turnCntr)); -- Note Gen index + sample addr
+                if fsmsCe='1' then
+                    -- Wait one cycle to the previous write order take effect
+                    if flag='0' then
+                         if mem_fullReciveBuffer='0' then
+                            if memSamplesSendRqt(to_integer(turnCntr))='1' then
+                                regReadCmdRqt := std_logic_vector(turnCntr) & notesGen_addrOut(to_integer(turnCntr)); -- Note Gen index + sample addr
+                                -- Write command in the mem buffer
+                                mem_writeReciveBuffer <= '1';
+                                -- Send ack to note gen
+                                memAckSend(to_integer(turnCntr)) <='1';
+                                flag :=not flag;
+                                state := waitMemAck0;
+                            else
+                                if turnCntr=15 then -- Until max notes
+                                    turnCntr := (others=>'0');
+                                else
+                                    turnCntr := turnCntr+1;
+                                end if;
+                            end if;
+                        end if;--fsmsCe='1' and mem_fullReciveBuffer='0'  
+                  else
+                    flag := not flag;               
+                  end if;
+              end if; --fsmsCe='1'		
+              	
+			when waitMemAck0 =>
+                -- Wait one cycle to the previous write order take effect
+                if flag='0' then
+                    if mem_fullReciveBuffer='0' then		
+                        regReadCmdRqt(25 downto 0) := std_logic_vector(addrPlusOne); -- Note Gen index + sample addr
                         -- Write command in the mem buffer
                         mem_writeReciveBuffer <= '1';
-						-- Send ack to note gen
-                        memAckSend(to_integer(turnCntr)) <='1';
-						state := waitMemAck0;
-				    else
+                        flag :=not flag;
                         if turnCntr=15 then -- Until max notes
                             turnCntr := (others=>'0');
                         else
                             turnCntr := turnCntr+1;
-                        end if;
-				    end if;
-				    
-                end if;--fsmsCe='1' and mem_fullReciveBuffer='0'  
-            
-			
-			when waitMemAck0 =>
-                if mem_fullReciveBuffer='0' then		
-					regReadCmdRqt(25 downto 0) := std_logic_vector(addrPlusOne); -- Note Gen index + sample addr
-					-- Write command in the mem buffer
-					mem_writeReciveBuffer <= '1';
-					if turnCntr=15 then -- Until max notes
-                        turnCntr := (others=>'0');
-                    else
-                        turnCntr := turnCntr+1;
-                    end if; 
-					state := checkGeneratorRqt;                
-				end if;
-			
+                        end if; 
+                        state := checkGeneratorRqt;                
+                    end if;
+			   else
+			    flag := not flag;
+			   end if;
+			   
         end case;
         
         

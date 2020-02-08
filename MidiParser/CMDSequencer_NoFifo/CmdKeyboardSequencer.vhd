@@ -47,10 +47,6 @@ entity CmdKeyboardSequencer is
 		sendCmdRqt		:	in	std_logic_vector(1 downto 0); -- High to a add a new command to the buffer
 		seq_ack			:	out std_logic_vector(1 downto 0);
 		
-		
-		-- Debug
-		statesOut		:	out	std_logic_vector(1 downto 0);
-		
 		--Keyboard side
 		keyboard_ack	:	in	std_logic; -- Request of a new command
 		aviableCmd    	:	out std_logic; -- One cycle high	
@@ -58,8 +54,8 @@ entity CmdKeyboardSequencer is
 		
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  CmdKeyboardSequencer  :   entity  is  "true";
+    attribute   dont_touch    :   string;
+    attribute   dont_touch  of  CmdKeyboardSequencer  :   entity  is  "true";
 end CmdKeyboardSequencer;
 
 use work.my_common.all;
@@ -78,17 +74,6 @@ process(rst_n,clk,sendCmdRqt,keyboard_ack)
 begin
     
     internalCe := sendCmdRqt(0) or sendCmdRqt(1);
-	
-	-- Debug
-	statesOut <=(others=>'0');
-	if turn then
-		statesOut(0) <='1';
-	end if;
-
-	if not turn then
-		statesOut(1) <='1';
-	end if;
-	--
 	
     if rst_n='0' then
 		turn :=true;

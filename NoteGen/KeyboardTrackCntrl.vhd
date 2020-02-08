@@ -4,7 +4,7 @@
 -- 
 -- Create Date: 14.12.2019 20:22:30
 -- Design Name: 
--- Module Name: KeyboardCntrl - Behavioral
+-- Module Name: KeyboardTrackCntrl - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 0.7
+-- Revision 0.9
 -- Additional Comments:
 --		Keyboard Command format: cmd(7 downto 0) = note code
 --					 	cmd(9) = when high, note on	
@@ -41,48 +41,42 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity KeyboardCntrl is
+entity KeyboardTrackCntrl is
+  Generic (NUM_GENS	:	in	natural);
   Port ( 
-        rst_n           			:   in  std_logic;
-        clk             			:   in  std_logic;
-        cen             			:   in  std_logic;
-		emtyCmdSeqBuffer		    :	in std_logic;	
-		cmdKeyboard					:	in std_logic_vector(9 downto 0);
+		rst_n           			:   in  std_logic;
+		clk             			:   in  std_logic;
+		cen               			:   in  std_logic;
+		aviableCmd		            :	in  std_logic;	
+		cmdKeyboard					:	in  std_logic_vector(9 downto 0);
 		keyboard_ack				:	out	std_logic;
-			
-        --IIS side	
-        sampleRqt       			:   in  std_logic;
-        sampleOut       			:   out std_logic_vector(15 downto 0);
-       
-       --Debug
-       regStartAddrOut               : out	   std_logic_vector(25 downto 0);  
-       regSustainStartOffsetAddrOut  : out    std_logic_vector(25 downto 0);
-       regSustainEndOffsetAddrOut    : out    std_logic_vector(25 downto 0);
-       regMaxSamplesOut              : out    std_logic_vector(25 downto 0);
-       regStepValOut                 : out    std_logic_vector(63 downto 0);
-       regSustainStepStartOut        : out    std_logic_vector(63 downto 0);
-       regSustainStepEndOut          : out    std_logic_vector(63 downto 0);
-       notesOnOffOut                 : out    std_logic_vector(15 downto 0);
-       --
-       
-        		
-        -- Mem side
-		mem_emptyBuffer				:	in	std_logic;
-        mem_CmdReadResponse    		:   in  std_logic_vector(15+7 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
-        mem_fullBuffer         		:   in  std_logic; 
-        mem_CmdReadRequest		    :   out std_logic_vector(25+7 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(25 downto 0) = sample addr
-		mem_readResponseBuffer		:	out std_logic;
-        mem_writeReciveBuffer     	:   out std_logic -- One cycle high to send a new CmdReadRqt
-  
+
+		--IIS side	
+		sampleRqt       			:   in  std_logic;
+		sampleOut       			:   out std_logic_vector(15 downto 0);
+
+		--Debug
+		numGensOn                   :   out    std_logic_vector(4 downto 0);
+			workingNotesGenOut          :   out std_logic_vector(3 downto 0);
+
+		--
+	   
+		-- Notes Gen side
+		mem_CmdReadResponse			:	in	std_logic_vector(15 downto 0); 
+		memAckResponse              :	in	std_logic_vector(NUM_GENS-1 downto 0);
+		memAckSend					:	in	std_logic_vector(NUM_GENS-1 downto 0);
+		memSamplesSendRqt   		:	out	std_logic_vector(NUM_GENS-1 downto 0);
+		notesGen_addrOut			:	out	std_logic_vector(26*(NUM_GENS-1)+25 downto 0)
+
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  KeyboardCntrl  :   entity  is  "true";
-end KeyboardCntrl;
+    attribute   dont_touch    :   string;
+    attribute   dont_touch  of  KeyboardTrackCntrl  :   entity  is  "true";
+end KeyboardTrackCntrl;
 
 use work.my_common.all;
 
-architecture Behavioral of KeyboardCntrl is
+architecture Behavioral of KeyboardTrackCntrl is
 ----------------------------------------------------------------------------------
 -- TYPES DECLARATIONS
 ----------------------------------------------------------------------------------     
@@ -140,86 +134,86 @@ architecture Behavioral of KeyboardCntrl is
 	-------------------------------------------------
 
    constant    SUSTAIN_OFFSET :   offset_t :=(
-		0=>15,  1=>9,   2=>9, 	   -- A0, A#0, B0
+		0=>8,  1=>4,   2=>2, 	   -- A0, A#0, B0
    
-        3=>15, 	4=>9,  5=>9,     -- C1, C#1, D1
-        6=>15, 	7=>9,  8=>9,     -- D#1, E1, F1 
-        9=>15, 	10=>9, 11=>9,   -- F#1, G1, G#1
-        12=>15, 13=>9, 14=>9,  -- A1, A#1, B1
+        3=>10, 	4=>4,  5=>9,     -- C1, C#1, D1
+        6=>10, 	7=>4,  8=>4,     -- D#1, E1, F1 
+        9=>10, 	10=>9, 11=>9,   -- F#1, G1, G#1
+        12=>10, 13=>4, 14=>4,  -- A1, A#1, B1
 
-        15=>15, 16=>9, 17=>9,  -- C2, C#2, D2
-        18=>15, 19=>9, 20=>9,   -- D#2, E2, F2 
-        21=>15, 22=>9, 23=>9,  -- F#2, G2, G#2
-        24=>15, 25=>9, 26=>9,  -- A2, A#2, B2
+        15=>10, 16=>4, 17=>4,  -- C2, C#2, D2
+        18=>10, 19=>4, 20=>7,   -- D#2, E2, F2 
+        21=>15, 22=>7, 23=>7,  -- F#2, G2, G#2
+        24=>10, 25=>9, 26=>9,  -- A2, A#2, B2
 
-        27=>15, 28=>9, 29=>9,     -- C3, C#3, D3
-        30=>15, 31=>9, 32=>9,     -- D#3, E3, F3 
-        33=>15, 34=>9, 35=>9,   	 -- F#3, G3, G#3
-        36=>15, 37=>9, 38=>9,  	 -- A3, A#3, B3
+        27=>14, 28=>9, 29=>4,     -- C3, C#3, D3
+        30=>15, 31=>7, 32=>4,     -- D#3, E3, F3 
+        33=>14, 34=>9, 35=>7,   	 -- F#3, G3, G#3
+        36=>10, 37=>4, 38=>4,  	 -- A3, A#3, B3
 			
-	    39=>12, 40=>12, 41=>9,     ---- C4, C#4, D4
+	    39=>12, 40=>7, 41=>9,     ---- C4, C#4, D4
         42=>12, 43=>5, 44=>12,     ---- D#4, E4, F4 
         45=>12, 46=>12, 47=>12,     ---- F#4, G4, G#4
-        48=>12, 49=>12, 50=>12,     ---- A4, A#4, B4
+        48=>12, 49=>12, 50=>8,     ---- A4, A#4, B4
 
-        51=>12, 52=>12, 53=>8,  	 ---- C5, C#5, D5
-        54=>12, 55=>12, 56=>12,  	 ---- D#5, E5, F5 
-        57=>15, 58=>9, 59=>9,     ---- F#5, G5, G#5
-        60=>15, 61=>9, 62=>9,     ---- A5, A#5, B5
+        51=>12, 52=>8, 53=>8,  	 ---- C5, C#5, D5
+        54=>12, 55=>12, 56=>8,  	 ---- D#5, E5, F5 
+        57=>15, 58=>9, 59=>12,     ---- F#5, G5, G#5
+        60=>15, 61=>9, 62=>13,     ---- A5, A#5, B5
 
-        63=>15, 64=>9, 65=>9,  	 ---- C6, C#6, D6
-        66=>15, 67=>9, 68=>9,  	 ---- D#6, E6, F6 
-        69=>15, 70=>9, 71=>9,     ---- F#6, G6, G#6
-        72=>15, 73=>9, 74=>9,     ---- A6, A#6, B6
+        63=>15, 64=>12, 65=>12,  	 ---- C6, C#6, D6
+        66=>18, 67=>12, 68=>12,  	 ---- D#6, E6, F6 
+        69=>12, 70=>15, 71=>15,     ---- F#6, G6, G#6
+        72=>19, 73=>15, 74=>15,     ---- A6, A#6, B6
 
-        75=>15, 76=>9, 77=>9,  	 ---- C7, C#7, D7
-        78=>15, 79=>9, 80=>9,  	 ---- D#7, E7, F7 
-        81=>15, 82=>9, 83=>9,     ---- F#7, G7, G#7
-        84=>15, 85=>9, 86=>9,     ---- A7, A#7, B7
+        75=>23, 76=>15, 77=>15,  	 ---- C7, C#7, D7
+        78=>23, 79=>16, 80=>15,  	 ---- D#7, E7, F7 
+        81=>23, 82=>16, 83=>16,     ---- F#7, G7, G#7
+        84=>23, 85=>20, 86=>16,     ---- A7, A#7, B7
 
-        87=>15  	 			  ---- C8
+        87=>23  	 			  ---- C8
     );	
     
 
    constant    RELEASE_OFFSET :   offset_t :=(
-		0=>10, 1=>10, 2=>10, 	   -- A0, A#0, B0
+		0=>5, 1=>5, 2=>5, 	   -- A0, A#0, B0
 			
-        3=>10, 	4=>10, 	5=>10,     -- C1, C#1, D1
-        6=>10, 	7=>10, 	8=>10,     -- D#1, E1, F1 
-        9=>10, 	10=>10, 11=>10,   -- F#1, G1, G#1
-        12=>10,	13=>10, 14=>10,  -- A1, A#1, B1
+        3=>5, 	4=>5, 	5=>5,     -- C1, C#1, D1
+        6=>5, 	7=>5, 	8=>5,     -- D#1, E1, F1 
+        9=>5, 	10=>5, 11=>5,   -- F#1, G1, G#1
+        12=>5,	13=>5, 14=>5,  -- A1, A#1, B1
 
-        15=>10, 16=>10, 17=>10,  -- C2, C#2, D2
-        18=>10, 19=>10, 20=>10,   -- D#2, E2, F2 
-        21=>10, 22=>10, 23=>10,  -- F#2, G2, G#2
-        24=>10, 25=>10, 26=>10,  -- A2, A#2, B2
+        15=>5, 16=>5, 17=>5,  -- C2, C#2, D2
+        18=>5, 19=>2, 20=>5,   -- D#2, E2, F2 
+        21=>5, 22=>2, 23=>5,  -- F#2, G2, G#2
+        24=>5, 25=>2, 26=>2,  -- A2, A#2, B2
 							
-        27=>10, 28=>10, 29=>10,     -- C3, C#3, D3
-        30=>10, 31=>10, 32=>10,     -- D#3, E3, F3 
-        33=>10, 34=>10, 35=>10,   	 -- F#3, G3, G#3
-        36=>10, 37=>10, 38=>10,  	 -- A3, A#3, B3
+        27=>5, 28=>5, 29=>5,     -- C3, C#3, D3
+        30=>5, 31=>2, 32=>5,     -- D#3, E3, F3 
+        33=>5, 34=>5, 35=>5,   	 -- F#3, G3, G#3
+        36=>5, 37=>2, 38=>2,  	 -- A3, A#3, B3
 							
-	    39=>10, 40=>10, 41=>10,     ---- C4, C#4, D4
-        42=>10, 43=>10, 44=>10,     ---- D#4, E4, F4 
-        45=>10, 46=>10, 47=>10,     ---- F#4, G4, G#4
-        48=>10, 49=>10, 50=>10,     ---- A4, A#4, B4
+	    39=>5, 40=>2, 41=>2,     ---- C4, C#4, D4
+        42=>5, 43=>5, 44=>2,     ---- D#4, E4, F4 
+        45=>5, 46=>5, 47=>5,     ---- F#4, G4, G#4
+        48=>5, 49=>5, 50=>5,     ---- A4, A#4, B4
 							
-        51=>10, 52=>10, 53=>10,  	 ---- C5, C#5, D5
-        54=>10, 55=>10, 56=>10,  	 ---- D#5, E5, F5 
-        57=>10, 58=>10, 59=>10,     ---- F#5, G5, G#5
-        60=>10, 61=>10, 62=>10,     ---- A5, A#5, B5
+        51=>5, 52=>5, 53=>5,  	 ---- C5, C#5, D5
+        54=>5, 55=>5, 56=>5,  	 ---- D#5, E5, F5 
+        57=>5, 58=>5, 59=>5,     ---- F#5, G5, G#5
+        60=>5, 61=>5, 62=>5,     ---- A5, A#5, B5
 							
-        63=>10, 64=>10, 65=>10,  	 ---- C6, C#6, D6
-        66=>10, 67=>10, 68=>10,  	 ---- D#6, E6, F6 
-        69=>10, 70=>10, 71=>10,     ---- F#6, G6, G#6
-        72=>10, 73=>10, 74=>10,     ---- A6, A#6, B6
+        63=>5, 64=>5, 65=>5,  	 ---- C6, C#6, D6
+        66=>5, 67=>5, 68=>5,  	 ---- D#6, E6, F6 
+        69=>5, 70=>5, 71=>5,     ---- F#6, G6, G#6
+        72=>5, 73=>3, 74=>5,     ---- A6, A#6, B6
 							
-        75=>10, 76=>10, 77=>10,  	 ---- C7, C#7, D7
-        78=>10, 79=>10, 80=>10,  	 ---- D#7, E7, F7 
-        81=>10, 82=>10, 83=>10,     ---- F#7, G7, G#7
-        84=>10, 85=>10, 86=>10,     ---- A7, A#7, B7
+        75=>5, 76=>5, 77=>5,  	 ---- C7, C#7, D7
+        78=>5, 79=>5, 80=>5,  	 ---- D#7, E7, F7 
+        81=>5, 82=>5, 83=>5,     ---- F#7, G7, G#7
+        84=>5, 85=>5, 86=>5,     ---- A7, A#7, B7
 
-        87=>10  	 			  ---- C8
+        87=>5  	 			  ---- C8
     );
 
 	------------------------------------------
@@ -507,10 +501,10 @@ architecture Behavioral of KeyboardCntrl is
     signal    sustainStepEndROM           :    unsigned(63 downto 0);
 	
 	-- Signals for notesGen component
-	signal	workingNotesGen				:	std_logic_vector(15 downto 0);
+	signal	workingNotesGen				:	std_logic_vector(NUM_GENS-1 downto 0);
 	signal  orResult                    :   std_logic;
 	-- Commented signal for the test
-	signal	notesOnOff					:	std_logic_vector(15 downto 0);
+	signal	notesOnOff					:	std_logic_vector(NUM_GENS-1 downto 0);
 	
 	-- Registers
 	signal	regStartAddr                :	std_logic_vector(25 downto 0);
@@ -934,8 +928,8 @@ begin
 			stepValROM <=
 				
 				-- Interpolated notes
-				( (to_unsigned( integer(29.1353/27.5),32)& X"00000000") or toUnFix( 29.1353/27.5 ,32,32) )			when X"17",	-- A#0
-				( (to_unsigned( integer(30.8677/27.5),32)& X"00000000") or toUnFix( 30.8677/27.5 ,32,32) )			when X"18",	-- B0
+				( (to_unsigned( integer(29.1353/27.5),32)& X"00000000") or toUnFix( 29.1353/27.5 ,32,32) )			when X"16",	-- A#0
+				( (to_unsigned( integer(30.8677/27.5),32)& X"00000000") or toUnFix( 30.8677/27.5 ,32,32) )			when X"17",	-- B0
                 ( (to_unsigned( integer(34.6479/32.7032),32)& X"00000000") or toUnFix( 34.6479/32.7032 ,32,32) )    when X"19",    -- C#1
                 ( (to_unsigned( integer(36.7081/32.7032),32)& X"00000000") or toUnFix( 36.7081/32.7032 ,32,32) )    when X"1A",    -- D1
                 ( (to_unsigned( integer(41.2035/38.8909),32)& X"00000000") or toUnFix( 41.2035/38.8909 ,32,32) )    when X"1C", -- E1
@@ -1222,21 +1216,25 @@ begin
 
 
 --Debug
-    regStartAddrOut               <= regStartAddr             ;  
-    regSustainStartOffsetAddrOut  <= regSustainStartOffsetAddr;
-    regSustainEndOffsetAddrOut    <= regSustainEndOffsetAddr  ;
-    regMaxSamplesOut              <= regMaxSamples            ;
-    regStepValOut                 <= regStepVal               ;
-    regSustainStepStartOut        <= regSustainStepStart      ;
-    regSustainStepEndOut          <= regSustainStepEnd        ;
-    notesOnOffOut                 <= notesOnOff;
+my_countGens: CountGensOn
+  generic map(NUM_GENS => NUM_GENS)
+  port map( 
+        rst_n        => rst_n,
+        clk          => clk,
+		
+		notesOnOff	 => notesOnOff,
+		numGensOn	 => numGensOn
+  );
+  
+  workingNotesGenOut <=workingNotesGen(3 downto 0);
 --
 
 my_or:reducedOr
-  generic map(WL=>16)
+  generic map(WL=>NUM_GENS)
   port map(a_in =>workingNotesGen, reducedA_out =>orResult);
 
 my_gen: NotesGenerator 
+  generic map (NUM_GENS =>NUM_GENS)  
   port map( 
         rst_n           			=> rst_n,
         clk             			=> clk,
@@ -1256,13 +1254,12 @@ my_gen: NotesGenerator
         sampleRqt       			=> sampleRqt,
         sampleOut       			=> sampleOut,
 
-        -- Mem side                 
-		mem_emptyResponseBuffer		=> mem_emptyBuffer		 ,
-        mem_CmdReadResponse    		=> mem_CmdReadResponse   ,
-        mem_fullReciveBuffer     	=> mem_fullBuffer        ,
-        mem_CmdReadRequest		    => mem_CmdReadRequest	 ,
-		mem_readResponseBuffer		=> mem_readResponseBuffer,
-        mem_writeReciveBuffer     	=> mem_writeReciveBuffer 
+        -- Notes Gen side
+		mem_CmdReadResponse			=> mem_CmdReadResponse,	
+		memAckResponse      		=> memAckResponse,	
+		memAckSend					=> memAckSend,	
+		memSamplesSendRqt   		=> memSamplesSendRqt,	
+		notesGen_addrOut			=> notesGen_addrOut
   
   );
 
@@ -1275,27 +1272,27 @@ my_gen: NotesGenerator
 ----------------------------------------------------------------------------------  
 
 fsm:
-process(rst_n,clk,cen,emtyCmdSeqBuffer,cmdKeyboard,workingNotesGen)
+process(rst_n,clk,cen,aviableCmd,cmdKeyboard,workingNotesGen)
 	type states is (keyboardRst, reciveCmd, waitTurnOff);
 	type noteState_t is record
 		currentNote   :   std_logic_vector(7 downto 0);
         OnOff   	  :   std_logic; -- High On, low Off
 	end record;
-	type keyboardState_t 	is array ( 0 to 15 ) of noteState_t;
-	type checkNotes_t		is 	array (0 to 15) of  unsigned(4 downto 0);
+	type keyboardState_t 	is array ( 0 to NUM_GENS-1 ) of noteState_t;
+	type checkNotes_t		is 	array (0 to NUM_GENS-1) of  unsigned(4 downto 0);
 	
 	variable state      	:   states;
 	variable keyboardState	:	keyboardState_t;
 	
-	variable foundCode		:	std_logic_vector(15 downto 0);
+	variable foundCode		:	std_logic_vector(NUM_GENS-1 downto 0);
 	variable noteIndexOff 	:   checkNotes_t;
 	
-	variable foundAviable	:	std_logic_vector(15 downto 0);
+	variable foundAviable	:	std_logic_vector(NUM_GENS-1 downto 0);
 	variable noteIndexOn	:   checkNotes_t;
-	
+		
 begin
 	-- OutPut info
-	for i in 0 to 15 loop
+	for i in 0 to NUM_GENS-1 loop
 	   notesOnOff(i) <= keyboardState(i).OnOff;
 	end loop;
 		
@@ -1308,7 +1305,7 @@ begin
 	if keyboardState(0).OnOff='0' then
 		foundAviable(0) :='1';
 	end if;
-    for i in 1 to 15 loop
+    for i in 1 to NUM_GENS-1 loop
         foundAviable(i) := foundAviable(i-1);
         noteIndexOn(i) := noteIndexOn(i-1);
         if foundAviable(i-1)='0' and keyboardState(i).OnOff='0' then
@@ -1323,7 +1320,7 @@ begin
 	if cmdKeyboard(7 downto 0)=keyboardState(0).currentNote then
 		foundCode(0) :='1';
 	end if;
-	for i in 1 to 15 loop
+	for i in 1 to NUM_GENS-1 loop
 		foundCode(i) := foundCode(i-1);
 		noteIndexOff(i) := noteIndexOff(i-1);
 		if foundCode(i-1)='0' and cmdKeyboard(7 downto 0)=keyboardState(i).currentNote then
@@ -1362,13 +1359,12 @@ begin
                         state := reciveCmd;
                     end if;
                 
-                
                 when reciveCmd =>
-                    if emtyCmdSeqBuffer='0' then			
+                    if aviableCmd='1' then			
                         -- Note On
-                        -- Turn on a new generator if there is some generator not working (foundAviable(15)='1')
+                        -- Turn on a new generator if there is some generator not working (foundAviable(NUM_GENS-1)='1')
                         -- and if the note requested to turn on is not already on (foundCode='0')
-                        if cmdKeyboard(9 downto 8)="10" and foundAviable(15)='1' and foundCode(15)='0' then
+                        if cmdKeyboard(9 downto 8)="10" and foundAviable(NUM_GENS-1)='1' and foundCode(NUM_GENS-1)='0' then
                             -- Note params setup
                             regStartAddr                 <= std_logic_vector(startAddrROM);
                             regSustainStartOffsetAddr    <= std_logic_vector(sustainStartOffsetAddrROM);
@@ -1378,13 +1374,13 @@ begin
                             regSustainStepStart          <= std_logic_vector(sustainStepStartROM);
                             regSustainStepEnd            <= std_logic_vector(sustainStepEndROM);
     
-                            keyboardState(to_integer(noteIndexOn(15))) := (cmdKeyboard(7 downto 0),'1');
+                            keyboardState(to_integer(noteIndexOn(NUM_GENS-1))) := (cmdKeyboard(7 downto 0),'1');
                             keyboard_ack <='1';
     
                         -- Note Off
                         -- Turn off a note if there is some generator working with that note code
-                        elsif cmdKeyboard(9 downto 8)="01" and foundCode(15)='1' then
-                            keyboardState(to_integer(noteIndexOff(15))).OnOff := '0';
+                        elsif cmdKeyboard(9 downto 8)="01" and foundCode(NUM_GENS-1)='1' then
+                            keyboardState(to_integer(noteIndexOff(NUM_GENS-1))).OnOff := '0';
                             state := waitTurnOff;
                         
                         -- This if the command has no effect on the keyboard state,
@@ -1394,13 +1390,13 @@ begin
                            keyboard_ack <='1';
                         end if;
                     end if;
-                
+                    
                 -- Wait until the end of the release phase
                 when waitTurnOff =>
-                    if workingNotesGen(to_integer(noteIndexOff(15)))='0' then
-                        keyboard_ack <='1';
-                        keyboardState(to_integer(noteIndexOff(15))).currentNote := X"00";
+                    if workingNotesGen(to_integer(noteIndexOff(NUM_GENS-1)))='0' then                     
+                        keyboardState(to_integer(noteIndexOff(NUM_GENS-1))).currentNote := X"00";
                         state := reciveCmd;
+                        keyboard_ack <='1';
                     end if;
             end case;
        end if; --cen='1'

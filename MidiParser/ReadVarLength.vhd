@@ -48,8 +48,8 @@ entity ReadVarLength is
 		byteRqt			:	out std_logic -- One cycle high to request a new byte
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  ReadVarLength  :   entity  is  "true";
+attribute   dont_touch    :   string;
+attribute   dont_touch  of  ReadVarLength  :   entity  is  "true";
     
 end ReadVarLength;
 architecture Behavioral of ReadVarLength is

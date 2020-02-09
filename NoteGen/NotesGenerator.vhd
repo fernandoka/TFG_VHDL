@@ -13,12 +13,11 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 1.2
+-- Revision 1.0
 -- Additional Comments:
 --		Not completly generic component, the pipelined sum and the NotesGenerators 
 --		have to be done by hand
 -- 
---		NUM_GENS constant must be a power of 2
 ----------------------------------------------------------------------------------
 
 
@@ -35,12 +34,11 @@ use IEEE.NUMERIC_STD.ALL;
 --use UNISIM.VComponents.all;
 
 entity NotesGenerator is
-  Generic (NUM_GENS	:	in	natural);
   Port ( 
         rst_n           					:   in  std_logic;
         clk             					:   in  std_logic;
-        notes_on        					:   in  std_logic_vector(NUM_GENS-1 downto 0);
-        working								:	out	std_logic_vector(NUM_GENS-1 downto 0);
+        notes_on        					:   in  std_logic_vector(15 downto 0);
+        working								:	out	std_logic_vector(15 downto 0);
 				
 		--Note params		
 		startAddr_In             			: in std_logic_vector(25 downto 0);
@@ -55,13 +53,14 @@ entity NotesGenerator is
         sampleRqt       					:   in  std_logic;
         sampleOut       					:   out std_logic_vector(15 downto 0);
         
-        -- Notes Gen side
-		mem_CmdReadResponse					:	in	std_logic_vector(15 downto 0); 
-		memAckResponse                      :	in	std_logic_vector(NUM_GENS-1 downto 0);
-		memAckSend							:	in	std_logic_vector(NUM_GENS-1 downto 0);
-		memSamplesSendRqt   				:	out	std_logic_vector(NUM_GENS-1 downto 0);
-		notesGen_addrOut					:	out	std_logic_vector(26*(NUM_GENS-1)+25 downto 0)
-		
+        -- Mem side
+		mem_emptyResponseBuffer				:	in	std_logic;
+        mem_CmdReadResponse    				:   in  std_logic_vector(15+7 downto 0); -- mem_CmdReadResponse(19 downto 16)= note gen index, mem_CmdReadResponse(15 downto 0) = requested sample
+        mem_fullReciveBuffer         		:   in  std_logic; 
+        mem_CmdReadRequest		    		:   out std_logic_vector(25+7 downto 0); -- mem_CmdReadRequest(29 downto 26)= note gen index, mem_CmdReadRequest(15 downto 0) = requested sample
+		mem_readResponseBuffer				:	out std_logic;
+        mem_writeReciveBuffer     			:   out std_logic -- One cycle high to send a new CmdReadRqt
+  
   );
 -- Attributes for debug
     attribute   dont_touch    :   string;
@@ -76,16 +75,22 @@ architecture Behavioral of NotesGenerator is
 ----------------------------------------------------------------------------------     
     -- This generate more signals that the necessary ones
 	-- Trust in the syntesis tool to avoid the mapping of unnecesary signals
-	type    signalsPerLevel  is array( 0 to NUM_GENS-1 ) of std_logic_vector(15 downto 0); 
-	type    samples  is array( 0 to log2(NUM_GENS) ) of signalsPerLevel;
+	type    signalsPerLevel  is array( 0 to 15 ) of std_logic_vector(15 downto 0); 
+	type    samples  is array( 0 to log2(16) ) of signalsPerLevel;
 	
+	type   addrGen is  array(0 to 15) of std_logic_vector(25 downto 0);
 
 ----------------------------------------------------------------------------------
 -- SIGNALS
 ----------------------------------------------------------------------------------            
     -- For sum
     signal  notesGen_samplesOut :   samples;
-		
+	
+	signal fsmsCe                                          :    std_logic;
+	signal memAckResponse, memAckSend, memSamplesSendRqt   :    std_logic_vector(15 downto 0);
+	signal workingInter, sampleCe                          :    std_logic_vector(15 downto 0);
+	
+	signal notesGen_addrOut    :   addrGen;
 begin
 
 ----------------------------------------------------------------------------------
@@ -93,24 +98,24 @@ begin
 --      Manage the sums of all notes, is organized as a balanced tree
 ---------------------------------------------------------------------------------- 
 genTreeLevels:
-for i in 0 to log2(NUM_GENS)-1 generate
+for i in 0 to log2(16)-1 generate
 	genFixedSumsPerTreeLevel:
-	for j in 0 to ( (NUM_GENS/2**(i+1)) - 1) generate
+	for j in 0 to ( (16/2**(i+1)) - 1) generate
 		sum: MyFiexedSum
 		generic map(WL=>16)
 		port map( rst_n =>rst_n, clk=>clk,a_in=>notesGen_samplesOut(i)(j*2),b_in=>notesGen_samplesOut(i)(j*2+1),c_out=>notesGen_samplesOut(i+1)(j));
 	end generate;
 end generate;
 
-sampleOut <= notesGen_samplesOut(log2(NUM_GENS))(0);
+sampleOut <= notesGen_samplesOut(log2(16))(0);
 
 ----------------------------------------------------------------------------------
 -- NOTES GENERATOR
 --      Creation of the notes generators components
 ----------------------------------------------------------------------------------
-
+working <=workingInter;
 genNotes:
-for i in 0 to NUM_GENS-1 generate
+for i in 0 to 15 generate
 	NoteGen: UniversalNoteGen
 	  port map(
 		-- Host side
@@ -118,7 +123,7 @@ for i in 0 to NUM_GENS-1 generate
 		clk                     	=> clk,
 		noteOnOff               	=> notes_on(i),
 		sampleRqt    				=> sampleRqt, -- IIS new sample Rqt
-		working						=> working(i),
+		working						=> workingInter(i),
 		sample_out              	=> notesGen_samplesOut(0)(i),
 
 		-- NoteParams               
@@ -131,14 +136,127 @@ for i in 0 to NUM_GENS-1 generate
 		sustainStepEnd_In			=> sustainStepEnd_In		,
 
 		-- Mem side                 
-		samples_in                  => mem_CmdReadResponse,    	
+		samples_in                  => mem_CmdReadResponse(15 downto 0),    	
 		memAckSend                 	=> memAckSend(i),     	
 		memAckResponse		       	=> memAckResponse(i),      	
-		addr_out                   	=> notesGen_addrOut(26*i+25 downto 26*i),     	
+		addr_out                   	=> notesGen_addrOut(i),     	
 	    memSamplesSendRqt  		   	=> memSamplesSendRqt(i)
 	  );
 
 end generate;
 
+-- Internal ce signal for the FSMs, check if some note is working
+cenForFsms: reducedOr
+  generic map(WL=>16)
+  port map(a_in=>workingInter, reducedA_out=>fsmsCe);
+
+----------------------------------------------------------------------------------
+-- MEM CMD READ RESPONSE ARBITRATOR
+--      Manage the read response commands of the DDR for the notes generators components 
+----------------------------------------------------------------------------------  
+
+fsmResponse:
+process(mem_emptyResponseBuffer,mem_CmdReadResponse)
+begin
+    -- Everything in one cycle
+
+    mem_readResponseBuffer <= '0';
+    memAckResponse <=(others=>'0');
+    if mem_emptyResponseBuffer='0' then
+        memAckResponse(to_integer( unsigned(mem_CmdReadResponse(22 downto 16)) )) <='1';
+        -- Read order to response buffer
+        mem_readResponseBuffer <='1';
+    end if; 
+               
+end process;
+  
+
+ 
+----------------------------------------------------------------------------------
+-- MEM CMD READ RQT ARBITRATOR
+--      Manage the read request commands of the DDR for the notes generators components 
+----------------------------------------------------------------------------------  
+
+fsmSend:
+process(rst_n,clk,memSamplesSendRqt,mem_fullReciveBuffer)
+    type states is ( checkGeneratorRqt, waitMemAck0);
+    
+    variable state      	:   states;
+    variable turnCntr   	:   unsigned(6 downto 0);
+    variable regReadCmdRqt 	:   std_logic_vector(25+7 downto 0);
+    
+    variable addrPlusOne    :   unsigned(25 downto 0);
+    variable flag           :   std_logic;
+begin
+    
+    mem_CmdReadRequest <= regReadCmdRqt;
+    addrPlusOne := unsigned(regReadCmdRqt(25 downto 0))+1;
+    
+    if rst_n='0' then
+       turnCntr := (others=>'0');
+       state := checkGeneratorRqt;
+       regReadCmdRqt := (others=>'0');
+       flag :='0';
+       mem_writeReciveBuffer <= '0';
+       memAckSend <=(others=>'0');
+	   
+    elsif rising_edge(clk) then
+        mem_writeReciveBuffer <= '0'; -- Just one cycle
+		memAckSend <=(others=>'0'); -- Just one cycle
+        
+		case state is
+			
+			-- Two Cmd per read request of a note generator
+            when checkGeneratorRqt =>
+                if fsmsCe='1' then
+                    -- Wait one cycle to the previous write order take effect
+                    if flag='0' then
+                         if mem_fullReciveBuffer='0' then
+                            if memSamplesSendRqt(to_integer(turnCntr))='1' then
+                                regReadCmdRqt := std_logic_vector(turnCntr) & notesGen_addrOut(to_integer(turnCntr)); -- Note Gen index + sample addr
+                                -- Write command in the mem buffer
+                                mem_writeReciveBuffer <= '1';
+                                -- Send ack to note gen
+                                memAckSend(to_integer(turnCntr)) <='1';
+                                flag :=not flag;
+                                state := waitMemAck0;
+                            else
+                                if turnCntr=15 then -- Until max notes
+                                    turnCntr := (others=>'0');
+                                else
+                                    turnCntr := turnCntr+1;
+                                end if;
+                            end if;
+                        end if;--fsmsCe='1' and mem_fullReciveBuffer='0'  
+                  else
+                    flag := not flag;               
+                  end if;
+              end if; --fsmsCe='1'		
+              	
+			when waitMemAck0 =>
+                -- Wait one cycle to the previous write order take effect
+                if flag='0' then
+                    if mem_fullReciveBuffer='0' then		
+                        regReadCmdRqt(25 downto 0) := std_logic_vector(addrPlusOne); -- Note Gen index + sample addr
+                        -- Write command in the mem buffer
+                        mem_writeReciveBuffer <= '1';
+                        flag :=not flag;
+                        if turnCntr=15 then -- Until max notes
+                            turnCntr := (others=>'0');
+                        else
+                            turnCntr := turnCntr+1;
+                        end if; 
+                        state := checkGeneratorRqt;                
+                    end if;
+			   else
+			    flag := not flag;
+			   end if;
+			   
+        end case;
+        
+        
+        
+    end if;
+end process;
   
 end Behavioral;

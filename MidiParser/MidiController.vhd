@@ -56,8 +56,8 @@ entity MidiController is
 		
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  MidiController  :   entity  is  "true";
+    attribute   dont_touch    :   string;
+    attribute   dont_touch  of  MidiController  :   entity  is  "true";
 end MidiController;
 
 architecture Behavioral of MidiController is
@@ -65,7 +65,7 @@ architecture Behavioral of MidiController is
 begin
 
 fsm:
-process(rst_n, clk, readMidifileRqt, finishHeaderRead, headerOK, ODBD_ValReady)
+process(rst_n, clk, cen, readMidifileRqt, finishHeaderRead, headerOK, ODBD_ValReady)
     type states is (s0, s1, s2, s3, s4);	
 	variable state	:	states;
 	

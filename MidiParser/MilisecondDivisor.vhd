@@ -41,8 +41,8 @@ entity MilisecondDivisor is
 		
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  MilisecondDivisor  :   entity  is  "true";
+attribute   dont_touch    :   string;
+attribute   dont_touch  of  MilisecondDivisor  :   entity  is  "true";
 end MilisecondDivisor;
 
 architecture Behavioral of MilisecondDivisor is

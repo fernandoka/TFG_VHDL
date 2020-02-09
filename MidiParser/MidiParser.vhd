@@ -65,37 +65,14 @@ entity MidiParser is
 		fileOk						:	out	std_logic;
 		OnOff						:	out	std_logic;
         
+        --Debug
+        statesOut_MidiCntrl         :   out std_logic_vector(4 downto 0);
+        
         -- Keyboard side
 		keyboard_ack	            :	in	std_logic; -- Request of a new command
-        emtyCmdSeqBuffer            :   out std_logic;    
+        aviableCmd                  :   out std_logic;    
         cmdKeyboard                 :   out std_logic_vector(9 downto 0);
-		
-		-- Debug
-		statesOut_ODBD				:	out std_logic_vector(2 downto 0);
-		
-		statesOut_MidiCntrl			:	out	std_logic_vector(4 downto 0);
-		
-        statesOut_CmdSequencer      :	out	std_logic_vector(1 downto 0);
-		
-		regAuxHeader                :   out   std_logic_vector(31 downto 0);
-		cntrOutHeader               :   out   std_logic_vector(2 downto 0);
-		statesOutHeader             :   out   std_logic_vector(7 downto 0);
-		
-		regAuxOut_0       			: 	out std_logic_vector(31 downto 0);
-		regAddrOut_0                : 	out std_logic_vector(26 downto 0);
-		statesOut_0                 : 	out std_logic_vector(8 downto 0);
-		runningStatusOut_0          : 	out std_logic_vector(7 downto 0);  
-		dataBytesOut_0              : 	out std_logic_vector(15 downto 0);
-		regWaitOut_0                : 	out std_logic_vector(17 downto 0);
-			
-		regAuxOut_1       			: 	out std_logic_vector(31 downto 0);
-		regAddrOut_1                : 	out std_logic_vector(26 downto 0);
-		statesOut_1                 : 	out std_logic_vector(8 downto 0);
-		runningStatusOut_1          : 	out std_logic_vector(7 downto 0);  
-		dataBytesOut_1              : 	out std_logic_vector(15 downto 0);
-		regWaitOut_1                : 	out std_logic_vector(17 downto 0);
 
-        
         -- Mem side
 		mem_emptyBuffer				:	in	std_logic;
         mem_CmdReadResponse    		:   in  std_logic_vector(129 downto 0);
@@ -106,8 +83,8 @@ entity MidiParser is
   
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  MidiParser  :   entity  is  "true";
+attribute   dont_touch    :   string;
+attribute   dont_touch  of  MidiParser  :   entity  is  "true";
     
 end MidiParser;
 
@@ -121,7 +98,9 @@ architecture Behavioral of MidiParser is
 	type    byteData_t  is array( 0 to 1 ) of std_logic_vector(7 downto 0);
 	type    memAddr_t  is array( 0 to 1 ) of std_logic_vector(22 downto 0);
 	type	trackAddrStart_t	is	array(0 to 1)	of	std_logic_vector(26 downto 0);
+	
 	type	tracksCmd_t	is	array(0 to 1)	of	std_logic_vector(9 downto 0);
+    type    tempoValue_t   is array(0 to 1) of std_logic_vector(23 downto 0);
         
 ----------------------------------------------------------------------------------
 -- SIGNALS
@@ -149,6 +128,7 @@ architecture Behavioral of MidiParser is
 	signal	BP_addr_ReadHeader							:	std_logic_vector(26 downto 0); 
 	signal	BP_data_ReadHeader							:	std_logic_vector(7 downto 0);
 	signal	BP_byteRqt_ReadHeader, BP_ack_ReadHeader	:	std_logic;
+	signal  OnOffInter                                  :   std_logic;
 	
 	-- For Read Tracks components
 	signal	BP_addr_ReadTrack_0							:	std_logic_vector(26 downto 0); 
@@ -158,7 +138,11 @@ architecture Behavioral of MidiParser is
 	
 	signal  wrCmdRqt                                    :  std_logic_vector(1 downto 0);
 	signal  sequencerAck                                :  std_logic_vector(1 downto 0);
+	signal  updateTempoVal                              :  tempoValue_t;
+	signal  updateTempoRqt, updateTempoAck              :  std_logic_vector(1 downto 0);
 	
+	signal  regCurrentTempo                             :  std_logic_vector(23 downto 0);
+  
 	-- For manage the mem CMDs
 	signal	memAckSend, memAckResponse, memSamplesSendRqt	:	std_logic_vector(2 downto 0);
 	signal	mem_byteP_addrOut								:	memAddr_t;
@@ -185,8 +169,11 @@ begin
 	BP_data_ReadTrack_0 <= BP_data(0) when muxBP_0='1' else (others=>'0');
     BP_ack_ReadTrack_0 <= BP_ack(0) when muxBP_0='1' else '0';
 
--- MidiController
- my_MidiController : MidiController
+--------------------------------------------------------------------
+-- MIDI CONTROLLER
+--------------------------------------------------------------------
+OnOff <=OnOffInter;
+my_MidiController : MidiController
  port map( 
         rst_n           	=> rst_n,	
         clk             	=> clk,	
@@ -201,14 +188,16 @@ begin
 		readHeaderRqt		=> startHeaderRead,
 		muxBP_0				=> muxBP_0,
 		readTracksRqt		=> readTracksRqt,	
-		parseOnOff			=> OnOff,	
+		parseOnOff			=> OnOffInter,	
 								
 		--Debug                 
 		statesOut       	=> statesOut_MidiCntrl	
 		
   );
 
--- Byte Provider components
+--------------------------------------------------------------------
+-- BYTE PROVIDERS COMPONENTS 
+--------------------------------------------------------------------
 BP_0 : ByteProvider
   port map( 
         rst_n => rst_n,
@@ -219,7 +208,7 @@ BP_0 : ByteProvider
         nextByte =>BP_data(0),
       
         -- Mem side
-		samples_in       	=>	mem_CmdReadResponse(127 downto 0),
+		dataIn       	    =>	mem_CmdReadResponse(127 downto 0),
         memAckSend       	=>	memAckSend(0),
         memAckResponse   	=>	memAckResponse(0),
         addr_out         	=>	mem_byteP_addrOut(0),    
@@ -238,7 +227,7 @@ BP_1 : ByteProvider
         nextByte =>BP_data(1),
       
         -- Mem arbitrator side
-		samples_in       	=>	mem_CmdReadResponse(127 downto 0),
+		dataIn       	    =>	mem_CmdReadResponse(127 downto 0),
         memAckSend       	=>	memAckSend(1),
         memAckResponse   	=>	memAckResponse(1),
         addr_out         	=>	mem_byteP_addrOut(1),    
@@ -246,9 +235,11 @@ BP_1 : ByteProvider
 
   );
 
--- OneDividedByDivision component
+--------------------------------------------------------------------
+-- ONE DIVIDED BY DIVISON COMPONENT
+--------------------------------------------------------------------
 my_ODBD_Provider : OneDividedByDivision_Provider
-  generic map(START_ADDR=>299*4) -- 32 bits Address of the first value of OneDividedByDivision constants stored in DDR memory 
+  generic map(START_ADDR=>2844660) -- Address of 4Bytes of the first OneDividedByDivision constants stored in memory 
   port map( 
         rst_n           		=> rst_n,
         clk             		=> clk,
@@ -256,9 +247,6 @@ my_ODBD_Provider : OneDividedByDivision_Provider
 		division				=> divisionVal,
 		readyValue				=> ODBD_readyVal,
 		OneDividedByDivision	=> ODBD_Val,
-		
-		--Debug
-		statesOut       		=> statesOut_ODBD,
 		 
 		-- Mem arbitrator side
 		dataIn       			=>	mem_CmdReadResponse(23 downto 0),
@@ -273,9 +261,11 @@ my_ODBD_Provider : OneDividedByDivision_Provider
 -- Check if tracks and header are Ok
 fileOk <= headerOKe and tracksOK(0) and tracksOK(1);
 
--- Read Header Component
+--------------------------------------------------------------------
+-- READ HEADER CHUNK COMPONENT
+--------------------------------------------------------------------
 my_ReadHeaderChunk : ReadHeaderChunk
-  generic map(START_ADDR=>0)
+  generic map(START_ADDR=>11640784)--Address of the first byte of midi file ->((189644*30)+65535*2)*2+4
   port map( 
 		rst_n => rst_n,
         clk => clk,
@@ -291,11 +281,6 @@ my_ReadHeaderChunk : ReadHeaderChunk
 		-- Start addreses for the Read Trunk Chunk components
         track0AddrStart => trackAddrStartVal(0),
         track1AddrStart => trackAddrStartVal(1),
-		
-		--Debug
-        regAuxOut => regAuxHeader,
-        cntrOut => cntrOutHeader,
-        statesOut => statesOutHeader,
 		 
 		--Byte provider side
         nextByte => BP_data_ReadHeader,
@@ -305,30 +290,63 @@ my_ReadHeaderChunk : ReadHeaderChunk
 
   );
 
-
-
--- Cmd Keyboard Sequencer 
+--------------------------------------------------------------------
+-- CMD KEYBOARD SEQUENCER 
+--------------------------------------------------------------------
 CmdSequencer: CmdKeyboardSequencer
 port map( 
     rst_n                 => rst_n,           
     clk                   => clk,
     
     -- Read Tracks Side   
-    cmdTrack_0            => trackCmd(0),
-    cmdTrack_1            => trackCmd(1),
+    cmdIn_0               => trackCmd(0),
+    cmdIn_1               => trackCmd(1),
     sendCmdRqt            => wrCmdRqt,
     seq_ack               => sequencerAck,
     
-    -- Debug
-    statesOut             => statesOut_CmdSequencer,
-    
     --Keyboard side       
     keyboard_ack          => keyboard_ack,
-    emtyCmdBuffer         => emtyCmdSeqBuffer,
+    aviableCmd            => aviableCmd,
     cmdKeyboard           => cmdKeyboard
 );
 
--- Read Track Components
+--------------------------------------------------------------------
+-- READ TRACKS COMPONENTS
+--------------------------------------------------------------------
+my_currentTempo:
+process(rst_n,clk,updateTempoRqt,OnOffInter)
+    variable    turn    :   boolean;
+
+begin
+    if rst_n='0' then
+        regCurrentTempo <=std_logic_vector(to_unsigned(500000,24)); -- Following the midi standard
+        updateTempoAck <=(others=>'0');
+        turn := true;
+        
+    elsif rising_edge(clk) then
+        updateTempoAck <=(others=>'0');
+        
+        if OnOffInter='1' then
+            if updateTempoRqt(0)='1' or updateTempoRqt(1)='1' then
+                if turn and updateTempoRqt(0)='1' then
+                    updateTempoAck(0) <='1';
+                    regCurrentTempo <=updateTempoVal(0);
+                elsif not turn and updateTempoRqt(1)='1' then
+                    updateTempoAck(1) <='1';
+                    regCurrentTempo <=updateTempoVal(1);
+                end if;
+                turn := not turn;
+            end if;
+            
+         elsif unsigned(regCurrentTempo)/=to_unsigned(500000,24) then
+            regCurrentTempo <=std_logic_vector(to_unsigned(500000,24)); -- Following the midi standard
+        end if; --OnOffInter='1'
+        
+    end if;
+end process my_currentTempo;
+
+
+
 ReadTrackChunk_0 : ReadTrackChunk
   port map( 
         rst_n           		=> rst_n,	
@@ -336,7 +354,15 @@ ReadTrackChunk_0 : ReadTrackChunk
         cen                 	=> cen,    
 		readRqt					=> readTracksRqt(1 downto 0),	
 		trackAddrStart			=> trackAddrStartVal(0),	
-		OneDividedByDivision	=> ODBD_Val,	
+		OneDividedByDivision	=> ODBD_Val,
+		
+      -- Tempo
+        currentTempo            => regCurrentTempo,
+        updateTempoAck          => updateTempoAck(0),
+        updateTempoRqt          => updateTempoRqt(0),
+        updateTempoVal          => updateTempoVal(0),
+		
+        -- Read status
 		finishRead				=> finishTracksRead(0),	
 		trackOK					=> tracksOK(0),	
 		
@@ -344,14 +370,7 @@ ReadTrackChunk_0 : ReadTrackChunk
         sequencerAck            => sequencerAck(0),
         wrCmdRqt                => wrCmdRqt(0),
         cmd                     => trackCmd(0),
-            						
-		--Debug		        	    
-		regAuxOut       		=> regAuxOut_0       ,	
-		regAddrOut          	=> regAddrOut_0     ,	
-		statesOut       		=> statesOut_0       ,	
-		runningStatusOut    	=> runningStatusOut_0,    
-		dataBytesOut        	=> dataBytesOut_0    ,    
-		regWaitOut          	=> regWaitOut_0      ,    
+  
 								
 		--Byte provider side	    
 		nextByte        		=> BP_data_ReadTrack_0,
@@ -369,7 +388,15 @@ ReadTrackChunk_1 : ReadTrackChunk
         cen                 	=> cen,    
 		readRqt					=> readTracksRqt(3 downto 2),	
 		trackAddrStart			=> trackAddrStartVal(1),	
-		OneDividedByDivision	=> ODBD_Val,	
+		OneDividedByDivision	=> ODBD_Val,
+		
+        -- Tempo
+        currentTempo            => regCurrentTempo,
+        updateTempoAck          => updateTempoAck(1),
+        updateTempoRqt          => updateTempoRqt(1),
+        updateTempoVal          => updateTempoVal(1),
+
+        -- Read status	
 		finishRead				=> finishTracksRead(1),	
 		trackOK					=> tracksOK(1),	
 
@@ -377,14 +404,6 @@ ReadTrackChunk_1 : ReadTrackChunk
         sequencerAck            => sequencerAck(1),
         wrCmdRqt                => wrCmdRqt(1),
         cmd                     => trackCmd(1),
-        
-		--Debug		        	    
-		regAuxOut       		=> regAuxOut_1       ,	
-		regAddrOut          	=> regAddrOut_1     ,	
-		statesOut       		=> statesOut_1       ,	
-		runningStatusOut    	=> runningStatusOut_1,    
-		dataBytesOut        	=> dataBytesOut_1    ,    
-		regWaitOut          	=> regWaitOut_1      ,    
 								
 		--Byte provider side	    
 		nextByte        		=> BP_data(1),
@@ -401,18 +420,15 @@ ReadTrackChunk_1 : ReadTrackChunk
 ----------------------------------------------------------------------------------  
 
 fsmResponse:
-process(rst_n,clk,cen,mem_emptyBuffer)
+process(rst_n,clk,cen,mem_emptyBuffer,mem_CmdReadResponse)
 begin
     -- Everything in one cycle
     
-    -- Read order to response buffer
-    mem_readResponseBuffer <= '0';
-    if cen='0' and mem_emptyBuffer='0' then
-        mem_readResponseBuffer <= '1';
-    end if;
-    
+    -- Read order to response buffer, read send response  
+    mem_readResponseBuffer <= '0'; 
     memAckResponse <=(others=>'0');
     if cen='0' and mem_emptyBuffer='0' then        
+        mem_readResponseBuffer <= '1';
         if mem_CmdReadResponse(129 downto 128)="11" then
             memAckResponse(2) <='1';
         else
@@ -420,7 +436,7 @@ begin
         end if;    
     end if;
 
-end process;
+end process fsmResponse;
   
 
  
@@ -470,6 +486,6 @@ begin
 
         
     end if;--rst_n/rising_edge
-end process;
+end process fsmSend;
   
 end Behavioral;

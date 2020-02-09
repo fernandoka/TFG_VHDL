@@ -41,9 +41,6 @@ entity OneDividedByDivision_Provider is
 		readyValue				:	out	std_logic; -- High when the value of the last read it's ready
 		OneDividedByDivision	:	out	std_logic_vector(23 downto 0); -- Value of 1/division in Q4.20
 		
-		--Debug
-		statesOut       		:	out std_logic_vector(2 downto 0);
-		 
 		-- Mem arbitrator side
 		dataIn       			:	in	std_logic_vector(23 downto 0); -- Value of 1/division in Q4.20
         memAckSend      		:   in 	std_logic;
@@ -53,8 +50,8 @@ entity OneDividedByDivision_Provider is
 
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  OneDividedByDivision_Provider  :   entity  is  "true";
+attribute   dont_touch    :   string;
+attribute   dont_touch  of  OneDividedByDivision_Provider  :   entity  is  "true";
 end OneDividedByDivision_Provider;
 
 architecture Behavioral of OneDividedByDivision_Provider is
@@ -62,7 +59,7 @@ architecture Behavioral of OneDividedByDivision_Provider is
 begin
 
 fsm:
-process(rst_n,clk,readRqt,memAckResponse)
+process(rst_n,clk,readRqt,memAckResponse,division)
     type states is (s0, s1, s2);	
 	variable state	:	states;
 	
@@ -75,21 +72,6 @@ begin
 
     constantIndex :=(others=>'0');
     constantIndex(15 downto 0) := unsigned(division);
-    
-    --Debug
-    statesOut <=(others=>'0');
-    if state=s0 then
-        statesOut(0)<='1'; 
-    end if;
-    
-    if state=s1 then
-        statesOut(1)<='1'; 
-    end if;
-    
-    if state=s2 then
-        statesOut(2)<='1'; 
-    end if;
-    --
     	
 	if rst_n='0' then
 		state := s0;

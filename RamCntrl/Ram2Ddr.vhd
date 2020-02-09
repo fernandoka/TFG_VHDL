@@ -313,7 +313,7 @@ begin
   end process;
 
 -------------------------------------------------------------------------
-  ram_access : process (state, mem_ui_rst, mem_ui_clk) 
+  ram_access : process (state, mem_ui_rst, mem_ui_clk,ram_wen_int,ram_oen_int) 
   begin
     mem_wdf_wren <= '0';
     mem_wdf_end <= '0';

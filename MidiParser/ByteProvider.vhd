@@ -41,10 +41,7 @@ entity ByteProvider is
 			
 		byteAck				:	out	std_logic; -- One cycle high to notify the reception of a new byte
 		nextByte        	:   out	std_logic_vector(7 downto 0);
-		
-		--Debug
-		status            :   out std_logic_vector(3 downto 0);
-		
+				
 		-- Mem arbitrator side
 		dataIn     	        :	in	std_logic_vector(127 downto 0);
         memAckSend       	:	in	std_logic; -- One cycle high
@@ -72,26 +69,6 @@ process(rst_n,clk,byteRqt,memAckResponse)
 	variable   readFlag    :   std_logic;
 
 begin
---Debug
-    status<=(others=>'0');
-    if state=firstRead then
-        status(0)<='1';
-    end if;
-    
-    if state=serveBytes then
-        status(1)<='1';
-    end if;
-    
-    if state=waitCmdAck then
-        status(2)<='1';
-    end if;
-    
-    if state=getData then
-        status(3)<='1';
-    end if;
---
-    
-    
     
 	addr_out <= std_logic_vector(regAddr(26 downto 4));
     

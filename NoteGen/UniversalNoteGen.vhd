@@ -52,8 +52,8 @@ entity UniversalNoteGen is
     memSamplesSendRqt           :   out std_logic
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  UniversalNoteGen  :   entity  is  "true";  
+    attribute   dont_touch    :   string;
+    attribute   dont_touch  of  UniversalNoteGen  :   entity  is  "true";  
 end UniversalNoteGen;
 
 use work.my_common.all;
@@ -107,6 +107,7 @@ Interpolate:
       variable cntr : natural range 0 to 1;
       variable currentAddr : unsigned(25 downto 0);
       variable wtout : signed(15 downto 0);
+	  variable onOffFlag   :   std_logic;
 	  
 	  -- NoteParams registers
 	  variable	startAddr				:	unsigned(25 downto 0);
@@ -122,15 +123,6 @@ Interpolate:
     addr_out <= std_logic_vector(currentAddr);
     sample_out <= std_logic_vector(wtout);
 	
-	------------------
-	-- Moore output --
-	------------------
-    working <='0';
-	if state/=idle then
-		working <='1';
-	end if;
-	
-	
 	if rst_n='0' then
         state := idle;
         cntr := 0;
@@ -138,9 +130,11 @@ Interpolate:
         currentAddr :=(others=>'0');
         wtout := (others=>'0');
         releaseFlag :='0';
+        onOffFlag :='0';
         wtinIPlus1 <= (others=>'0');
         wtinI <= (others=>'0');
 		ci <=(others=>'0');
+        working <='0';
         memSamplesSendRqt <= '0';
         
 	elsif rising_edge(clk) then
@@ -148,7 +142,8 @@ Interpolate:
             case state is
                     
                 when idle =>
-                    if noteOnOff='1' then
+                    onOffFlag :=noteOnOff;
+                    if onOffFlag='1' then
                         cntr := 0;
                         wtout := (others=>'0');
                         interpolatedSamplesCntr := (others=>'0');
@@ -167,6 +162,7 @@ Interpolate:
                         releaseFlag :='0';
                         ci <=(others=>'0');
                         memSamplesSendRqt <= '1';
+                        working <='1';
                     end if;
 
 				when waitCmdAck=>
@@ -202,7 +198,11 @@ Interpolate:
                 when calculateNextAddr =>
                     -- Prepare next sample addr
                     -- Attack+Decay+Sustain phase
-                    if noteOnOff='1' and releaseFlag='0' then
+                    if onOffFlag='1' then
+                        onOffFlag :=noteOnOff;
+                    end if;
+                    
+                    if onOffFlag='1' then
                         state := waitCmdAck;
                         -- Read request
                         memSamplesSendRqt <= '1';
@@ -218,6 +218,9 @@ Interpolate:
                     
                     -- Release phase
                     else
+--                        wtout :=(others=>'0');
+--                        working <='0';
+--                        state := idle;
                         if releaseFlag='1' then
                             if interpolatedSamplesCntr < maxSamples then
                                 interpolatedSamplesCntr := interpolatedSamplesCntr+1;
@@ -226,6 +229,8 @@ Interpolate:
                                 -- Read request
                                 memSamplesSendRqt <= '1';
                             else
+                                wtout :=(others=>'0');
+                                working <='0';
                                 state := idle;
                             end if;
                         else
@@ -237,8 +242,8 @@ Interpolate:
                             -- Read request
                             memSamplesSendRqt <= '1';
                         end if; --releaseFlag='1'      
-                                          
-                  end if;--noteOnOff='1'              
+                  end if;--onOffFlag='1'
+                                
                 end case;
     end if;--rst_n/rising_edge
   end process;

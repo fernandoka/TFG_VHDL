@@ -52,10 +52,6 @@ entity ReadHeaderChunk is
 		track0AddrStart			:	out std_logic_vector(26 downto 0);
 		track1AddrStart			:	out std_logic_vector(26 downto 0);
 		
-		--Debug
-		regAuxOut       		: 	out std_logic_vector(31 downto 0);
-		cntrOut         		: 	out std_logic_vector(2 downto 0);
-		statesOut       		: 	out std_logic_vector(7 downto 0);
 		 
 		--Byte provider side
 		nextByte        		:   in  std_logic_vector(7 downto 0);
@@ -65,8 +61,8 @@ entity ReadHeaderChunk is
 
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  ReadHeaderChunk  :   entity  is  "true";
+attribute   dont_touch    :   string;
+attribute   dont_touch  of  ReadHeaderChunk  :   entity  is  "true";
 end ReadHeaderChunk;
 
 architecture Behavioral of ReadHeaderChunk is
@@ -98,44 +94,45 @@ begin
 	track0AddrStart <= regTrack0AddrStart;
 	track1AddrStart <= regTrack1AddrStart(26 downto 0);
 
-    --Debug
-    regAuxOut <=regAux;
-    cntrOut <=std_logic_vector(cntr);
+--Debug
+
+--    regAuxOut <=regAux;
+--    cntrOut <=std_logic_vector(cntr);
     
-    statesOut <=(others=>'0');
-    if state=s0 then
-        statesOut(0)<='1'; 
-    end if;
+--    statesOut <=(others=>'0');
+--    if state=s0 then
+--        statesOut(0)<='1'; 
+--    end if;
     
-    if state=s1 then
-        statesOut(1)<='1'; 
-    end if;
+--    if state=s1 then
+--        statesOut(1)<='1'; 
+--    end if;
 
-    if state=s2 then
-        statesOut(2)<='1'; 
-    end if;
+--    if state=s2 then
+--        statesOut(2)<='1'; 
+--    end if;
 
-    if state=s3 then
-        statesOut(3)<='1'; 
-    end if;
+--    if state=s3 then
+--        statesOut(3)<='1'; 
+--    end if;
 
-    if state=s4 then
-        statesOut(4)<='1'; 
-    end if;
+--    if state=s4 then
+--        statesOut(4)<='1'; 
+--    end if;
 
-    if state=s5 then
-        statesOut(5)<='1'; 
-    end if;
+--    if state=s5 then
+--        statesOut(5)<='1'; 
+--    end if;
 
-    if state=s6 then
-        statesOut(6)<='1'; 
-    end if;
+--    if state=s6 then
+--        statesOut(6)<='1'; 
+--    end if;
 
-    if state=s7 then
-        statesOut(7)<='1'; 
-    end if;
+--    if state=s7 then
+--        statesOut(7)<='1'; 
+--    end if;
 
-    --
+--
     	
 	if rst_n='0' then
 		state := s0;

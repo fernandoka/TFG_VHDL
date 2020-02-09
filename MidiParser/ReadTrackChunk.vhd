@@ -51,6 +51,14 @@ entity ReadTrackChunk is
 		readRqt					:	in	std_logic_vector(1 downto 0); -- One cycle high to request a read 
 		trackAddrStart			:	in 	std_logic_vector(26 downto 0); -- Must be stable for the whole read
 		OneDividedByDivision	:	in 	std_logic_vector(23 downto 0); -- Q4.20
+		
+		-- Tempo
+		currentTempo            :   in  std_logic_vector(23 downto 0);
+		updateTempoAck          :   in  std_logic;
+		updateTempoRqt          :   out std_logic; -- High until recive updateTempoAck
+		updateTempoVal          :   out std_logic_vector(23 downto 0); -- New tempo
+		
+		-- Read status
 		finishRead				:	out std_logic; -- One cycle high to notify the end of track reached
 		trackOK					:	out	std_logic; -- High track data is ok, low track data is not ok			
 		
@@ -58,15 +66,7 @@ entity ReadTrackChunk is
         sequencerAck            :   in std_logic;
 		wrCmdRqt                :   out std_logic;
 		cmd					    :	out std_logic_vector(9 downto 0);
-				
-		--Debug		
-		regAuxOut       		: out std_logic_vector(31 downto 0);
-		regAddrOut          	: out std_logic_vector(26 downto 0);
-		statesOut       		: out std_logic_vector(8 downto 0);
-		runningStatusOut        : out std_logic_vector(7 downto 0);  
-		dataBytesOut            : out std_logic_vector(15 downto 0);
-		regWaitOut              : out std_logic_vector(17 downto 0);
-		 
+				 
 		--Byte provider side
 		nextByte        		:   in  std_logic_vector(7 downto 0);
 		byteAck					:	in	std_logic; -- One cycle high to notify the reception of a new byte
@@ -75,8 +75,8 @@ entity ReadTrackChunk is
 
   );
 -- Attributes for debug
---attribute   dont_touch    :   string;
---attribute   dont_touch  of  ReadHeaderChunk  :   entity  is  "true";
+    attribute   dont_touch    :   string;
+    attribute   dont_touch  of  ReadTrackChunk  :   entity  is  "true";
 end ReadTrackChunk;
 
 use work.my_common.all;
@@ -151,7 +151,7 @@ readVarLEnghtData: ReadVarLength
 
 
 msDivisor: MilisecondDivisor
-  generic map(FREQ =>75)-- Frequency in Khz
+  generic map(FREQ =>75000)-- Frequency in Khz
   port map( 
         rst_n   => rst_n,
         clk     => clk,
@@ -162,9 +162,9 @@ msDivisor: MilisecondDivisor
 
 
 fsm:
-process(rst_n,clk,readRqt,byteAck,varLengthRdy)
+process(rst_n,clk,readRqt,byteAck,varLengthRdy,OneDividedByDivision,resVarLength,trackAddrStart,updateTempoAck)
     type modes is (check, play);
-	type states is (s0, s1, s2, s3, s4, s5, s6, skipVarLengthBytes, resolveMetaEvent, readEventData, waitSequencerAck, manageSetTempoCmd);	
+	type states is (s0, s1, s2, s3, s4, s5, s6, skipVarLengthBytes, resolveMetaEvent, readEventData, waitSequencerAck, manageSetTempoCmd, waitUpdateTempoAck);	
 	type fsm_states is record
 		state   :   states;
         mode   	:   modes;
@@ -194,8 +194,10 @@ process(rst_n,clk,readRqt,byteAck,varLengthRdy)
 	variable cntr           :   unsigned(2 downto 0);
 begin
 	
+	-- Outputs
 	fsmAddr <= std_logic_vector(regAddr);
-		
+    updateTempoVal <=regTempo;
+    
 	-------------------
 	-- Moore outputs --
 	-------------------
@@ -218,7 +220,7 @@ begin
     -- Calculate ms to wait, aprox 
     -- deltaTime*(tempoVal/division)/1000
     -- PipeLined operations, 2 stages, to calculate wait time
-    mulAux0 := unsigned(regTempo)*unsigned(OneDividedByDivision); -- Q28.20 = Q24.0*Q4.20
+    mulAux0 := unsigned(currentTempo)*unsigned(OneDividedByDivision); -- Q28.20 = Q24.0*Q4.20
     addAux0 := ('0' & mulAux0)+('0' & ROUND_VAL_0); --Q29.20 = Q28.20+Q28.20
     
     mulAux1 := unsigned(resVarLength)*regAux0; -- Q92.0 = Q64.0*Q28.0
@@ -234,50 +236,52 @@ begin
 	
     readedBytes := (regAddr - (unsigned(trackAddrStart) + 6)); -- 6 instead of 8, do not count the ini and end byte address
 
-    --Debug
-    regAddrOut <= std_logic_vector(regAddr);
-    regAuxOut <= regAux;
-    runningStatusOut<=runningStatus;
-    dataBytesOut<= dataBytes;
-    regWaitOut<= std_logic_vector(regWait);
+--Debug
+
+--    regAddrOut <= std_logic_vector(regAddr);
+--    regAuxOut <= regAux;
+--    runningStatusOut<=runningStatus;
+--    dataBytesOut<= dataBytes;
+--    regWaitOut<= std_logic_vector(regWait);
     
-    statesOut <=(others=>'0');
-    if fsm_state.state=s0 then
-        statesOut(0)<='1'; 
-    end if;
+--    statesOut <=(others=>'0');
+--    if fsm_state.state=s0 then
+--        statesOut(0)<='1'; 
+--    end if;
     
-    if fsm_state.state=s1 then
-        statesOut(1)<='1'; 
-    end if;
+--    if fsm_state.state=s1 then
+--        statesOut(1)<='1'; 
+--    end if;
 
-    if fsm_state.state=s2 then
-        statesOut(2)<='1'; 
-    end if;
+--    if fsm_state.state=s2 then
+--        statesOut(2)<='1'; 
+--    end if;
 
-    if fsm_state.state=s3 then
-        statesOut(3)<='1'; 
-    end if;
+--    if fsm_state.state=s3 then
+--        statesOut(3)<='1'; 
+--    end if;
 
-    if fsm_state.state=s4 then
-        statesOut(4)<='1'; 
-    end if;
+--    if fsm_state.state=s4 then
+--        statesOut(4)<='1'; 
+--    end if;
 
-    if fsm_state.state=s5 then
-        statesOut(5)<='1'; 
-    end if;
+--    if fsm_state.state=s5 then
+--        statesOut(5)<='1'; 
+--    end if;
 
-    if fsm_state.state=skipVarLengthBytes then
-        statesOut(6)<='1'; 
-    end if;
+--    if fsm_state.state=skipVarLengthBytes then
+--        statesOut(6)<='1'; 
+--    end if;
 
-    if fsm_state.state=resolveMetaEvent then
-        statesOut(7)<='1'; 
-    end if;
+--    if fsm_state.state=resolveMetaEvent then
+--        statesOut(7)<='1'; 
+--    end if;
 
-    if fsm_state.state=readEventData then
-        statesOut(8)<='1'; 
-    end if;
-    --
+--    if fsm_state.state=readEventData then
+--        statesOut(8)<='1'; 
+--    end if;
+
+--
     	
 	if rst_n='0' then
 		regWait := (others=>'0');
@@ -293,7 +297,7 @@ begin
 		trackOK<='0';
 		fsmByteRqt <='0';
 		readVarLengthRqt <='0';
-		
+		updateTempoRqt <='0';
 		
     elsif rising_edge(clk) then
 		finishRead <='0';
@@ -335,7 +339,7 @@ begin
                         trackOK<='0';
                     elsif readRqt(1)='1' then
                         regAddr := unsigned(trackAddrStart) + 8; -- Skip track mark and length data 
-                        regTempo  := std_logic_vector(to_unsigned(500000,24)); -- Following the midi standard
+                        regTempo  := (others=>'0'); -- Following the midi standard
                         readVarLengthRqt <='1';
                         fsm_state.state := s3;                    
                         fsm_state.mode := play;
@@ -420,7 +424,6 @@ begin
                             finishRead <='1';
                             fsm_state.state := s0;
                         end if;
-            
                     end if;--if cntr=0
                     
                 -- Wait delta time value in ms before execute command
@@ -572,10 +575,18 @@ begin
                                 end if;
                             else                                
                                 cntr :=(others=>'0');
-                                readVarLengthRqt <='1';
-                                fsm_state.state := s3;
+                                updateTempoRqt <='1';
+                                fsm_state.state := waitUpdateTempoAck;
                             end if;
                     end if;-- fsm_state.mode=check
+
+
+                when waitUpdateTempoAck =>
+                    if updateTempoAck='1' then
+                        updateTempoRqt <='0';
+                        readVarLengthRqt <='1';
+                        fsm_state.state := s3;
+                    end if;
               
               end case;
               

@@ -128,7 +128,7 @@ buildMemCMD :
 							timeOut := (others=>'1');
 							state := getByte0
 						end if;
-					-- Will end here if the nº of bytes of the files an odd number (impar)
+					-- Will end here if the nº of bytes of the files is an odd number (impar)
 					elsif temp=0 then
 						memCmd(41 downto 16) <=  memAddr; --Write one byte
 						wrMemCMD <='1';

@@ -13,7 +13,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
--- Revision 1.3
+-- Revision 1.4
 -- Additional Comments:
 --		In read mode, only the read buffers are used, in write mode only the write buffer is used.
 --		
@@ -292,17 +292,19 @@ process (rst_n, mem_ui_clk, mem_ack,rdWr, emptyCmdWriteBuffer, emptyFifoRqtRd, f
     type cacheMem is array (0 to INDEX_CACHE_ROWS) of cacheRow_t;
     type index_t   is  array(0 to INDEX_CACHE_ROWS) of unsigned(4 downto 0);
     
-	variable    foundRow        :   std_logic_vector(INDEX_CACHE_ROWS downto 0);
-    variable    rowNextIndex    :   unsigned(4 downto 0);
-    variable    rowIndex        :   index_t;
-    variable    rowsCache       :   cacheMem;
-	variable    OneReadFlag     :   std_logic;
+	variable    foundRow           :   std_logic_vector(INDEX_CACHE_ROWS downto 0);
+    variable    rowNextIndex       :   unsigned(4 downto 0);
+    variable    rowIndex           :   index_t;
+    variable    rowsCache          :   cacheMem;
+	variable    OneReadFlag        :   boolean;
+	
+	variable    waitOneCycleFlag   :   boolean;
 	
 	-- turn=0 or turn=1 -> read commands from Keyboard
 	-- turn=2 -> read commands from Midi parser
 	variable	turn			:	unsigned(1 downto 0);
 	variable	regAux			:	std_logic_vector(6 downto 0);
-	variable	flagAck			:	std_logic; -- Used to wait until the correspondant outputbuffer is not full
+	variable	flagAck			:	boolean; -- Used to wait until the correspondant outputbuffer is not full
 	
 begin
     ---------------------------------------------------
@@ -311,13 +313,13 @@ begin
     ---------------------------------------------------
     foundRow(0) :='0';
     rowIndex(0) := to_unsigned(0,5);
-    if OneReadFlag='1' and rowsCache(0).addr=fifoRqtRdData_1(25 downto 3) then
+    if OneReadFlag and rowsCache(0).addr=fifoRqtRdData_1(25 downto 3) then
         foundRow(0) :='1';
     end if;
     for i in 1 to INDEX_CACHE_ROWS loop
         foundRow(i) := foundRow(i-1);
         rowIndex(i) := rowIndex(i-1);
-        if OneReadFlag='1' and foundRow(i-1)='0' and rowsCache(i).addr=fifoRqtRdData_1(25 downto 3) then
+        if OneReadFlag and foundRow(i-1)='0' and rowsCache(i).addr=fifoRqtRdData_1(25 downto 3) then
             rowIndex(i) := to_unsigned(i,5);
             foundRow(i) := '1';
         end if;
@@ -335,12 +337,13 @@ begin
 		wrResponseReadBuffer <=(others=>'0');
         writeWorking<='0';
 		regAux := (others=>'0');
-		flagAck :='0';
+		flagAck := false;
 		turn := (others=>'0');
-		OneReadFlag :='0';
+		OneReadFlag :=false;
 		rowNextIndex :=(others=>'0');
 		rowsCache := (others=>((others=>'0'),(others=>'0')));
 		state := idleRdOrWr;
+		waitOneCycleFlag  := true;
 		
 	elsif rising_edge(mem_ui_clk) then
 		mem_cen <='1';
@@ -359,22 +362,25 @@ begin
 					state := readCmdWriteBuffer;
 				-- Read ram
 				elsif rdWr='1' and (emptyFifoRqtRd(0)='0' or emptyFifoRqtRd(1)='0') then
-					if turn < 2 then
-						-- Priority of KeyboardCntrl component
-						if emptyFifoRqtRd(1)='0' then
-							turn := turn+1;
-							state := readInCmdReadBuffer_1;
-						else
-							turn := to_unsigned(2,2); -- Check buffer of Midi parser
-						end if;
-					else
-						turn := (others=>'0');
-						if emptyFifoRqtRd(0)='0' then
-						  state := readInCmdReadBuffer_0;
-						end if;
-						
-					end if;-- if turn < 2
-					
+					if waitOneCycleFlag then
+                        if turn < 2 then
+                            -- Priority of KeyboardCntrl component
+                            if emptyFifoRqtRd(1)='0' then
+                                turn := turn+1;
+                                state := readInCmdReadBuffer_1;
+                            else
+                                turn := to_unsigned(2,2); -- Check buffer of Midi parser
+                            end if;
+                        else
+                            turn := (others=>'0');
+                            if emptyFifoRqtRd(0)='0' then
+                              state := readInCmdReadBuffer_0;
+                            end if;
+                            
+                        end if;-- if turn < 2
+                    else
+                        waitOneCycleFlag := not waitOneCycleFlag;
+                    end if;					
 				end if; 
 				
 			-----------------------------
@@ -408,16 +414,16 @@ begin
                 mem_cen <='0';
                 mem_rdn <='0';
                 
-                flagAck := '0';-- Set flagAck value
+                flagAck := false;-- Set flagAck value
                 state := reciveAckInCmdReadBuffer_0;
 				
 			when reciveAckInCmdReadBuffer_0 => 
 				if mem_ack='1' then
-					flagAck :='1';
+					flagAck := true;
 				end if;
 
 				-- Check if the buffer it's not full
-				if fullResponseRdBuffer(0)='0' and (mem_ack='1' or flagAck ='1') then
+				if fullResponseRdBuffer(0)='0' and (mem_ack='1' or flagAck) then
 					state := idleRdOrWr;
 					-- Write command to fifo
 					wrResponseReadBuffer(0)<='1'; 
@@ -446,10 +452,12 @@ begin
 			-- READ IN CMD READ BUFFER 1
 			when readInCmdReadBuffer_1 => 
                 --Quick read feature
-				if OneReadFlag='1' and foundRow(INDEX_CACHE_ROWS)='1' then
+				if OneReadFlag and foundRow(INDEX_CACHE_ROWS)='1' then
 				    if fullResponseRdBuffer(1)='0' then
 				        -- Read order to fifo, consume a mem command
                         rdRqtReadBuffer(1) <='1';
+                        -- Wait one cycle to the read order of fifo takes effect
+                        waitOneCycleFlag := false;
                         -- Write command to fifo
                         wrResponseReadBuffer(1)<='1';    
                         state := idleRdOrWr;
@@ -497,20 +505,20 @@ begin
                     mem_rdn <='0';
                     
                     -- Update data for Quick read feature
-                    OneReadFlag :='1';
+                    OneReadFlag := true;
 					rowsCache(to_integer(rowNextIndex)).addr := fifoRqtRdData_1(25 downto 3); -- Update last addr
                     
-                    flagAck :='0'; -- Set flagAck value
+                    flagAck :=false; -- Set flagAck value to false
                     state := reciveAckInCmdReadBuffer_1;				
                 end if;
 			
 			when reciveAckInCmdReadBuffer_1 => 
 				if mem_ack='1' then
-					flagAck :='1';
+					flagAck :=true;
 				end if;
 
 				-- Check if the buffer it's not full
-				if fullResponseRdBuffer(1)='0' and (mem_ack='1' or flagAck ='1') then
+				if fullResponseRdBuffer(1)='0' and (mem_ack='1' or flagAck) then
 					state := idleRdOrWr;
 					
                     -- Update data for Quick read feature
